@@ -200,7 +200,7 @@ CHANGAN.residencePlan = residencePlan;
 // ================================================================ 布局家族（由WardProfile派生，随机仅自然变化）
 function pickWardFamily(ctx, w) {
   const P = wardProfile(ctx, w);
-  const rng = CHANGAN.rngOf(CHANGAN.LAYOUT_SEED, 'wfam-' + w.id);
+  const rng = CHANGAN.rngOf(ctx.seed, 'wfam-' + w.id);
   const r = w.row;
   if (r >= 7) return rng() < 0.35 + P.garden * 0.4 ? 'sparse' : 'mixed';
   if (P.religious > 0.7) return 'temple';
@@ -234,7 +234,7 @@ function buildWardLanes(ctx, w) {
   if (w.small) {
     // 皇城南小坊：一字横街（东西向，2 宽）
     for (let x = w.x0 + 1; x <= w.x1 - 1; x++) { pave(x, cz, 6); pave(x, cz + 1, 6); }
-    const rng = CHANGAN.rngOf(CHANGAN.LAYOUT_SEED, 'wband-' + w.id);
+    const rng = CHANGAN.rngOf(ctx.seed, 'wband-' + w.id);
     // 北带门朝南开向一字街；南带门朝北
     splitBand(ctx, w, { x0: w.x0 + 1, z0: w.z0 + 1, x1: w.x1 - 1, z1: cz - 1 }, 'S', family, rng);
     splitBand(ctx, w, { x0: w.x0 + 1, z0: cz + 2, x1: w.x1 - 1, z1: w.z1 - 1 }, 'N', family, rng);
@@ -270,7 +270,7 @@ function buildWardLanes(ctx, w) {
   }
   // 府第家族：随机一象限为世家大宅（占坊约四分之一，如郭子仪宅），其余象限正常
   if (family === 'estate') {
-    const rng = CHANGAN.rngOf(CHANGAN.LAYOUT_SEED, 'wqsel-' + w.id);
+    const rng = CHANGAN.rngOf(ctx.seed, 'wqsel-' + w.id);
     const gi = CHANGAN.rint(rng, 0, 3);
     quads.forEach((q, qi) => {
       if (qi === gi) w.plots.push({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1, face: 'S', kind: 'manor', level: 3 });
@@ -283,7 +283,7 @@ function buildWardLanes(ctx, w) {
 
 // 象限细分：整区 / 坊曲偏切 / 条带分段 / 中央场院 四种模式
 function splitQuad(ctx, w, q, family) {
-  const rng = CHANGAN.rngOf(CHANGAN.LAYOUT_SEED, 'wq-' + w.id + '-' + q.cn);
+  const rng = CHANGAN.rngOf(ctx.seed, 'wq-' + w.id + '-' + q.cn);
   const qw = q.x1 - q.x0 + 1, qd = q.z1 - q.z0 + 1;
   if (qw < 9 || qd < 9) return;
   const northQuad = q.cn === 'NW' || q.cn === 'NE';

@@ -202,11 +202,6 @@ function bindWalkKeys() {
 const PAINT_C = 5;
 export const Editor = { stack: [], busy: false };
 
-function editV2(op) {
-  if (op && op.version === 2) return op;
-  return { version: 2, layer: 'macro', x: op.x, y: op.y, z: op.z, color: op.c | 0, quant: 1 };
-}
-
 function persistEdits() {
   try { localStorage.setItem('changan.edit.' + U.seed.toString(16), JSON.stringify(Editor.stack.slice(-8000))); } catch {}
 }
@@ -214,7 +209,7 @@ function persistEdits() {
 export function replayEdits() {
   try {
     const raw = localStorage.getItem('changan.edit.' + U.seed.toString(16));
-    const ops = (raw ? JSON.parse(raw) : []).map(editV2);
+    const ops = raw ? JSON.parse(raw) : [];
     if (ops.length) {
       Editor.stack = ops;
       U.worker.postMessage({ cmd: 'edit', ops, reqId: ++U.reqId });
@@ -226,33 +221,32 @@ export function replayEdits() {
 function paintAt(c) {
   const ray = new THREE.Raycaster();
   ray.setFromCamera(new THREE.Vector2(0, 0), Engine.camera);
-  const hits = ray.intersectObjects(Engine.chunkGroup.children.concat(Engine.archGroup ? Engine.archGroup.children : []), false);
+  const hits = ray.intersectObjects(Engine.chunkGroup.children, false);
   if (!hits.length) return;
   const hit = hits[0];
   const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
   const p = hit.point;
   let x, y, z;
-  const fine = hit.object.userData && hit.object.userData.layer === 'architecture';
-  const quant = fine ? 8 : 1;
-  const offset = fine ? (c === 0 ? -0.01 : 0.07) : (c === 0 ? -0.02 : 0.51);
-  x = Math.floor((p.x + n.x * offset) * quant);
-  y = Math.floor((p.y + n.y * offset) * quant);
-  z = Math.floor((p.z + n.z * offset) * quant);
+  if (c === 0) {
+    x = Math.floor(p.x - n.x * 0.02); y = Math.floor(p.y - n.y * 0.02); z = Math.floor(p.z - n.z * 0.02);
+  } else {
+    x = Math.floor(p.x + n.x * 0.51); y = Math.floor(p.y + n.y * 0.51); z = Math.floor(p.z + n.z * 0.51);
+  }
   const W = U.meta.world;
-  if (x < W.x0 * quant || x >= (W.x1 + 1) * quant || z < W.z0 * quant || z >= (W.z1 + 1) * quant || y < quant || y >= ((W.H || 64) - 1) * quant) return;
-  const op = { version: 2, layer: fine ? 'architecture' : 'macro', x, y, z, color: c, quant };
+  if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1 || y < 1 || y >= (W.H || 64) - 1) return;
+  const op = { x, y, z, c };
   Editor.stack.push(op);
   persistEdits();
   U.worker.postMessage({ cmd: 'edit', ops: [op], reqId: ++U.reqId });
   const hud = document.getElementById('edit-hud');
-  if (hud) hud.textContent = (c ? '涂抹' : '消除') + `  (${(x/quant).toFixed(fine?3:0)},${(y/quant).toFixed(fine?3:0)},${(z/quant).toFixed(fine?3:0)}) · ${fine?'建筑层':'宏观层'}`;
+  if (hud) hud.textContent = (c ? '涂抹' : '消除') + `  (${x},${y},${z})`;
 }
 
 export function undoEdit() {
   const op = Editor.stack.pop();
   if (!op) { showToast('没有可撤销的涂抹'); return; }
   persistEdits();
-  U.worker.postMessage({ cmd: 'edit', ops: [{ ...editV2(op), color: op.color ? 0 : PAINT_C }], reqId: ++U.reqId });
+  U.worker.postMessage({ cmd: 'edit', ops: [{ x: op.x, y: op.y, z: op.z, c: op.c ? 0 : PAINT_C }], reqId: ++U.reqId });
   showToast('已撤销');
 }
 

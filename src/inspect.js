@@ -3,8 +3,7 @@
 //   node inspect.js map  [seed] [scale]      → ASCII 全城舆图（按顶面颜色分类）
 //   node inspect.js zoom [seed] x0 z0 x1 z1  → 局部 ASCII 详图（1 体素≈1 字符）
 //   node inspect.js stats [seed]             → 坊级统计（覆盖率/院落数/地块尺寸分布/布局家族）
-//   node inspect.js png  [seed] [file]       → 宏观顶视 PNG
-//   node inspect.js archpng [seed] [file]    → 1/8 格建筑层顶视 PNG（2px/城市格）
+//   node inspect.js png  [seed] [file]       → 顶视 PNG（256 色版式，供存档对照）
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -13,7 +12,7 @@ const zlib = require('zlib');
 const SRC = __dirname;
 const GEN_FILES = [
   'gen/g01_core.js', 'gen/g02_skeleton.js', 'gen/g03_wards.js',
-  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g04_fine.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g07_pipeline.js',
+  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g07_pipeline.js',
 ];
 function loadGen() {
   const sandbox = { console: { log() {}, warn() {}, error() {} } };
@@ -113,38 +112,16 @@ if (mode === 'map') {
   }
   // 全城汇总
   console.log('\n汇总：', JSON.stringify(res.stats, (k, v) => v instanceof Set ? [...v] : v, 1).slice(0, 1200));
-} else if (mode === 'png' || mode === 'archpng') {
-  const arch = mode === 'archpng';
-  const file = process.argv[4] || (arch ? 'architecture-map.png' : 'map.png');
-  const scale = arch ? 2 : 1;
-  const wpx = (W.x1 - W.x0 + 1) * scale, hpx = (W.z1 - W.z0 + 1) * scale;
-  const pixels = new Uint32Array(wpx * hpx);
-  const height = new Int16Array(wpx * hpx); height.fill(-1);
-  for (let z = W.z0; z <= W.z1; z++) for (let x = W.x0; x <= W.x1; x++) {
-    const fi = F(x, z), c = fields.topColor[fi], rgb = CH.PAL_DEF[c - 1] ? parseInt(CH.PAL_DEF[c - 1][1].slice(1), 16) : 0;
-    for (let dz = 0; dz < scale; dz++) for (let dx = 0; dx < scale; dx++) {
-      const pi = ((z - W.z0) * scale + dz) * wpx + (x - W.x0) * scale + dx;
-      pixels[pi] = rgb; height[pi] = fields.topH[fi] * 8;
-    }
-  }
-  if (arch && res._ctx && res._ctx.fineStore) {
-    for (const b of res._ctx.fineStore.boxes) {
-      if (b.lod !== 0) continue;
-      const rgb = CH.PAL_DEF[b.color - 1] ? parseInt(CH.PAL_DEF[b.color - 1][1].slice(1), 16) : 0;
-      const px0 = Math.max(0, Math.floor((b.x0 / 8 - W.x0) * scale)), px1 = Math.min(wpx, Math.ceil((b.x1 / 8 - W.x0) * scale));
-      const pz0 = Math.max(0, Math.floor((b.z0 / 8 - W.z0) * scale)), pz1 = Math.min(hpx, Math.ceil((b.z1 / 8 - W.z0) * scale));
-      for (let pz = pz0; pz < pz1; pz++) for (let px = px0; px < px1; px++) {
-        const pi = pz * wpx + px;
-        if (b.y1 >= height[pi]) { height[pi] = b.y1; pixels[pi] = rgb; }
-      }
-    }
-  }
+} else if (mode === 'png') {
+  const file = process.argv[4] || 'map.png';
+  const wpx = W.x1 - W.x0 + 1, hpx = W.z1 - W.z0 + 1;
   const raw = Buffer.alloc((wpx * 3 + 1) * hpx);
   for (let z = 0; z < hpx; z++) {
     const row = z * (wpx * 3 + 1);
     raw[row] = 0;
     for (let x = 0; x < wpx; x++) {
-      const rgb = pixels[z * wpx + x];
+      const c = fields.topColor[F(W.x0 + x, W.z0 + z)];
+      const rgb = res.stats ? (CH.PAL_DEF[c - 1] ? parseInt(CH.PAL_DEF[c - 1][1].slice(1), 16) : 0) : 0;
       raw[row + 1 + x * 3] = (rgb >> 16) & 255; raw[row + 2 + x * 3] = (rgb >> 8) & 255; raw[row + 3 + x * 3] = rgb & 255;
     }
   }
@@ -153,5 +130,5 @@ if (mode === 'map') {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(wpx, 0); ihdr.writeUInt32BE(hpx, 4); ihdr[8] = 8; ihdr[9] = 2;
   const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
   fs.writeFileSync(file, png);
-  console.log('[' + mode + '] 写出 ' + file + ' ' + wpx + 'x' + hpx);
+  console.log('[png] 写出 ' + file + ' ' + wpx + 'x' + hpx);
 }

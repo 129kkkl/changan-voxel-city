@@ -9,7 +9,6 @@ const STAGE_LABEL = {
   palaces: '三大内：太极宫、皇城百司、大明宫、兴庆宫',
   water: '五渠成网：龙首、清明、永安、漕、黄渠与曲江',
   detail: '生活细节：槐行柳岸、井台灯笼、寺观松竹',
-  architecture: '双尺度营造：细柱网、深檐、薄瓦与三档轮廓',
   seal: '封壳与字段刷新',
   audit: '礼制审计与基岩泛洪',
   mesh: '分块网格与 LOD 烘焙',
@@ -72,7 +71,6 @@ function onWorld(data) {
   App.meta = data.meta;
   App.fields = data.fields;
   buildChunks(data.chunks);
-  buildArchitectureChunks(data.architectureChunks || []);
   const vc = document.getElementById('voxel-count');
   if (vc) vc.textContent = (data.stats.voxels / 10000).toFixed(0) + ' 万';
   bindViews(App);
@@ -96,7 +94,6 @@ function onWorld(data) {
 
 function onRemesh(msg) {
   if (msg.chunks) replaceChunks(msg.chunks);
-  if (msg.architectureChunks) replaceArchitectureChunks(msg.architectureChunks);
   if (msg.colPatches) applyColPatches(msg.colPatches);
 }
 

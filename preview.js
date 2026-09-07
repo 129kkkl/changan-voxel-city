@@ -58,8 +58,7 @@ server.listen(PORT, () => {
   console.log('\n======================================================');
   console.log('       盛唐长安体素箱庭 · 本地快速预览服务已启动');
   console.log('======================================================');
-  console.log(` 当前工作区主入口: ${url}`);
-  console.log(` M6稳定版直连地址: http://localhost:${actualPort}/backup/index_M6_20260907.html`);
+  console.log(` 抢修版主入口: ${url}`);
   console.log(` 空间结构蓝图图纸: http://localhost:${actualPort}/03_唐长安城空间结构蓝图.html`);
   console.log('------------------------------------------------------');
   console.log(' 按 Ctrl+C 可停止预览服务\n');
