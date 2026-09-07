@@ -6,8 +6,9 @@ const NORMALS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0,
 
 export const Engine = {
   renderer: null, scene: null, camera: null, controls: null,
-  chunkGroup: null, lodGroup: null, dynGroup: null,
+  chunkGroup: null, lodGroup: null, archGroup: null, dynGroup: null,
   chunks: [],               // {cx,cz,center,meshes:{opaque,water,glow,lod}}
+  archChunks: [],           // {cx,cz,center,rankMax,lods:[meshes]}
   materials: {},
   quality: 'mid',
   lodDist: 320,
@@ -18,9 +19,9 @@ export const Engine = {
 
 const QUALITY_TIERS = {
   // 一级地标质量>普通建筑>微装饰：低档简化远景小物但保地标轮廓（lodDist保含元/双塔/城门块常驻高模）
-  low:  { dpr: 1.0, shadow: 0, lodDist: 650, actorMul: 0.35, shadows: false, label: '低' },
-  mid:  { dpr: 1.25, shadow: 1024, lodDist: 1100, actorMul: 0.65, shadows: true, label: '中' },
-  high: { dpr: 1.5, shadow: 2048, lodDist: 1400, actorMul: 1, shadows: true, label: '高' },
+  low:  { dpr: 1.0, shadow: 0, lodDist: 360, actorMul: 0.35, shadows: false, label: '低' },
+  mid:  { dpr: 1.25, shadow: 1024, lodDist: 460, actorMul: 0.65, shadows: true, label: '中' },
+  high: { dpr: 1.5, shadow: 2048, lodDist: 860, actorMul: 1, shadows: true, label: '高' },
   ultra: { dpr: 2.0, shadow: 4096, lodDist: 1e9, actorMul: 1, shadows: true, label: '超高' },
   photo: { dpr: 2.0, shadow: 4096, lodDist: 1e9, actorMul: 0.2, shadows: true, label: '摄影' },
 };
@@ -29,7 +30,7 @@ export function initEngine(canvasHost) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.96;
+  renderer.toneMappingExposure = 1.04;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   canvasHost.appendChild(renderer.domElement);
@@ -49,19 +50,26 @@ export function initEngine(canvasHost) {
   Object.assign(Engine, { renderer, scene, camera, controls });
   Engine.chunkGroup = new THREE.Group();
   Engine.lodGroup = new THREE.Group();
+  Engine.archGroup = new THREE.Group();
   Engine.dynGroup = new THREE.Group();
-  scene.add(Engine.chunkGroup, Engine.lodGroup, Engine.dynGroup);
+  scene.add(Engine.chunkGroup, Engine.lodGroup, Engine.archGroup, Engine.dynGroup);
 
   Engine.materials.opaque = new THREE.MeshLambertMaterial({ vertexColors: true });
   Engine.materials.water = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.78, depthWrite: false });
   Engine.materials.glow = new THREE.MeshBasicMaterial({ vertexColors: true });
+  // 建筑层四材质：色彩来自离线顶点色，粗糙度负责区分夯土、木、瓦与金属/琉璃。
+  Engine.materials.archEarth = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0.0 });
+  Engine.materials.archTimber = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.74, metalness: 0.0 });
+  Engine.materials.archTile = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.58, metalness: 0.02 });
+  Engine.materials.archAccent = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.12 });
+  Engine.materials.archMass = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.0 });
 
   // 雾与背景（昼/夜由 DayNight 引擎驱动）
-  scene.fog = new THREE.Fog(0xb7c4d0, 720, 2100);
-  scene.background = new THREE.Color(0x8fb0c8);
+  scene.fog = new THREE.Fog(0xc0c5c2, 700, 2200);
+  scene.background = new THREE.Color(0x91afc2);
 
-  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x6a5a48, 0.45);
-  const sun = new THREE.DirectionalLight(0xfff1dc, 1.85);
+  const hemi = new THREE.HemisphereLight(0xe7eef1, 0x705b45, 0.52);
+  const sun = new THREE.DirectionalLight(0xffe6c1, 2.05);
   sun.position.set(-260, 380, 160);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -103,7 +111,7 @@ export function applyQuality(q) {
   try { localStorage.setItem('changan.q', q); } catch {}
 }
 
-// 首开实测自动选档：生成后先以中档渲染 3 秒，按实测 FPS 升/降档（任务书 6.2）
+// 默认固定从中档起步；仅在设备明显吃力时自动降档，不再擅自升到高档破坏 60 FPS 预算。
 export function autoQualityTick(dt) {
   const a = Engine.autoQuality;
   if (!a.enabled) return;
@@ -111,8 +119,7 @@ export function autoQualityTick(dt) {
   if (a.t < 3) return;
   a.enabled = false;
   const fps = Engine.fps;
-  if (fps >= 50 && Engine.quality === 'mid') applyQuality('high');
-  else if (fps < 27 && Engine.quality !== 'low') applyQuality('low');
+  if (fps < 42 && Engine.quality !== 'low') applyQuality('low');
 }
 
 // ---------------------------------------------------------------- 分块网格构建
@@ -164,6 +171,80 @@ export function buildChunks(chunkData) {
   }
 }
 
+function archMaterial(kind) {
+  return Engine.materials[{ earth: 'archEarth', timber: 'archTimber', tile: 'archTile', accent: 'archAccent', mass: 'archMass' }[kind] || 'archMass'];
+}
+
+function disposeGroup(group) {
+  while (group.children.length) {
+    const m = group.children[group.children.length - 1];
+    group.remove(m);
+    if (m.geometry) m.geometry.dispose();
+  }
+}
+
+function makeArchitectureMesh(ch, level, kind, data) {
+  const geo = geometryFromArrays(data);
+  const mesh = new THREE.Mesh(geo, archMaterial(kind));
+  const scale = data.positionScale || 0.125;
+  mesh.position.set(ch.ox, 0, ch.oz);
+  mesh.scale.setScalar(scale);
+  mesh.matrixAutoUpdate = false;
+  mesh.updateMatrix();
+  mesh.castShadow = level === 0 && kind !== 'earth';
+  mesh.receiveShadow = level === 0;
+  mesh.frustumCulled = true;
+  mesh.geometry.computeBoundingSphere();
+  mesh.userData.layer = 'architecture';
+  mesh.userData.archChunkKey = ch.key;
+  mesh.userData.archLevel = level;
+  return mesh;
+}
+
+export function buildArchitectureChunks(data) {
+  disposeGroup(Engine.archGroup);
+  Engine.archChunks = [];
+  for (const ch of data || []) {
+    const entry = {
+      cx: ch.cx, cz: ch.cz, key: ch.key, rankMax: ch.rankMax || 0,
+      center: new THREE.Vector3(ch.ox + (ch.size || 64) * .5, 12, ch.oz + (ch.size || 64) * .5), radius: (ch.rankMax || 0) >= 4 ? 18 : 5,
+      buildingIds: ch.buildingIds || [], lods: [{}, {}, {}], activeLevel: -1,
+    };
+    for (let level = 0; level < 3; level++) {
+      for (const [kind, m] of Object.entries(ch.lods[level] || {})) {
+        if (!m) continue;
+        const mesh = makeArchitectureMesh(ch, level, kind, m);
+        mesh.visible = false;
+        Engine.archGroup.add(mesh);
+        entry.lods[level][kind] = mesh;
+      }
+    }
+    Engine.archChunks.push(entry);
+  }
+}
+
+export function replaceArchitectureChunks(data) {
+  for (const ch of data || []) {
+    const old = Engine.archChunks.find(e => e.key === ch.key);
+    if (old) {
+      for (const lod of old.lods) for (const mesh of Object.values(lod)) {
+        Engine.archGroup.remove(mesh); mesh.geometry.dispose();
+      }
+      Engine.archChunks.splice(Engine.archChunks.indexOf(old), 1);
+    }
+    const entry = {
+      cx: ch.cx, cz: ch.cz, key: ch.key, rankMax: ch.rankMax || 0,
+      center: new THREE.Vector3(ch.ox + (ch.size || 64) * .5, 12, ch.oz + (ch.size || 64) * .5), radius: (ch.rankMax || 0) >= 4 ? 18 : 5,
+      buildingIds: ch.buildingIds || [], lods: [{}, {}, {}], activeLevel: -1,
+    };
+    for (let level = 0; level < 3; level++) for (const [kind, m] of Object.entries(ch.lods[level] || {})) {
+      const mesh = makeArchitectureMesh(ch, level, kind, m); mesh.visible = false;
+      Engine.archGroup.add(mesh); entry.lods[level][kind] = mesh;
+    }
+    Engine.archChunks.push(entry);
+  }
+}
+
 // LOD 切换：按块心距
 export function adaptFog() {
   const fog = Engine.scene.fog;
@@ -176,7 +257,7 @@ export function adaptFog() {
 
 export function updateLOD() {
   const cam = Engine.camera.position;
-  const D = cam.y > 64 ? 1e9 : Engine.lodDist;
+  const D = Engine.lodDist;
   for (const ch of Engine.chunks) {
     const near = ch.center.distanceTo(cam) < D;
     for (const kind of ['opaque', 'water', 'glow']) {
@@ -184,6 +265,21 @@ export function updateLOD() {
       if (m) m.visible = near;
     }
     if (ch.meshes.lod) ch.meshes.lod.visible = !near;
+  }
+  // 建筑 LOD 按屏幕投影直径判定：>80 px / 20–80 px / <20 px。
+  const focalPx = Math.max(1, Engine.renderer.domElement.clientHeight) / (2 * Math.tan(THREE.MathUtils.degToRad(Engine.camera.fov) * .5));
+  const target = Engine.controls && Engine.controls.target;
+  for (const ch of Engine.archChunks) {
+    const distance = Math.max(1, ch.center.distanceTo(cam));
+    const projected = ch.radius / distance * focalPx * 2;
+    let level = projected > 80 ? 0 : projected > 20 ? 1 : 2;
+    if (ch.rankMax >= 4 || (target && ch.center.distanceTo(target) < 44)) level = Math.max(0, level - 1);
+    if (Engine.quality === 'low' && ch.rankMax < 4) level = Math.max(1, level);
+    if (!Object.keys(ch.lods[level]).length) level = Object.keys(ch.lods[1]).length ? 1 : 2;
+    if (level !== ch.activeLevel) {
+      for (let i = 0; i < 3; i++) for (const m of Object.values(ch.lods[i])) m.visible = i === level;
+      ch.activeLevel = level;
+    }
   }
 }
 

@@ -63,6 +63,13 @@ CHANGAN.runAudits = function (ctx) {
   {
     const grid = CHANGAN.buildDenseGrid(ctx);
     const W = CFG.WORLD, Wd = W.x1 - W.x0 + 1, Dd = W.z1 - W.z0 + 1, H = W.H;
+    // 按"渲染可见"口径：被 archMask 遮蔽的旧宏观建筑不算支撑，否则"细层接管后残留的悬空鸱尾/树冠"会被判为合格
+    const vis = grid.slice();
+    if (CHANGAN.isArchMasked) for (const [k] of ctx.store.map) {
+      const x = CHANGAN.unpackX(k), y = CHANGAN.unpackY(k), z = CHANGAN.unpackZ(k);
+      if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1 || y < 0 || y >= H) continue;
+      if (CHANGAN.isArchMasked(ctx, x, y, z)) vis[((x - W.x0) * Dd + (z - W.z0)) * H + y] = 0;
+    }
     const visited = new Uint8Array(grid.length);
     const queue = new Int32Array(ctx.store.count + 1024);
     let qh = 0, qt = 0;
@@ -73,7 +80,7 @@ CHANGAN.runAudits = function (ctx) {
       for (const y of [gy, gy - 1]) {
         if (y < 0 || y >= H) continue;
         const di = ((x - W.x0) * Dd + (z - W.z0)) * H + y;
-        if (grid[di] && !visited[di]) { visited[di] = 1; queue[qt++] = di; }
+        if (vis[di] && !visited[di]) { visited[di] = 1; queue[qt++] = di; }
       }
     }
     const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
@@ -84,16 +91,18 @@ CHANGAN.runAudits = function (ctx) {
         const nx = x + dx, ny = y + dy, nz = z + dz;
         if (nx < 0 || nx >= Wd || ny < 0 || ny >= H || nz < 0 || nz >= Dd) continue;
         const ni = (nx * Dd + nz) * H + ny;
-        if (grid[ni] && !visited[ni]) { visited[ni] = 1; queue[qt++] = ni; }
+        if (vis[ni] && !visited[ni]) { visited[ni] = 1; queue[qt++] = ni; }
       }
     }
     let floating = 0, samples = [];
     for (const [k] of ctx.store.map) {
-      const x = CHANGAN.unpackX(k) - W.x0, y = CHANGAN.unpackY(k), z = CHANGAN.unpackZ(k) - W.z0;
-      if (x < 0 || x >= Wd || z < 0 || z >= Dd) continue;
-      if (!visited[(x * Dd + z) * H + y]) { floating++; if (samples.length < 5) samples.push(`${x + W.x0},${y},${z + W.z0}`); }
+      const x = CHANGAN.unpackX(k), y = CHANGAN.unpackY(k), z = CHANGAN.unpackZ(k);
+      if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1) continue;
+      const lx = x - W.x0, lz = z - W.z0, di = (lx * Dd + lz) * H + y;
+      if (!vis[di] || visited[di]) continue;
+      floating++; if (samples.length < 5) samples.push(`${x},${y},${z}`);
     }
-    ok('无浮空', floating === 0, floating ? `浮空体素 ${floating}（如 ${samples.join('|')}）` : '全域与基岩连通');
+    ok('无浮空', floating === 0, floating ? `浮空体素 ${floating}（如 ${samples.join('|')}）` : '遮蔽后全域与基岩连通');
     ctx.denseGrid = grid; // 供网格化复用
   }
   // 预算
@@ -113,11 +122,21 @@ CHANGAN.runAudits = function (ctx) {
     // LOD1/2由buildLandmarkLODs在seal后生成，此处仅检查注册；缺失不致命但计入报告
     audits.push({ name: '地标LOD', pass: missing.length === 0, detail: missing.length ? '缺:' + missing.join(',') : '六大地标LOD0/1/2完备，远景保轮廓' });
   }
+  // ⑧ 建筑遮蔽闭环（fatal）：被细盒覆盖的列内不得残留未遮的旧宏观建筑色，否则"两套城市叠加"回归
+  {
+    const la = CHANGAN.auditArchLeak ? CHANGAN.auditArchLeak(ctx) : null;
+    ok('建筑遮蔽闭环', !la || la.pass, la ? la.detail : '未启用遮蔽审计');
+    if (la) audits[audits.length - 1].leak = { leakCore: la.leakCore, leakRing: la.leakRing, dropped: la.dropped, tall: la.tall };
+  }
   return audits;
 };
 // ================================================================ 建筑多样性审计（开发态audit，非fatal但 smoke 打印）
 // 输出：重复签名数/同平面次数/同屋顶尺寸次数/同院落布局次数/地标 generic 检查
 CHANGAN.auditArchitectureDiversity = function (ctx) {
+  if (ctx.buildings && CHANGAN.auditFineArchitecture) {
+    const f = CHANGAN.auditFineArchitecture(ctx);
+    return { dupSign: Math.max(0, f.maxGlobal - 1), planKinds: new Set(ctx.buildings.map(b => b.normalizedSignature)).size, maxPlanRepeat: f.maxGlobal, total: ctx.buildings.length, maxWardRepeat: f.maxWardSig };
+  }
   const log = ctx.buildLog || [];
   const seen = new Map();
   let dupSign = 0;
@@ -135,9 +154,10 @@ CHANGAN.auditArchitectureDiversity = function (ctx) {
   return { dupSign, planKinds: planSeen.size, maxPlanRepeat: maxPlan, total: log.length };
 };
 CHANGAN.auditWardRepetition = function (ctx) {
-  // 十坊抽检：同院落布局出现次数（maxPlanRepeat<=8 为通过，防大片模板复制）
+  // M2：位置、颜色、seed 均不进入签名；同坊完全相同签名最多两次。
   const d = CHANGAN.auditArchitectureDiversity(ctx);
-  return { pass: d.maxPlanRepeat <= 12, detail: '院落布局种类' + d.planKinds + '，最大重复' + d.maxPlanRepeat };
+  const maxWard = d.maxWardRepeat == null ? d.maxPlanRepeat : d.maxWardRepeat;
+  return { pass: maxWard <= 2, detail: '建筑群签名' + d.planKinds + '种，同坊最大重复' + maxWard };
 };
 CHANGAN.auditLandmarkUniqueness = function (ctx) {
   const log = (ctx.buildLog || []).filter(e => ['mingde', 'danfeng', 'hanyuan', 'dayan', 'xiaoyan', 'huae', 'taiji', 'chengtian', 'royal', 'dayan', 'xiaoyan'].some(n => (e.name || '').includes(n)) || ['mingde', 'danfeng', 'hanyuan', 'dayan', 'xiaoyan'].includes(e.name));
@@ -191,6 +211,7 @@ CHANGAN.meshAll = function (ctx, want) {
   const Dd = W.z1 - W.z0 + 1;
   const at = (x, y, z) => {
     if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1 || y < 0 || y >= H) return 0;
+    if (CHANGAN.isArchMasked && CHANGAN.isArchMasked(ctx, x, y, z)) return 0;
     return grid[((x - W.x0) * Dd + (z - W.z0)) * H + y];
   };
   const groupOf = c => CHANGAN.PAL_GROUP[c - 1] || 'opaque';
@@ -206,7 +227,7 @@ CHANGAN.meshAll = function (ctx, want) {
 
 function meshChunk(ctx, at, groupOf, ox, oz, ex, ez, want) {
   const out = greedyMeshAll(ctx, at, groupOf, ox, oz, ex, ez);
-  out.lod = lodMesh(ctx, ox, oz, ex, ez);
+  out.lod = lodMesh(ctx, at, ox, oz, ex, ez);
   return out;
 }
 
@@ -349,8 +370,7 @@ function aoAt2(at, p, uvAxes) {
 }
 
 // LOD 简易块：stride 采样，顶面色块 + 侧面
-function lodMesh(ctx, ox, oz, ex, ez) {
-  const { fields } = ctx;
+function lodMesh(ctx, at, ox, oz, ex, ez) {
   const pos = [], col = [], nor = [], idx = [];
   const S = 4;
   const pushBox = (x0, y0, z0, x1, y1, z1, rgb) => {
@@ -372,8 +392,10 @@ function lodMesh(ctx, ox, oz, ex, ez) {
   for (let x = ox; x <= ex; x += S) for (let z = oz; z <= ez; z += S) {
     let topY = -1, topC = 0;
     for (let dx = 0; dx < S && x + dx <= ex; dx += 2) for (let dz = 0; dz < S && z + dz <= ez; dz += 2) {
-      const i = CHANGAN.fieldIndex(x + dx, z + dz);
-      if (fields.topH[i] > topY) { topY = fields.topH[i]; topC = fields.topColor[i]; }
+      for (let y = CFG.WORLD.H - 1; y >= 0; y--) {
+        const c = at(x + dx, y, z + dz);
+        if (c) { if (y > topY) { topY = y; topC = c; } break; }
+      }
     }
     if (topY < 0 || !topC) continue;
     const rgb = ctx.palRGB[topC - 1];

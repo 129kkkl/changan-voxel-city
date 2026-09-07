@@ -18,6 +18,7 @@ const GEN_FILES = [
   'gen/g03_wards.js',
   'gen/g04_proto.js',
   'gen/g04_landmark.js',
+  'gen/g04_fine.js',
   'gen/g05_detail.js',
   'gen/g06_audit_mesh.js',
   'gen/g07_pipeline.js',

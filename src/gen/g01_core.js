@@ -4,7 +4,8 @@
 
 // ---------------------------------------------------------------- 环境与种子
 const CHANGAN = {};
-CHANGAN.version = 'M1-骨架';
+CHANGAN.version = 'M2-双尺度建筑';
+const LAYOUT_SEED = 0x74a9c613; // 坊功能、坊曲和主要院落的固定布局种子；不随用户 seed 改变
 
 // 全局种子派生：hash(seed, tag) → 32 位子种子；全程禁止裸 Math.random()
 function hashSeed(seed, tag) {
@@ -148,13 +149,13 @@ const CFG = {
   FAR_DIST: 1500,
 };
 
-// ---------------------------------------------------------------- 尺度系统（P0重构：城市/建筑/地标三级分离，禁全城统一细分十倍）
+// ---------------------------------------------------------------- 尺度系统（M2：宏观整数格 + 建筑 1/8 定点格）
 // CITY_SCALE: 地形/坊墙/城墙/大街/渠系/总体布局 — 大尺度低成本体素
 // ARCH_SCALE: 普通民宅/府第/店铺/官署/普通寺院 — 常规体素+柱网语法
 // LANDMARK_SCALE: 宫殿/主要城门/佛塔/皇家寺院/重要楼阁 — 最高细节预算+局部高分辨率坐标
 const CITY_SCALE = { name: 'CITY_SCALE', voxelM: 13.8, domain: 'terrain/wardWall/cityWall/street/canal/layout', detailBudget: 'low', localSubdiv: 1 };
-const ARCH_SCALE = { name: 'ARCH_SCALE', voxelM: 13.8, domain: 'house/mansion/shop/office/ordinaryTemple', detailBudget: 'normal', localSubdiv: 1 };
-const LANDMARK_SCALE = { name: 'LANDMARK_SCALE', voxelM: 13.8, domain: 'palace/gate/pagoda/royalTemple/tower', detailBudget: 'high', localSubdiv: 2 };
+const ARCH_SCALE = { name: 'ARCH_SCALE', voxelM: 1.725, domain: 'house/mansion/shop/office/ordinaryTemple', detailBudget: 'normal', localSubdiv: 8, snap: 2 };
+const LANDMARK_SCALE = { name: 'LANDMARK_SCALE', voxelM: 1.725, domain: 'palace/gate/pagoda/royalTemple/tower', detailBudget: 'high', localSubdiv: 8, snap: 1 };
 // 性能策略：贪心网格化+分块+LOD+视锥剔除已在 g06/a01 实现；一级地标质量 > 普通建筑 > 微装饰
 // 局部高分辨率坐标：地标内部以 local 单位设计（localSubdiv=2，即半体素精度），再量化到世界体素
 class LocalVoxelGrid {
@@ -365,6 +366,7 @@ function signUnique(counters, sig) {
 
 // ---------------------------------------------------------------- 导出
 CHANGAN.hashSeed = hashSeed;
+CHANGAN.LAYOUT_SEED = LAYOUT_SEED;
 CHANGAN.rngOf = rngOf;
 CHANGAN.rint = rint;
 CHANGAN.pick = pick;
