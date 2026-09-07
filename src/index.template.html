@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#b34733">
+  <meta name="description" content="盛唐长安城体素箱庭：108坊棋盘、朱雀大街中轴、三大内、东西两市、晨鼓暮鼓。离线单文件，双击即开。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'none'; object-src 'none'; base-uri 'none'">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect fill='%23b34733' width='16' height='16'/><text x='8' y='12' text-anchor='middle' font-size='11' fill='white' font-family='serif'>唐</text></svg>">
+  <title>盛唐长安 · 体素箱庭</title>
+  <style>
+{{APP_CSS}}
+  </style>
+</head>
+<body>
+  <main id="app" aria-label="盛唐长安城体素箱庭三维场景">
+    <div id="scene"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="brand">
+      <div class="eyebrow">开元 — 天宝 · 八世纪上半叶</div>
+      <h1>盛唐长安</h1>
+      <p class="subtitle">一百〇八坊 · 朱雀天街 · 三大内 · 东西两市 · 晨鼓暮鼓</p>
+      <div class="status-row" aria-label="场景状态">
+        <span class="pill"><i></i><span id="clock-label">卯时 · 晨鼓</span></span>
+        <span class="pill"><i></i><span id="quality-label">画质 · 中</span></span>
+        <label class="seed-box">SEED <input id="world-seed" name="seed" maxlength="16" spellcheck="false" aria-label="世界种子"></label>
+      </div>
+    </header>
+
+    <aside class="tour-panel" aria-label="机位巡游">
+      <div class="tour-header">
+        <div class="panel-label">机位巡游 · 十八景</div>
+        <button id="tour-toggle" class="tour-toggle" type="button" aria-expanded="true">收起</button>
+      </div>
+      <div class="landmarks" id="landmark-list"></div>
+      <div class="mode-switcher" aria-label="光照模式">
+        <div class="panel-label">光照 · 时辰</div>
+        <div class="light-modes">
+          <button class="light-mode" data-light="dawn" aria-pressed="false">晨光</button>
+          <button class="light-mode" data-light="noon" aria-pressed="true">正午</button>
+          <button class="light-mode" data-light="dusk" aria-pressed="false">暮鼓</button>
+          <button class="light-mode" data-light="lantern" aria-pressed="false">上元灯夜</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="auto-rotate" class="action" aria-pressed="false">自动巡游</button>
+        <button id="toggle-time" class="action" aria-pressed="false">时辰流转</button>
+        <button id="toggle-walk" class="action" aria-pressed="false">街巷漫游</button>
+        <button id="toggle-audio" class="action" aria-pressed="false">街鼓市声</button>
+        <button id="btn-photo" class="action" title="导出当前画面为 PNG（快捷键 P）">拍照</button>
+        <button id="btn-share" class="action" title="复制含种子/机位/时辰/画质的分享链接">分享</button>
+      </div>
+    </aside>
+
+    <section class="telemetry" aria-label="实时性能">
+      <div class="metric"><strong id="voxel-count">—</strong><span>体素</span></div>
+      <div class="metric"><strong id="draw-count">—</strong><span>Draw calls</span></div>
+      <div class="metric"><strong id="fps-count">—</strong><span>FPS</span></div>
+    </section>
+
+    <div class="help" id="help-bar">拖拽旋转 · 滚轮缩放 · <kbd>V</kbd> 漫游(WASD) · <kbd>P</kbd> 拍照 · <kbd>M</kbd> 声音 · <kbd>L</kbd> 时辰流转 · <kbd>R</kbd> 复位 · <kbd>1-9/0</kbd>+翻页 机位 · 漫游中左键涂抹/右键消除 · <kbd>Ctrl+Z</kbd> 撤销</div>
+
+    <div id="minimap-card" class="minimap-card" aria-label="全域小地图">
+      <div class="minimap-header">
+        <span class="minimap-title" id="minimap-title-text">长安舆图</span>
+        <div style="display:flex;gap:4px;">
+          <button id="minimap-mode" class="minimap-btn" title="切换全图/近身雷达">雷达</button>
+          <button id="minimap-toggle" class="minimap-btn" title="折叠/展开小地图">─</button>
+        </div>
+      </div>
+      <div class="minimap-body">
+        <canvas id="minimap-canvas" width="200" height="184"></canvas>
+        <div id="minimap-compass" class="minimap-compass">北</div>
+      </div>
+    </div>
+
+    <div id="lore-card" class="lore-card" aria-live="polite" aria-hidden="true">
+      <button id="lore-close" class="lore-close" type="button" aria-label="收起介绍卡片" title="收起卡片">×</button>
+      <div class="lore-badge" id="lore-badge">盛唐</div>
+      <h3 id="lore-title">长安</h3>
+      <div class="lore-sub" id="lore-sub">—</div>
+      <p class="lore-desc" id="lore-desc">…</p>
+    </div>
+    <div id="walk-crosshair" aria-hidden="true"></div>
+    <div id="edit-hud" aria-live="polite"></div>
+    <div id="toast" role="status"></div>
+
+    <section id="loading" aria-live="polite">
+      <div class="loader-card">
+        <div class="loader-seal" aria-hidden="true">唐</div>
+        <h2>正在营造长安城</h2>
+        <p id="loading-label">立中轴、布经纬…</p>
+        <div class="progress-track"><div id="progress"></div></div>
+        <p class="loader-note" id="loading-note">离线单文件 · 生成在后台线程进行</p>
+      </div>
+    </section>
+
+    <section id="fatal" role="alert">
+      <div>
+        <h2>营造未成</h2>
+        <p id="fatal-detail">本文件已内嵌 Three.js 内核，正常打开无需联网。请用系统浏览器（Edge/Chrome）打开。若生成中途失败，多为内存不足；可尝试低画质档（URL 加 ?q=low）。</p>
+      </div>
+    </section>
+  </main>
+
+  <noscript>需要启用 JavaScript 才能营造这座长安城。</noscript>
+
+  <!-- 内嵌 Three.js r180 内核块（MIT License） -->
+  <script type="text/plain" id="vendor-three-core">
+{{VENDOR_CORE}}
+  </script>
+  <script type="text/plain" id="vendor-three-module">
+{{VENDOR_MODULE}}
+  </script>
+  <script type="text/plain" id="vendor-orbit-controls">
+{{VENDOR_ORBIT}}
+  </script>
+  <!-- 生成器源码（纯数据层，主线程不直接执行；注入 Worker 运行，Node 冒烟测试亦复用同一份） -->
+  <script type="text/plain" id="gen-src">
+{{GEN_SRC}}
+  </script>
+
+  <script>
+    // 离线内核装配：内嵌内核 → Blob ES 模块 → importmap；失败即 fatal，不回退任何外网地址。
+    (function () {
+      window.__VOXEL_SHOW_FATAL__ = function (msg) {
+        var f = document.getElementById('fatal');
+        var d = document.getElementById('fatal-detail');
+        if (d && msg) d.textContent = msg;
+        if (f) f.style.display = 'flex';
+        var l = document.getElementById('loading');
+        if (l) l.style.display = 'none';
+      };
+      function vendorText(id) {
+        var el = document.getElementById(id);
+        return el ? el.textContent : '';
+      }
+      try {
+        var coreSrc = vendorText('vendor-three-core');
+        var moduleSrc = vendorText('vendor-three-module');
+        var orbitSrc = vendorText('vendor-orbit-controls');
+        if (coreSrc.length < 100000 || moduleSrc.indexOf('WebGLRenderer') < 0 || orbitSrc.indexOf('OrbitControls') < 0) {
+          throw new Error('内嵌内核缺失或被裁剪');
+        }
+        var coreURL = URL.createObjectURL(new Blob([coreSrc], { type: 'text/javascript' }));
+        var moduleURL = URL.createObjectURL(new Blob([moduleSrc.split("'./three.core.js'").join("'" + coreURL + "'")], { type: 'text/javascript' }));
+        var orbitURL = URL.createObjectURL(new Blob([orbitSrc.replace("from 'three'", "from '" + moduleURL + "'")], { type: 'text/javascript' }));
+        var map = document.createElement('script');
+        map.type = 'importmap';
+        map.textContent = JSON.stringify({ imports: { three: moduleURL, 'three/addons/controls/OrbitControls.js': orbitURL } });
+        document.currentScript.after(map);
+        window.__CHANGAN_OFFLINE_CORE__ = true;
+      } catch (err) {
+        window.__VOXEL_SHOW_FATAL__('内嵌 Three.js 内核不可用：' + (err && err.message) + '。请确认文件完整未裁剪。');
+      }
+      // 生成超时看门狗
+      setTimeout(function () {
+        if (window.__CHANGAN_READY__) return;
+        var loading = document.getElementById('loading');
+        if (loading && loading.classList.contains('done')) return;
+        window.__VOXEL_SHOW_FATAL__('生成超时（90 秒）。多为内存不足或 Worker 被拦截，请用系统浏览器打开，或加 ?q=low 重试。');
+      }, 90000);
+    })();
+  </script>
+
+  <script type="module">
+{{APP_SRC}}
+  </script>
+</body>
+</html>
