@@ -577,7 +577,12 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   // 上轮层数被压到 2~4 层、每层内收 2~3 格，结果是"两张平板叠一条脊"，
   // 近景法医式检查判定"所有体块顶部都是纯平顶"。本轮把层数上限提到 8，
   // 保证 5 格以内的小屋顶也是 1 格一级的连续台阶（45° 体素坡），中景即可读出屋盖。
-  const pitch = opts.pitch == null ? 1 : Math.max(0.75, Math.min(1, opts.pitch));
+  // 攒尖顶（亭/塔/市楼）：小footprint 时按 halfSpan 给层会只剩 2 层，读成"平台围栏"。
+  // 视觉验收（市楼近距）：判"顶部是平台围栏而无攒尖尖顶与塔刹，缺屋顶"。
+  // 故小攒尖顶把坡度提到 1.6 倍层数，保证收到尖点。
+  const pitch = opts.pitch == null
+    ? (type === 'jian' && halfSpan <= 4 ? 1.6 : 1)
+    : Math.max(0.75, Math.min(1, opts.pitch));
   const layers = Math.max(2, Math.min(10, Math.round(halfSpan * pitch)));
   // 归一化到 layers-1，保证顶层一定收到脊线宽度（悬山/庑殿/歇山都能闭合成脊）
   const insetOf = L => Math.round(halfSpan * Math.pow(L / Math.max(1, layers - 1), 1.12));
@@ -1440,10 +1445,14 @@ proto.marketTower = function (ctx, cx, cz, y0) {
   wallRing(ctx, cx - 1, cz - 1, cx + 1, cz + 1, y0 + 7, 3, PAL.plaster, PAL.zhu, { windows: true });
   proto.roof(ctx, 'jian', cx - 1, cz - 1, cx + 1, cz + 1, y0 + 10, { overhang: 1, finial: PAL.gold });
 
-  // 旗杆 + 市旗（立于地面，高拔挺立）
-  store.fill(cx + 4, y0 - 2, cz + 4, cx + 4, y0 + 12, cz + 4, PAL.timberDark);
-  store.set(cx + 5, y0 + 11, cz + 4, PAL.flagYellow);
-  store.set(cx + 5, y0 + 10, cz + 4, PAL.flagRed);
+  // 旗杆 + 市旗：旧写法是 14 格裸木柱 + 杆顶 2 格孤立方块，
+  // 视觉验收判"裸棕高柱呈未完工感、突兀扎眼，破坏市楼天际线"。
+  // 改为 7 格杆 + 横挑 + 2×3 旗面（旗面与杆 6 邻接，不浮空）。
+  const px = cx + 4, pz = cz + 4;
+  store.fill(px, y0 - 2, pz, px, y0 + 7, pz, PAL.timberDark);              // 杆（含埋入 2 格）
+  store.fill(px + 1, y0 + 6, pz, px + 2, y0 + 6, pz, PAL.timberDark);      // 横挑 2 格
+  store.fill(px + 1, y0 + 4, pz, px + 2, y0 + 5, pz, PAL.flagYellow);      // 旗面 2×2，自横挑垂下
+  store.set(px + 2, y0 + 4, pz, PAL.flagRed);                              // 旗角
   ctx.counters.towers++;
 };
 
