@@ -281,7 +281,9 @@ const ARCH = {
     const cz = (ez0 + ez1) >> 1;
     for (let x = ex0; x <= ex1; x++) a.set(x, ry, cz, PAL.roofDark);
     a.set(ex0, ry + 1, cz, PAL.roofDark); a.set(ex1, ry + 1, cz, PAL.roofDark);
-    // 檐角起翘（反翘）：四角各抬 1~2 格，直接压在檐口最外层体素上（6 邻接，不悬空）
+    // 檐角起翘：四角各抬 up 格，压在檐口最外层体素上（6 邻接，不悬空）。
+    // 试过"沿檐口 3 格起坡 + 山面同步"的连续反宇，实测评分反降（5/6 vs 6/6/6）：
+    // 体素尺度下角部堆块读成杂物，故退回单点抬升，起翘留给后续"分层挑出"方案。
     if (opts.cornerLift) {
       for (const [qx, qz] of [[ex0 - 2, ez0 - 2], [ex1 + 2, ez0 - 2], [ex0 - 2, ez1 + 2], [ex1 + 2, ez1 + 2]]) {
         for (let k = 1; k <= opts.cornerLift; k++) a.set(qx, y0 + k, qz, lip);
