@@ -187,19 +187,36 @@ async function main() {
 
     let views = a.views === 'all'
       ? ['mingde','axis','hengjie','hanyuan','hanyuanTop','taiye','xingqing','westMarket','eastMarket','dayanta','xiaoyanta','qinglong','jingshan','wardGate','lane','qujiang','jinguang','curfew']
-      : a.views.split(',').map(s => s.trim()).filter(Boolean);
+      : (a.views.includes(';') ? a.views.split(';') : a.views.split(',')).map(s => s.trim()).filter(Boolean);
 
     for (const v of views) {
-      await cdp.eval(`window.__CHANGAN__.goToView(${JSON.stringify(v)}, true)`);
+      if (v.startsWith('cam@')) {
+        const body = v.slice(4);
+        if (body.startsWith('a:')) {
+          // a:anchor,dx,dy,dz,dtx,dty,dtz —— 相对机位锚点偏移，保证落在真实街巷上
+          const p = body.slice(2).split(',');
+          const name = p[0];
+          const n = p.slice(1).map(Number);
+          if (n.length < 6 || n.some(x => !Number.isFinite(x))) throw new Error('cam@a: 参数格式: cam@a:<anchor>,dx,dy,dz,dtx,dty,dtz');
+          await cdp.eval(`(function(){var A=window.__CHANGAN__.App.meta.viewAnchors;var a=A[${JSON.stringify(name)}];if(!a)throw new Error('锚点不存在: '+${JSON.stringify(name)});var E=window.__CHANGAN__.Engine;E.camera.position.set(a.x+(${n[0]}),a.y+(${n[1]}),a.z+(${n[2]}));E.controls.target.set(a.x+(${n[3]}),a.y+(${n[4]}),a.z+(${n[5]}));E.controls.update();return 1})()`);
+        } else {
+          const p = body.split(',').map(Number);
+          if (p.length < 6 || p.some(n => !Number.isFinite(n))) throw new Error('cam@ 参数格式: cam@x,y,z,tx,ty,tz');
+          await cdp.eval(`(function(){var E=window.__CHANGAN__.Engine;E.camera.position.set(${p[0]},${p[1]},${p[2]});E.controls.target.set(${p[3]},${p[4]},${p[5]});E.controls.update();return 1})()`);
+        }
+      } else {
+        await cdp.eval(`window.__CHANGAN__.goToView(${JSON.stringify(v)}, true)`);
+      }
       await sleep(a.settle);
       const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-      const fname = `${v}_${a.t}_${a.seed}.png`;
+      const safe = v.replace(/[^0-9a-zA-Z@._-]/g, '_');
+      const fname = `${safe}_${a.t}_${a.seed}.png`;
       fs.writeFileSync(path.join(outDir, fname), Buffer.from(shot.data, 'base64'));
       const fps = await cdp.eval('(document.getElementById("fps-count")||{}).textContent||""');
       const dc = await cdp.eval('(document.getElementById("draw-count")||{}).textContent||""');
       const vx = await cdp.eval('(document.getElementById("voxel-count")||{}).textContent||""');
       result.shots.push({ view: v, file: path.join(outDir, fname), fps, drawCalls: dc, voxels: vx });
-      console.log(`[shot] ${v.padEnd(12)} fps=${String(fps).padEnd(5)} dc=${String(dc).padEnd(5)} vox=${vx}`);
+      console.log(`[shot] ${safe.padEnd(34)} fps=${String(fps).padEnd(5)} dc=${String(dc).padEnd(5)} vox=${vx}`);
     }
     fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify({ ...result, meta: metaObj }, null, 2), 'utf8');
     console.log('\n[shot] 完成 ' + result.shots.length + ' 张 → ' + outDir);

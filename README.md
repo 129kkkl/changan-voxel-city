@@ -15,15 +15,17 @@
 
 ---
 
-## 关键分支与稳定基准
+## 当前版本与历史分支
 
-- **`hotfix/salvage-macro`（当前抢修版）**：
-  - 从 `v0.6-macro-stable` 恢复宏观单层生成/渲染，不接入 M2 细建筑层；
-  - 保留预览脚本与正轨文档；`g04_fine.js` 仍在源码树但不打进 `index.html`。
-- **`v0.6-macro-stable`（稳定基线）**：1120 栋、224 家店肆、1003 棵树、满城瓦海。
-- **`v0.7-dual-scale-broken` / `experiment/m2-dual-scale`（实验态，勿当交付）**：双层穿模、浮空黑块、民居被削到 278。
+- **`codex/building-viewable-stage`（当前交付分支）**：建筑可看阶段。屋面形体重写（真坡度+举折+脊线）、
+  出檐加深、檐底压木色椽头、院墙瓦顶压边、坊门坡顶、坊内加密、光照与瓦色配平。
+  18 景视觉评分 4.76 → **7.82**，17/17 机位胜出，三 seed 数据门全过。验收见 [验收报告.md](验收报告.md)。
+- **`hotfix/salvage-macro` / `v0.6-macro-stable`（历史基线）**：宏观单层抢修版，1120 栋、160 FPS。
+  数字属历史档案，不再是当前交付依据。
+- **`experiment/m2-dual-scale` / `v0.7-dual-scale-broken`（失败实验，勿续作）**：
+  双层穿模、浮空黑块、民居被削到 278。教训见 [00_工作区正轨指引与避坑守则.md](00_工作区正轨指引与避坑守则.md) 铁律一。
 
-更多规范见 [00_工作区正轨指引与避坑守则.md](00_工作区正轨指引与避坑守则.md)。
+更多规范见 [00_工作区正轨指引与避坑守则.md](00_工作区正轨指引与避坑守则.md)、技术规格 [SPEC.md](SPEC.md)。
 
 ---
 
@@ -33,9 +35,20 @@
 # 重新构建 index.html 单文件产物
 node src/build.js
 
-# 运行烟包回归测试（三种子确定性与致命项审计）
+# 数据门：三种子 × 两遍确定性 + 11 项 fatal 审计
 node src/smoke.js
 
-# 运行数据层诊断脚本（查看体素分类与遮蔽分布）
-node src/diag.js
+# 密度与坊内地面构成快照
+node tools/stats.js 5a17c4a9
+
+# 画面门：逐机位截图（零依赖无头 Chrome/Edge，读 file:// 产物）
+node tools/shot.js --out 验收截图/final --views all --seed 5a17c4a9 --t noon --q mid
+node tools/shot.js --out 验收截图/close --views "cam@a:lane,0,3,14,0,1,-12" --seed 5a17c4a9
+$env:SHOT_HIDE_UI='1'; node tools/shot.js --out 验收截图/close --views lane,wardGate
+
+# 图片客观指标（亮度/对比/近黑占比/边缘密度）
+node tools/imgstat.js "验收截图/final/*.png"
 ```
+
+> 数据层测试全绿不等于画面达标。任何美术改动都必须过画面门（守则铁律二）。
+

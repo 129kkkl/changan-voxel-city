@@ -444,6 +444,26 @@ function wallRing(ctx, x0, z0, x1, z1, y0, h, wallC, colC, opts) {
     return false;
   };
 
+  // 檐下墙板内收一格：柱列留在外皮、墙板退到内皮，下碱与额枋仍在外皮。
+  // 这样近景能看见"柱凸出于墙"与一条真实的檐下阴影缝，墙面不再是一整块平面。
+  // 仅在房身 >= 5×5 时启用，避免小房子被掏空成亭子。
+  const recessOn = opts.recess === true && (x1 - x0) >= 5 && (z1 - z0) >= 5;
+  const wallAt = (x, z, y) => {
+    if (!recessOn || y >= y0 + h - 1) return [x, z];
+    if (z === z0) return [x, z + 1];
+    if (z === z1) return [x, z - 1];
+    if (x === x0) return [x + 1, z];
+    if (x === x1) return [x - 1, z];
+    return [x, z];
+  };
+  const putWall = (x, z, y, c) => {
+    const p = wallAt(x, z, y);
+    store.set(p[0], y, p[1], c);
+    // 下碱层内外同时砌：内收墙板由此落地支承（否则触发"无浮空"致命审计），
+    // 同时在外皮形成一圈台明/下碱，正是唐代墙身的读法。
+    if (y === y0 && (p[0] !== x || p[1] !== z)) store.set(x, y, z, c);
+  };
+
   for (let x = x0; x <= x1; x++) {
     for (let z = z0; z <= z1; z++) {
       const edge = (x === x0 || x === x1 || z === z0 || z === z1);
@@ -457,9 +477,9 @@ function wallRing(ctx, x0, z0, x1, z1, y0, h, wallC, colC, opts) {
         if (isDoor) {
           if (opts.openDoor) {
             if (y === y0 + h - 1) store.set(x, y, z, colC); // 门楣额枋
-            continue; // 留空通行
+            continue; // 留空通行（内皮同样不砌，形成真实门洞深度）
           } else {
-            if (y < y0 + h - 1) store.set(x, y, z, PAL.doorDark);
+            if (y < y0 + h - 1) putWall(x, z, y, PAL.doorDark);
             else store.set(x, y, z, colC);
             continue;
           }
@@ -486,13 +506,13 @@ function wallRing(ctx, x0, z0, x1, z1, y0, h, wallC, colC, opts) {
             if (winX.has(x)) {
               continue; // 真实窗洞：留空（对面墙/庭院即背衬，近处见深度）
             }
-            store.set(x, y, z, wallC);
+            putWall(x, z, y, wallC);
             continue;
           }
         }
 
         // 默认粉壁
-        store.set(x, y, z, wallC);
+        putWall(x, z, y, wallC);
       }
     }
   }
@@ -510,7 +530,9 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const trim = opts.trim;
   const ridgeC = PAL.roofDark;
 
-  const over = opts.overhang == null ? ((x1 - x0 >= 6) ? 2 : 1) : opts.overhang;
+  // 深远出檐：出檐必须明确挑出墙身/柱列之外，才能在墙面留下檐下阴影带，
+  // 近景才读得出"屋顶压在柱网上"的支承关系（上轮 1~2 格出檐与墙身齐平）。
+  const over = opts.overhang == null ? ((x1 - x0) >= 10 ? 3 : ((x1 - x0) >= 6 ? 2 : 1)) : opts.overhang;
   const ex0 = x0 - over, ex1 = x1 + over, ez0 = z0 - over, ez1 = z1 + over;
   const w = ex1 - ex0 + 1, d = ez1 - ez0 + 1;
   const alongX = (w >= d);
@@ -519,17 +541,28 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const minSpan = alongX ? d : w;
   const halfSpan = Math.max(1, Math.floor((minSpan - 1) / 2));
 
-  // 举折平缓：层数受跨度独立控制，消除陡峭金字塔感。
-  // 可看阶段口径：普通小屋顶必须扁平（厚蛋糕是上轮失败主因之一），上限由 6 压到 4，
-  // 小跨度（<10）再减一层；轮廓靠两坡/屋脊/山面/连续出檐表达，不靠堆高。
-  const maxLayers = Math.max(2, Math.min(4, Math.floor(minSpan / 4) + 1));
-  const layers = Math.min(halfSpan, maxLayers);
+  // 举折平缓 + 真坡度：层数取半跨（上限 5），每层内收 1~2 格。
+  // 上轮"2 层大平板 + 一条脊"是屋顶看起来像水泥平板的直接原因；本轮改为
+  // 层数 = 半跨（封顶 5），内收按举折曲线（檐口缓、近脊陡）分配，保证：
+  //   ① 最大层间内收 <= 2 格，不出现整面墙式跳变；
+  //   ② 顶层收到脊线宽度（悬山/庑殿/歇山都能闭合成脊），正脊才真正落在屋面上。
+  const layers = Math.max(2, Math.min(5, halfSpan));
+  const insetOf = L => Math.round(halfSpan * Math.pow(L / layers, 1.12));
+
+  // 檐下椽头带：出檐外圈的下皮压木色，并按 (x+z) 奇偶交替深浅，形成可辨的椽头节奏。
+  // 行人平视时看到的是檐底，原来檐底与瓦面同色，读作一块悬着的灰板。
+  {
+    const sy = y - 1;
+    const rc = (x, z) => (((x + z) & 1) ? PAL.timber : PAL.timberDark);
+    for (let x = ex0; x <= ex1; x++) { store.set(x, sy, ez0, rc(x, ez0)); store.set(x, sy, ez1, rc(x, ez1)); }
+    for (let z = ez0; z <= ez1; z++) { store.set(ex0, sy, z, rc(ex0, z)); store.set(ex1, sy, z, rc(ex1, z)); }
+  }
 
   // -------------------------------- 1. 悬山顶 (xuan)
   if (type === 'xuan') {
     for (let L = 0; L < layers; L++) {
       const yy = y + L;
-      const step = Math.round(L * (halfSpan / layers));
+      const step = insetOf(L);
       const za = alongX ? ez0 + step : ez0;
       const zb = alongX ? ez1 - step : ez1;
       const xa = alongX ? ex0 : ex0 + step;
@@ -594,7 +627,7 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   if (type === 'jian') {
     for (let L = 0; L < layers; L++) {
       const yy = y + L;
-      const step = Math.round(L * (halfSpan / layers));
+      const step = insetOf(L);
       const xa = ex0 + step, xb = ex1 - step;
       const za = ez0 + step, zb = ez1 - step;
       if (xa > xb || za > zb) break;
@@ -630,16 +663,16 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
     const yy = y + L;
     topY = yy;
 
-    const stepZ = Math.round(L * (halfSpan / layers));
+    const stepZ = insetOf(L);
     const za = ez0 + stepZ, zb = ez1 - stepZ;
 
     let xa, xb;
     if (isXie && L >= xieSplit) {
-      const fixedStepX = Math.round(xieSplit * (halfSpan / layers));
+      const fixedStepX = insetOf(xieSplit);
       xa = alongX ? ex0 + fixedStepX : ex0 + stepZ;
       xb = alongX ? ex1 - fixedStepX : ex1 - stepZ;
     } else {
-      const stepX = Math.round(L * (halfSpan / layers));
+      const stepX = insetOf(L);
       xa = ex0 + stepX;
       xb = ex1 - stepX;
     }
@@ -716,13 +749,14 @@ proto.hall = function (ctx, x0, z0, x1, z1, base, opts) {
     door: doorSide,
     windows: opts.windows !== false,
     openDoor: !!opts.openDoor,
+    recess: opts.recess !== false,
   });
 
   // 3. 柱头出跳斗栱
   dougong(ctx, x0, z0, x1, z1, top + wallH, cols);
 
   // 4. 屋顶
-  const over = opts.overhang != null ? opts.overhang : ((x1 - x0) >= 6 ? 2 : 1);
+  const over = opts.overhang != null ? opts.overhang : ((x1 - x0) >= 10 ? 3 : ((x1 - x0) >= 6 ? 2 : 1));
   const ry = proto.roof(ctx, opts.roof || 'xuan', x0, z0, x1, z1, top + wallH + 1, Object.assign({}, opts, { overhang: over }));
 
   // 重檐腰檐（doubleEave）：单层檐裙 + 真实楼身空带，禁两张屋顶互穿。
@@ -771,7 +805,15 @@ function enclose(ctx, x0, z0, x1, z1, base, facing, opts) {
       store.set(x, base + 1, z, wallC0);
       if (courses >= 2) store.set(x, base + 2, z, wallC1);
       if (courses >= 3) store.set(x, base + 3, z, wallC2);
-      if (capC) store.set(x, capY, z, capC);
+      if (capC) {
+        // 瓦顶压边：压顶一格向外挑出，脊线用瓦暗色。
+        // 原做法只在墙顶铺一格同色瓦，近景读作"城垛/水泥压顶"；挑出一格才有瓦檐剪影与投影。
+        const ox = x === x0 ? -1 : x === x1 ? 1 : 0;
+        const oz = z === z0 ? -1 : z === z1 ? 1 : 0;
+        store.set(x, capY, z, PAL.roofDark);
+        if (ox) store.set(x + ox, capY, z, capC);
+        if (oz) store.set(x, capY, z + oz, capC);
+      }
     }
   }
   // 门柱与门楣瓦（高度随墙身走，门楣与瓦帽同层）
@@ -818,9 +860,10 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
     for (let x = xa; x <= Math.max(g.gx, cx); x++) if (x > x0 && x < x1) store.set(x, base, g.gz, PAL.brickPave);
     for (let z = z0 + 1; z <= g.gz; z++) store.set(cx, base, z, PAL.brickPave);
   }
-  // 地面肌理
+  // 院落地坪：浅夯土满铺（原按 %11 点状撒色，实测坊内 71% 裸黄土都落在院落矩形内，
+  // 是"坊内发空、地面脏"的直接来源）。已铺的砖道不被覆盖。
   for (let x = x0 + 1; x <= x1 - 1; x++) for (let z = z0 + 1; z <= z1 - 1; z++) {
-    if ((x * 7 + z * 3 + x0) % 11 === 0) store.set(x, base, z, PAL.loessLight);
+    if (store.get(x, base, z) !== PAL.brickPave) store.set(x, base, z, PAL.loessLight);
   }
 
   CHANGAN.signUnique(ctx.counters, 'cy' + w + 'x' + d + 'l' + level + 'x' + x0 + 'z' + z0);
