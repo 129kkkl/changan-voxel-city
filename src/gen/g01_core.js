@@ -139,10 +139,10 @@ const CFG = {
   //   branch 象限内支巷（0=无，1=1 格宽，把象限再切成 2×2 组团）
   //   plotMin 支巷/切分的最小象限尺寸门槛
   PLAN_TABLE: {
-    '0': { cross: 2, branch: 0, plotMin: 0 },   // 现状对照
-    'A': { cross: 3, branch: 0, plotMin: 0 },   // 尺度校正
-    'B': { cross: 4, branch: 1, plotMin: 25 },  // 增加院落纵深与道路层级（推荐；支巷需象限深≥25，现坊深仅 16 → 待加深坊格）
-    'C': { cross: 5, branch: 0, plotMin: 0 },   // 扩大组团：只加宽街道、不再切象限 → 地块最大最连续
+    '0': { cross: 2, branch: 0, plotMin: 0, bands: 0 },   // 现状对照
+    'A': { cross: 3, branch: 0, plotMin: 0, bands: 0 },   // 尺度校正
+    'B': { cross: 5, branch: 1, plotMin: 25, bands: 0 },  // 增加道路层级（10:5:2；支巷待坊格加深）
+    'C': { cross: 5, branch: 0, plotMin: 0, bands: 1 },   // 整坊两带：取消纵街，宅地拿满坊深一半
   },
   // 预算（M1 冻结，事后不得上调）
   BUDGET: {

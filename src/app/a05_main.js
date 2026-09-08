@@ -45,7 +45,7 @@ function readURL() {
   App.urlView = q.view || 'mingde';
   App.urlTime = q.t != null && q.t !== '' ? q.t : null;
   App.urlQ = q.q || null;
-  App.plan = q.plan || null;                       // P1 规划方案：?plan=0|A|B|C
+  App.plan = q.plan || 'C';                        // P1 定案：默认方案 C（?plan=0|A|B 可复现对照）
   try { if (!App.urlQ) App.urlQ = localStorage.getItem('changan.q'); } catch {}
 }
 

@@ -79318,10 +79318,10 @@ const CFG = {
   //   branch 象限内支巷（0=无，1=1 格宽，把象限再切成 2×2 组团）
   //   plotMin 支巷/切分的最小象限尺寸门槛
   PLAN_TABLE: {
-    '0': { cross: 2, branch: 0, plotMin: 0 },   // 现状对照
-    'A': { cross: 3, branch: 0, plotMin: 0 },   // 尺度校正
-    'B': { cross: 4, branch: 1, plotMin: 25 },  // 增加院落纵深与道路层级（推荐；支巷需象限深≥25，现坊深仅 16 → 待加深坊格）
-    'C': { cross: 5, branch: 0, plotMin: 0 },   // 扩大组团：只加宽街道、不再切象限 → 地块最大最连续
+    '0': { cross: 2, branch: 0, plotMin: 0, bands: 0 },   // 现状对照
+    'A': { cross: 3, branch: 0, plotMin: 0, bands: 0 },   // 尺度校正
+    'B': { cross: 5, branch: 1, plotMin: 25, bands: 0 },  // 增加道路层级（10:5:2；支巷待坊格加深）
+    'C': { cross: 5, branch: 0, plotMin: 0, bands: 1 },   // 整坊两带：取消纵街，宅地拿满坊深一半
   },
   // 预算（M1 冻结，事后不得上调）
   BUDGET: {
@@ -80205,6 +80205,15 @@ function buildWardLanes(ctx, w) {
     { x0: w.x0 + 1, z0: zs1 + 1, x1: xs0 - 1, z1: w.z1 - 1, cn: 'SW' }, // 南象限门朝北
     { x0: xs1 + 1, z0: zs1 + 1, x1: w.x1 - 1, z1: w.z1 - 1, cn: 'SE' },
   ];
+
+  // P1 方案 C：整坊两带——只铺东西横街，不铺纵街，南北两带各拿满坊宽，
+  // 宅地进深由象限的 16 提到半坊的 ~17，且横向不被纵街切断（连续屋脊最长）。
+  if (CHANGAN.PLAN && CHANGAN.PLAN.bands) {
+    const rngB = CHANGAN.rngOf(ctx.seed, 'wband2-' + w.id);
+    splitBand(ctx, w, { x0: w.x0 + 1, z0: w.z0 + 1, x1: w.x1 - 1, z1: zs0 - 1 }, 'S', family, rngB);
+    splitBand(ctx, w, { x0: w.x0 + 1, z0: zs1 + 1, x1: w.x1 - 1, z1: w.z1 - 1 }, 'N', family, rngB);
+    return;
+  }
 
   // 寺观/衙署家族：西半坊整体为寺院/衙署用地（占坊之半，史实常见）。
   // 此类坊十字街改为"丁字街"：纵街贯通、横街只铺东半（西半让位给院落群），西坊门经西墙便门入院。
@@ -85764,6 +85773,9 @@ export const VIEW_DEFS = [
   { id: 'jinguang', title: '金光驼影', badge: '丝路西门', sub: '金光门 / 开远门 · 渭水',
     lore: '开远门是丝绸之路西行的起点，金光门与春明门对开，横街贯穿两市。驼队自西门入城，沿金光—春明一线走向西市码头。城外北望渭水苍黄，南眺终南山只是一抹青灰剪影。门墩包砖、城楼重檐，夯土墙在阳光里发暖。胡商、驮铃、城壕与远山，把长安从一座中国都城，接上整条欧亚的路。',
     cam: A => ({ pos: [A.kaiyuan.x - 36, A.kaiyuan.y + 18, A.kaiyuan.z + 12], target: [A.jinguang.x + 20, A.jinguang.y + 4, A.jinguang.z + 40] }) },
+  { id: 'wardCorner', title: '坊角鸟瞰', badge: 'P1 判定机位', sub: '主街 · 十字街 · 巷 同框',
+    lore: 'P1 规划判定专用机位：斜俯角把主街、坊内十字街、巷与院落收进同一帧，用来回答"街道宽度级差能否一眼分辨"。与 axis/wardGate/lane 一起构成固定对照机位组，不得为好看而改。',
+    cam: A => ({ pos: [A.wardGate.x + 36, A.wardGate.y + 32, A.wardGate.z + 40], target: [A.wardGate.x - 4, A.wardGate.y + 2, A.wardGate.z - 12] }) },
   { id: 'curfew', title: '暮鼓夜禁', badge: '宵禁', sub: '坊门闭合 · 金吾巡街',
     lore: '日入前后，街鼓从承天门一线敲开。市门先闭，坊门次第合上，丹粉门扉落下，顶面高度改变，街巷真的走不通了。金吾卫骑巡大街，武侯铺与坊门楼亮起灯笼，万家灯火只在墙内。正月十五上元例外：灯轮灯树，特许夜行。长安的时间不是装饰用的天空盒，是一门会关门的制度。',
     cam: A => ({ pos: [A.axis.x - 14, A.axis.y + 8, 140], target: [A.axis.x + 8, A.axis.y + 3, 70] }),
@@ -86850,7 +86862,7 @@ function readURL() {
   App.urlView = q.view || 'mingde';
   App.urlTime = q.t != null && q.t !== '' ? q.t : null;
   App.urlQ = q.q || null;
-  App.plan = q.plan || null;                       // P1 规划方案：?plan=0|A|B|C
+  App.plan = q.plan || 'C';                        // P1 定案：默认方案 C（?plan=0|A|B 可复现对照）
   try { if (!App.urlQ) App.urlQ = localStorage.getItem('changan.q'); } catch {}
 }
 

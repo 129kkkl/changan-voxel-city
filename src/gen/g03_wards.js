@@ -273,6 +273,15 @@ function buildWardLanes(ctx, w) {
     { x0: xs1 + 1, z0: zs1 + 1, x1: w.x1 - 1, z1: w.z1 - 1, cn: 'SE' },
   ];
 
+  // P1 方案 C：整坊两带——只铺东西横街，不铺纵街，南北两带各拿满坊宽，
+  // 宅地进深由象限的 16 提到半坊的 ~17，且横向不被纵街切断（连续屋脊最长）。
+  if (CHANGAN.PLAN && CHANGAN.PLAN.bands) {
+    const rngB = CHANGAN.rngOf(ctx.seed, 'wband2-' + w.id);
+    splitBand(ctx, w, { x0: w.x0 + 1, z0: w.z0 + 1, x1: w.x1 - 1, z1: zs0 - 1 }, 'S', family, rngB);
+    splitBand(ctx, w, { x0: w.x0 + 1, z0: zs1 + 1, x1: w.x1 - 1, z1: w.z1 - 1 }, 'N', family, rngB);
+    return;
+  }
+
   // 寺观/衙署家族：西半坊整体为寺院/衙署用地（占坊之半，史实常见）。
   // 此类坊十字街改为"丁字街"：纵街贯通、横街只铺东半（西半让位给院落群），西坊门经西墙便门入院。
   if ((family === 'temple' || family === 'official')) {

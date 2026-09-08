@@ -1,23 +1,16 @@
 {
   "shots": [
     {
-      "view": "wardGate",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_B\\wardGate_noon_5a17c4a9.png",
+      "view": "wardCorner",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_B\\wardCorner_noon_5a17c4a9.png",
       "fps": "—",
       "drawCalls": "—",
       "voxels": "101 万"
     },
     {
-      "view": "lane",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_B\\lane_noon_5a17c4a9.png",
-      "fps": "25",
-      "drawCalls": "27",
-      "voxels": "101 万"
-    },
-    {
       "view": "axis",
       "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_B\\axis_noon_5a17c4a9.png",
-      "fps": "20",
+      "fps": "25",
       "drawCalls": "55",
       "voxels": "101 万"
     }
@@ -26,20 +19,20 @@
   "errors": [],
   "meta": {
     "stats": {
-      "voxels": 1014036,
-      "archVoxels": 1852772,
-      "archQuads": 2826274,
+      "voxels": 1012226,
+      "archVoxels": 1778367,
+      "archQuads": 2725188,
       "wardCount": 104,
       "marketPlots": 4,
       "gateCount": 12,
-      "buildings": 410,
+      "buildings": 404,
       "shops": 178,
-      "trees": 832,
+      "trees": 814,
       "towers": 35,
-      "wells": 28,
+      "wells": 31,
       "bridges": 0,
       "lamps": 359,
-      "checksum": "bb20891",
+      "checksum": "5d4707b9",
       "audits": [
         {
           "name": "坊墙闭合",
@@ -69,12 +62,12 @@
         {
           "name": "建筑层无浮空",
           "pass": true,
-          "detail": "建筑层 1852772 体素全部落地连通"
+          "detail": "建筑层 1778367 体素全部落地连通"
         },
         {
           "name": "体素预算",
           "pass": true,
-          "detail": "1014036 / 硬上限 2800000"
+          "detail": "1012226 / 硬上限 2800000"
         },
         {
           "name": "地标去模板化",
@@ -89,12 +82,12 @@
         {
           "name": "多样性",
           "pass": true,
-          "detail": "重复签名14/院落178种/最大重复3"
+          "detail": "重复签名14/院落180种/最大重复4"
         },
         {
           "name": "十坊抽检",
           "pass": true,
-          "detail": "院落布局种类178，最大重复3"
+          "detail": "院落布局种类180，最大重复4"
         },
         {
           "name": "地标唯一性",
@@ -103,27 +96,27 @@
         }
       ],
       "stageMs": {
-        "terrain": 393,
-        "walls": 16,
-        "streets": 22,
-        "wards": 834,
-        "markets": 77,
-        "custom": 50,
-        "palaces": 241,
-        "water": 31,
-        "detail": 132,
-        "seal": 52,
-        "wardId": 3,
-        "audit": 2582,
-        "mesh": 4566
+        "terrain": 328,
+        "walls": 15,
+        "streets": 14,
+        "wards": 662,
+        "markets": 46,
+        "custom": 39,
+        "palaces": 159,
+        "water": 12,
+        "detail": 78,
+        "seal": 47,
+        "wardId": 6,
+        "audit": 1837,
+        "mesh": 2900
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 9016
+      "genMs": 6155
     },
-    "voxels": 1014036,
+    "voxels": 1012226,
     "views": [
       "mingde",
       "axis",

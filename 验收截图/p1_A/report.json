@@ -1,23 +1,16 @@
 {
   "shots": [
     {
-      "view": "wardGate",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_A\\wardGate_noon_5a17c4a9.png",
+      "view": "wardCorner",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_A\\wardCorner_noon_5a17c4a9.png",
       "fps": "—",
       "drawCalls": "—",
       "voxels": "102 万"
     },
     {
-      "view": "lane",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_A\\lane_noon_5a17c4a9.png",
-      "fps": "25",
-      "drawCalls": "27",
-      "voxels": "102 万"
-    },
-    {
       "view": "axis",
       "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p1_A\\axis_noon_5a17c4a9.png",
-      "fps": "20",
+      "fps": "25",
       "drawCalls": "55",
       "voxels": "102 万"
     }
@@ -103,25 +96,25 @@
         }
       ],
       "stageMs": {
-        "terrain": 379,
-        "walls": 39,
-        "streets": 34,
-        "wards": 1036,
-        "markets": 116,
-        "custom": 49,
-        "palaces": 273,
-        "water": 25,
-        "detail": 142,
-        "seal": 44,
-        "wardId": 8,
-        "audit": 2721,
-        "mesh": 4367
+        "terrain": 319,
+        "walls": 15,
+        "streets": 15,
+        "wards": 717,
+        "markets": 61,
+        "custom": 39,
+        "palaces": 227,
+        "water": 36,
+        "detail": 156,
+        "seal": 61,
+        "wardId": 5,
+        "audit": 1979,
+        "mesh": 3301
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 9251
+      "genMs": 6944
     },
     "voxels": 1015774,
     "views": [
