@@ -13,7 +13,7 @@ export const VIEW_DEFS = [
     cam: A => ({ pos: [A.hengjie.x - 40, A.hengjie.y + 18, A.hengjie.z + 8], target: [A.hengjie.x + 6, A.hengjie.y + 8, A.hengjie.z - 36] }) },
   { id: 'hanyuan', title: '龙尾含元', badge: '东内礼制', sub: '含元殿 · 三出大台',
     lore: '含元殿踞龙首原南沿，殿基高出平地十余米。三条龙尾道自台南盘下，左右翔鸾、栖凤二阁夹持，重檐庑殿压住天际。自龙尾道下仰拍，三层大台如山，朱红柱列嵌在白粉壁上，青灰瓦与琉璃剪边只在檐口一闪。这是盛唐政治的正面，也是全城最强的礼制重音。',
-    cam: A => ({ pos: [A.hanyuan.x - 4, A.hanyuan.y + 2, A.hanyuan.z + 58], target: [A.hanyuan.x, A.hanyuan.y + 14, A.hanyuan.z - 6] }) },
+    cam: A => ({ pos: [A.hanyuan.x + 42, A.hanyuan.y + 14, A.hanyuan.z + 28], target: [A.hanyuan.x, A.hanyuan.y + 8, A.hanyuan.z] }) },
   { id: 'hanyuanTop', title: '含元俯瞰', badge: '龙首原上', sub: '南望一百〇八坊',
     lore: '登上含元殿高台南望，棋盘才真正摊开。街东万年、街西长安，朱雀街如中缝，坊墙如线，瓦海如潮。东北是大明宫自身的殿庭，东南隐约可见乐游原与曲江。宇文恺比附乾卦六爻的六坡，在这一眼里变成柔和的黄土起伏。最高礼制视点，看的不是宫阙，是一座被规划出来的世界。',
     cam: A => ({ pos: [A.hanyuan.x - 8, A.hanyuan.y + 42, A.hanyuan.z + 24], target: [A.hanyuan.x - 30, 10, 50] }) },
