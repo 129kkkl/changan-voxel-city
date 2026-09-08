@@ -532,7 +532,10 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   // 屋面色族：**按建筑规模分配**——大屋顶（面阔或进深 >=13）用琉璃绿/蓝/黛作地标色，
   // 小屋顶保持青灰/黛/深褐，避免"大块连续同色"与"小房子喧宾夺主"。
   // 用户明确要求"不拘泥专业性、增加艺术性与观赏性"。
-  const bigRoof = (x1 - x0 + 1) >= 10 || (z1 - z0 + 1) >= 10;
+  // 阈值 10 → 16：面阔 ≥10 的中等屋顶也会抽到琉璃绿/蓝，P4 抽查判
+  // "东南坊区一座青蓝亮顶建筑颜色突兀"。琉璃色只留给真正的地标级大屋顶
+  // （官署/寺院/宫殿由 opts.tone 显式指定，不依赖这里）。
+  const bigRoof = (x1 - x0 + 1) >= 16 || (z1 - z0 + 1) >= 16;
   const TONE_GREY = [PAL.roofGrey, PAL.roofLight, PAL.roofGroove];
   const TONE_SLATE = [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
   const TONE_GREEN = [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG];
@@ -1436,19 +1439,19 @@ proto.stoneLamp = function (ctx, x, z, base) {
 proto.marketTower = function (ctx, cx, cz, y0) {
   const { store } = ctx;
   // 基座
-  store.fill(cx - 3, y0, cz - 3, cx + 3, y0 + 1, cz + 3, PAL.stoneGrey);
-  // 一层：开放柱廊
-  wallRing(ctx, cx - 2, cz - 2, cx + 2, cz + 2, y0 + 2, 3, PAL.plaster, PAL.zhu, { windows: true });
-  proto.roof(ctx, 'jian', cx - 2, cz - 2, cx + 2, cz + 2, y0 + 5, { overhang: 1, finial: PAL.bronze });
+  store.fill(cx - 4, y0, cz - 4, cx + 4, y0 + 1, cz + 4, PAL.stoneGrey);
+  // 一层：开放柱廊（5×5 → 7×7，让攒尖顶有足够跨度收分成尖）
+  wallRing(ctx, cx - 3, cz - 3, cx + 3, cz + 3, y0 + 2, 4, PAL.plaster, PAL.zhu, { windows: true });
+  proto.roof(ctx, 'jian', cx - 3, cz - 3, cx + 3, cz + 3, y0 + 6, { overhang: 1, finial: PAL.bronze });
 
-  // 二层：市楼议事亭
-  wallRing(ctx, cx - 1, cz - 1, cx + 1, cz + 1, y0 + 7, 3, PAL.plaster, PAL.zhu, { windows: true });
-  proto.roof(ctx, 'jian', cx - 1, cz - 1, cx + 1, cz + 1, y0 + 10, { overhang: 1, finial: PAL.gold });
+  // 二层：市楼议事亭（3×3 → 5×5）
+  wallRing(ctx, cx - 2, cz - 2, cx + 2, cz + 2, y0 + 8, 3, PAL.plaster, PAL.zhu, { windows: true });
+  proto.roof(ctx, 'jian', cx - 2, cz - 2, cx + 2, cz + 2, y0 + 11, { overhang: 1, finial: PAL.gold });
 
   // 旗杆 + 市旗：旧写法是 14 格裸木柱 + 杆顶 2 格孤立方块，
   // 视觉验收判"裸棕高柱呈未完工感、突兀扎眼，破坏市楼天际线"。
   // 改为 7 格杆 + 横挑 + 2×3 旗面（旗面与杆 6 邻接，不浮空）。
-  const px = cx + 4, pz = cz + 4;
+  const px = cx + 5, pz = cz + 5;
   store.fill(px, y0 - 2, pz, px, y0 + 7, pz, PAL.timberDark);              // 杆（含埋入 2 格）
   store.fill(px + 1, y0 + 6, pz, px + 2, y0 + 6, pz, PAL.timberDark);      // 横挑 2 格
   store.fill(px + 1, y0 + 4, pz, px + 2, y0 + 5, pz, PAL.flagYellow);      // 旗面 2×2，自横挑垂下

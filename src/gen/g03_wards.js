@@ -730,7 +730,7 @@ function buildMarketGrid(ctx, m) {
   const xe = [gx1 - 2, gx2 - 2, m.x1 - 1], ze = [gz1 - 2, gz2 - 2, m.z1 - 1];
   for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) m.blocks.push({ x0: xs[a], z0: zs[b], x1: xe[a], z1: ze[b] });
   // 市楼（市署）：井字中枢，攒尖二层 + 旗杆（鼓钲在此）
-  const lb = 3;
+  const lb = 4;
   store.fill(cx - lb, m.base + 1, cz - lb, cx + lb, m.base + 2, cz + lb, PAL.stoneGrey);
   CHANGAN.proto.marketTower(ctx, cx, cz, m.base + 3);
   m.tower = { x: cx, z: cz };
