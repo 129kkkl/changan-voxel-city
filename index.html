@@ -83608,6 +83608,12 @@ CHANGAN.runAudits = function (ctx) {
     ok('无浮空', floating === 0, floating ? `浮空体素 ${floating}（如 ${samples.join('|')}）` : '全域与基岩连通');
     ctx.denseGrid = grid; // 供网格化复用
   }
+  // ⑤b 建筑层无浮空：城市层的泛洪看不到建筑层，必须单独查一遍
+  // （2026-09-08 用户实测发现"有的建筑断成两半、上面一半飘在空中"，正是这条漏检）
+  if (ctx.arch && ctx.arch.count && CHANGAN.auditArchFloating) {
+    const r = CHANGAN.auditArchFloating(ctx, ctx.arch);
+    ok('建筑层无浮空', r.pass, r.detail);
+  }
   // 预算
   {
     const v = ctx.store.count;
@@ -84240,7 +84246,9 @@ CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank
   const eaveY = y + 14, eo = 5;
   for (let x = hx0 - eo; x <= hx1 + eo; x++) for (let z = hz0 - eo; z <= hz1 + eo; z++) {
     const ring = (x === hx0 - eo || x === hx1 + eo || z === hz0 - eo || z === hz1 + eo);
-    if (ring) a.set(x, eaveY, z, PAL.roofSlate);
+    // 腰檐必须铺满（不能只铺外圈环）：环与下方斗拱无面相邻关系，会整圈浮空。
+    a.set(x, eaveY, z, ring ? PAL.roofSlateL : PAL.roofSlate);
+    a.set(x, eaveY + 1, z, ((x & 1) ? PAL.roofSlate : PAL.roofSlateG));
   }
   // 上檐
   const dx0 = hx0 + 4, dx1 = hx1 - 4, dz0 = hz0 + 4, dz1 = hz1 - 4;
@@ -84282,6 +84290,56 @@ CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank
     ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = tone[0];
   }
   return topY;
+};
+
+// ---------------------------------------------------------------- 建筑层浮空审计
+// 6 邻域连通性：从"坐落在城市实体之上"的建筑体素泛洪，未被泛洪到的即为浮空。
+// 这是城市层泛洪审计覆盖不到的一层（建筑层是独立网格）。
+CHANGAN.auditArchFloating = function (ctx, arch) {
+  const S = 2;
+  const key = (x, y, z) => ((x + 4096) * 8192 + (z + 4096)) * 512 + y;
+  const seen = new Set();
+  const stack = [];
+  for (const k of arch.map.keys()) {
+    const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
+    if (y > 0 && arch.has(x, y - 1, z)) continue;      // 下方还有建筑体素，不是种子
+    // 建筑体素 y 占据城市 [y/S, (y+1)/S)，其下承托的是城市体素 floor(y/S) - 1 与自身所在层
+    const cy = Math.floor(y / S), cx = Math.floor(x / S), cz = Math.floor(z / S);
+    if (y === 0 || ctx.store.get(cx, cy, cz)) { seen.add(key(x, y, z)); stack.push(x, y, z); }
+  }
+  const D = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  const seedCount = seen.size;
+  while (stack.length) {
+    const z = stack.pop(), y = stack.pop(), x = stack.pop();
+    for (const [dx, dy, dz] of D) {
+      const nx = x + dx, ny = y + dy, nz = z + dz;
+      if (!arch.has(nx, ny, nz)) continue;
+      const kk = key(nx, ny, nz);
+      if (seen.has(kk)) continue;
+      seen.add(kk); stack.push(nx, ny, nz);
+    }
+  }
+  const floating = arch.count - seen.size;
+  const samples = [];
+  let ymin = 1e9, ymax = -1e9;
+  const colTally = new Map();
+  if (floating) {
+    for (const [k, c] of arch.map) {
+      if (seen.has(k)) continue;
+      const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
+      if (y < ymin) ymin = y; if (y > ymax) ymax = y;
+      colTally.set(c, (colTally.get(c) || 0) + 1);
+      if (samples.length < 5) samples.push(`${x / S},${y / S},${z / S}`);
+    }
+  }
+  const topCols = [...colTally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+    .map(([c, n]) => `${(CHANGAN.PAL_DEF[c - 1] || ['?'])[0]}:${n}`).join(' ');
+  return {
+    pass: floating === 0,
+    detail: floating
+      ? `建筑层浮空 ${floating} 体素（种子 ${seedCount}）y∈[${ymin / S},${ymax / S}] 主要色 ${topCols} 如 ${samples.join('|')}`
+      : `建筑层 ${arch.count} 体素全部落地连通`,
+  };
 };
 
 // ---------------------------------------------------------------- 坊内院落（建筑层 2×）：E1~E3 居住亚型
@@ -84345,9 +84403,30 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     });
     ARCH.dougong(a, fr.cols, y + wallH - 1, PAL.zhuBright, PAL.zhu);
     const roofY = y + wallH + 2;
-    topY = level >= 2
-      ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt))
-      : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 6 }, roofOpt));
+    if (variant === 'tower' && hx1 - hx0 >= 18 && hz1 - hz0 >= 12) {
+      // 楼居：**二层直接起在一层额枋之上**（不先盖屋顶），中间只做一圈腰檐。
+      // 旧写法是"先盖一层屋顶、再把二层放在屋顶上方"，二层与屋顶之间没有落地支承 ——
+      // 这正是用户看到的"建筑断成两半、上面一半飘在空中"。
+      for (let x = hx0 - 3; x <= hx1 + 3; x++) for (let z = hz0 - 3; z <= hz1 + 3; z++) {
+        const ring = (x === hx0 - 3 || x === hx1 + 3 || z === hz0 - 3 || z === hz1 + 3);
+        a.set(x, roofY, z, ring ? tone[1] : tone[0]);
+        a.set(x, roofY + 1, z, tone[2]);
+      }
+      const inset = 4;
+      const tw0 = hx0 + inset, tw1 = hx1 - inset, td0 = hz0 + inset, td1 = hz1 - inset;
+      const tH = 7;
+      const tf = ARCH.colonnade(a, tw0, td0, tw1, td1, roofY + 2, tH, 3, PAL.zhuBright, 2);
+      ARCH.wall(a, tw0, td0, tw1, td1, roofY + 2, tH, tf.cols, {
+        wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: tf.xs, doorBay: -1,
+      });
+      ARCH.dougong(a, tf.cols, roofY + 2 + tH - 1, PAL.zhuBright, PAL.zhu);
+      topY = ARCH.roofHip(a, tw0, td0, tw1, td1, roofY + 2 + tH + 2,
+        Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt));
+    } else {
+      topY = level >= 2
+        ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt))
+        : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 6 }, roofOpt));
+    }
   }
 
   // 厢房（东西各一，体量低于正房）—— small 亚型不设厢房
@@ -84376,17 +84455,13 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
       if (Math.abs(x - ((ax0 + ax1) >> 1)) <= wgate) continue;
       a.set(x, ab + 1, wz, PAL.rammed); a.set(x, ab + 2, wz, PAL.rammedLight); a.set(x, ab + 3, wz, PAL.roofDark);
     }
-    for (const px of [(ax0 + ax1) >> 1 - wgate - 1, ((ax0 + ax1) >> 1) + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
+    // 注意括号：`>>` 优先级低于 `-`，写成 (ax0+ax1) >> 1 - wgate - 1 会被解析成"右移负数位"，
+    // 门柱被扔到城里任意位置并悬空 —— 这就是 2026-09-08 用户实测"建筑断成两半、上面一半飘着"的真凶。
+    const wcx = (ax0 + ax1) >> 1;
+    for (const px of [wcx - wgate - 1, wcx + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
   }
 
-  // 楼居：正房之上再加一层（两层楼阁）
-  if (variant === 'tower' && topY > wallTop + 6) {
-    const tw0 = hx0 + 3, tw1 = hx1 - 3, td0 = hz0 + 3, td1 = hz1 - 3;
-    const tf = ARCH.colonnade(a, tw0, td0, tw1, td1, topY + 1, 7, 3, PAL.zhuBright, 2);
-    ARCH.wall(a, tw0, td0, tw1, td1, topY + 1, 7, tf.cols, { wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: tf.xs, doorBay: -1 });
-    ARCH.dougong(a, tf.cols, topY + 7, PAL.zhuBright, PAL.zhu);
-    topY = ARCH.roofHip(a, tw0, td0, tw1, td1, topY + 9, Object.assign({ layers: 7, ridgeRatio: 0.6 }, roofOpt));
-  }
+  // 楼居二层已并入正房构造（见上），此处不再二次叠加
 
   // 仓院：大跨敞棚（无墙，柱列 + 大屋顶）+ 场院
   if (variant === 'shed') {
@@ -84409,9 +84484,10 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const hh = pr - 1;
     for (let L = 0; L < hh; L++) {
       const st = L;
+      // 攒尖顶必须逐层铺满：只铺一圈环时，上一层环与下一层环没有面相邻关系，会整层浮空。
       for (let x = px - pr + 1 + st; x <= px + pr - 1 - st; x++) for (let z = pz - pr + 1 + st; z <= pz + pr - 1 - st; z++) {
         const ring = (x === px - pr + 1 + st || x === px + pr - 1 - st || z === pz - pr + 1 + st || z === pz + pr - 1 - st);
-        if (ring) a.set(x, ty2 + L, z, L === 0 ? PAL.roofGreenL : ((x & 1) ? PAL.roofGreen : PAL.roofGreenG));
+        a.set(x, ty2 + L, z, ring ? (L === 0 ? PAL.roofGreenL : ((x & 1) ? PAL.roofGreen : PAL.roofGreenG)) : PAL.roofGreenG);
       }
     }
     a.set(px, ty2 + hh, pz, PAL.gold); a.set(px, ty2 + hh + 1, pz, PAL.gold);
@@ -84464,10 +84540,8 @@ CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {
   const eo = 7;
   for (let x = x0 - eo; x <= x1 + eo; x++) for (let z = z0 - eo; z <= z1 + eo; z++) {
     const ring = (x === x0 - eo || x === x1 + eo || z === z0 - eo || z === z1 + eo);
-    if (!ring) continue;
-    a.set(x, eaveY, z, PAL.roofGreen);
+    a.set(x, eaveY, z, ring ? PAL.gold : PAL.roofGreen);
     a.set(x, eaveY + 1, z, ((x & 1) ? PAL.roofGreen : PAL.roofGreenG));
-    if (x === x0 - eo || x === x1 + eo || z === z0 - eo || z === z1 + eo) a.set(x, eaveY, z, PAL.gold);
   }
   // 檐角起翘（四角高 2）
   for (const [qx, qz] of [[x0 - eo, z0 - eo], [x1 + eo, z0 - eo], [x0 - eo, z1 + eo], [x1 + eo, z1 + eo]]) {

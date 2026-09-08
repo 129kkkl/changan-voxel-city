@@ -96,6 +96,12 @@ CHANGAN.runAudits = function (ctx) {
     ok('无浮空', floating === 0, floating ? `浮空体素 ${floating}（如 ${samples.join('|')}）` : '全域与基岩连通');
     ctx.denseGrid = grid; // 供网格化复用
   }
+  // ⑤b 建筑层无浮空：城市层的泛洪看不到建筑层，必须单独查一遍
+  // （2026-09-08 用户实测发现"有的建筑断成两半、上面一半飘在空中"，正是这条漏检）
+  if (ctx.arch && ctx.arch.count && CHANGAN.auditArchFloating) {
+    const r = CHANGAN.auditArchFloating(ctx, ctx.arch);
+    ok('建筑层无浮空', r.pass, r.detail);
+  }
   // 预算
   {
     const v = ctx.store.count;

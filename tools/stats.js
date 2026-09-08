@@ -20,7 +20,11 @@ const CHANGAN = vm.runInContext('CHANGAN', sandbox);
 const t0 = Date.now();
 const res = CHANGAN.generate(seed, () => {});
 const ms = Date.now() - t0;
-if (!res.ok) { console.error('生成失败: ' + res.error); console.error('审计明细: ' + JSON.stringify(res.stats && res.stats.audits || null)); process.exit(1); }
+if (!res.ok) {
+  console.error('生成失败: ' + res.error);
+  for (const a of (res.audits || [])) if (!a.pass) console.error(`  ✗ ${a.name}: ${a.detail || ''}`);
+  process.exit(1);
+}
 const s = res.stats;
 
 console.log(`seed=0x${seed.toString(16)}  ${ms}ms  体素=${s.voxels}  checksum=${s.checksum}`);
