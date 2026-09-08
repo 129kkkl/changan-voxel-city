@@ -83475,6 +83475,32 @@ CHANGAN.stageDetail = function (ctx) {
     if (r.x0 === r.x1) for (let z = r.z0; z <= r.z1; z += r.step) tryTree(ctx, r.x0, z, 'huai', rng);
     else for (let x = r.x0; x <= r.x1; x += r.step) tryTree(ctx, x, r.z0, 'huai', rng);
   }
+  // 地面铺装纹理：街道用 4×4 石板分格，广场/空地用夯土明暗斑
+  // 评审判"底层地面是无纹理纯色平板，占画面最大面积，持续制造正射贴图感"。
+  {
+    const { store } = ctx;
+    const GROUND_C = new Set([PAL.loess, PAL.loessLight, PAL.loessDeep, PAL.brickPave, PAL.fieldEarth, PAL.riverSand, PAL.rammedLight]);
+    for (let x = W.x0; x <= W.x1; x++) for (let z = W.z0; z <= W.z1; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (fields.water[i]) continue;
+      if (fields.topH[i] !== fields.groundH[i]) continue;   // 被建筑/树压住的地面不动
+      const tc = fields.topColor[i];
+      if (!GROUND_C.has(tc)) continue;
+      const g = fields.groundH[i];
+      let c;
+      if (fields.road[i]) {
+        const seam = (x & 3) === 0 || (z & 3) === 0;
+        const tone = (((x >> 2) + (z >> 2)) & 1) === 0;
+        c = seam ? PAL.stoneGrey : (tone ? PAL.brickPave : PAL.loessLight);
+      } else {
+        // 广场/空地：低对比夯土斑（8×8 区块 + 稀疏深斑），不喧宾夺主
+        const blk = (((x >> 3) + (z >> 3)) & 1) === 0;
+        c = ((x * 5 + z * 3) % 17 === 0) ? PAL.loessDeep : (blk ? PAL.loessLight : PAL.loess);
+      }
+      store.set(x, g, z, c);
+      fields.topColor[i] = c;
+    }
+  }
   // 渠岸柳
   for (let x = W.x0; x <= W.x1; x += 5) for (let z = W.z0; z <= W.z1; z += 5) {
     const i = CHANGAN.fieldIndex(x, z);
