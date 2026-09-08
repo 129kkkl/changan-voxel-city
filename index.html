@@ -84028,7 +84028,7 @@ const HOUSE = {
   wallH:      [6,        7,        9],        // 屋身高：下碱 1 + 墙身 + 额枋 1（窗高 = 屋身 - 3）
   colR:       [2,        2,        2],        // 柱径（拱体素，≥1；柱心对齐轴线）
   colC:       [PAL.zhu,  PAL.zhu,  PAL.zhuBright],
-  wallRecess: [3,        3,        3],        // 墙面自檐柱轴线内退（含 1 格檐廊 → 柱身前出可读）
+  wallRecess: [0,        0,        1],        // 墙面自檐柱轴线内退（0 = 墙与柱同面，柱凸出 1 格；退多了读成开敞凉亭）
   wallT:      2,                              // 墙厚：外皮开洞 + 内皮内凹背板（阴影）
   baseC:      PAL.brickPave,                  // 墙下碱：砖
   frameC:     PAL.zhu,                        // 额枋 / 门框 / 窗棂
@@ -84387,19 +84387,21 @@ const ARCH = {
     for (let i = 0; i < bays; i++) {
       const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
       if (i === doorBay) {
-        push('x', z1, -1, c, Math.min(doorW, bw - 2), ySill, ySill + doorH - 1, 'door');   // 正面明间板门
+        // 明间板门：门宽必须给两侧留墙（bw-2），否则整开间被掏空 → 立面读成"开敞柱廊"（实测误判为凉亭）
+        push('x', z1, -1, c, Math.min(doorW, Math.max(1, bw - 2)), ySill, ySill + doorH - 1, 'door');
         if (bw >= 10) {                                                                     // 明间够宽再补两窗
           const off = Math.round(bw * 0.32);
           push('x', z1, -1, c - off, 3, wy0, wy1, 'win');
           push('x', z1, -1, c + off, 3, wy0, wy1, 'win');
         }
       } else {
-        push('x', z1, -1, c, Math.max(3, Math.min(winW, bw - 2)), wy0, wy1, 'win');         // 次间直棂窗
+        // 次间直棂窗：取"开间宽 - 2"为上限（两侧各留 1 格墙），窄开间退化成 1 格竖缝，不许撑满整间
+        push('x', z1, -1, c, Math.min(winW, Math.max(1, bw - 2)), wy0, wy1, 'win');
       }
     }
     for (let i = 0; i < bays; i++) {                                                       // 背面只开小窗
       const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
-      push('x', z0, +1, c, Math.max(3, Math.min(3, bw - 2)), wy0, wy1, 'win');
+      push('x', z0, +1, c, Math.min(3, Math.max(1, bw - 2)), wy0, wy1, 'win');
     }
     const dwz = z1 - z0 - 2;
     if (dwz >= 3) {                                                                        // 东西山墙中段一窗
@@ -84418,9 +84420,10 @@ const ARCH = {
       const o = holeAt(x, z);
       for (let y = y0; y <= yTop; y++) {
         if (o && y >= o.ya && y <= o.yb) {
-          if (o.kind === 'win') {                            // 窗棂：两端各一根，够宽再加中间一根（2~3 根）
+          if (o.kind === 'win') {                            // 窗棂：每 3 格一根竖棂（两端必有），读成"带棂的洞"而不是"黑方孔"
             const c = o.axis === 'x' ? x : z;
-            if (c === o.from || c === o.to || (o.to - o.from >= 4 && c === ((o.from + o.to) >> 1))) a.set(x, y, z, mullC);
+            const rel = c - o.from, sp = o.to - o.from;
+            if (rel === 0 || rel === sp || rel % 3 === 0) a.set(x, y, z, mullC);
           }
           continue;                                          // 其余留空 —— 真洞
         }
@@ -84712,6 +84715,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
       xs: fr.xs, doorBay: (fr.xs.length - 1) >> 1,
       doorW: HOUSE.doorW, doorH: doorH, winW: HOUSE.winW, winH: HOUSE.winH,
     });
+    // ③b 墙起来后再压一遍柱身与额枋：墙与柱同面时，先砌墙会把柱盖成白墙，
+    //     重画一次让柱（外凸 1 格）重新压在墙面之前 —— 立面读成「朱柱 + 粉墙 + 门窗洞」。
+    ARCH.eaveColonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, colC, HOUSE.colR[li]);
     // ④ 斗拱：柱头一朵 + 开间 ≥10 补间一朵（前后檐 + 东西山面）
     //    斗用白粉、栱用朱红（唐式白斗红栱）：正午檐影里红栱会与额枋糊成一条带，白斗把它断开
     const dgY = y + wallH;                                    // 额枋之上第一层

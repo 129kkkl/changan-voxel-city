@@ -1,31 +1,31 @@
 {
   "shots": [
     {
-      "view": "cam@110.2,22,-12.8,84.5,8.7,-38.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house\\cam@110.2_22_-12.8_84.5_8.7_-38.5_noon_5a17c4a9.png",
+      "view": "cam@18.5,18.6,152.1,18.5,10.3,129.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_18.6_152.1_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "—",
       "drawCalls": "—",
       "voxels": "102 万"
     },
     {
-      "view": "cam@118.4,25,-38.5,84.5,8.7,-38.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house\\cam@118.4_25_-38.5_84.5_8.7_-38.5_noon_5a17c4a9.png",
+      "view": "cam@39.9,24.9,150.9,18.5,10.3,129.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@39.9_24.9_150.9_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "25",
-      "drawCalls": "43",
+      "drawCalls": "41",
       "voxels": "102 万"
     },
     {
-      "view": "cam@104,40.1,-19,84.5,8.7,-38.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house\\cam@104_40.1_-19_84.5_8.7_-38.5_noon_5a17c4a9.png",
+      "view": "cam@18.5,29.1,146,18.5,10.3,129.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_29.1_146_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "20",
-      "drawCalls": "17",
+      "drawCalls": "19",
       "voxels": "102 万"
     },
     {
-      "view": "cam@97.2,12.7,-25.8,84.5,10.2,-38.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house\\cam@97.2_12.7_-25.8_84.5_10.2_-38.5_noon_5a17c4a9.png",
+      "view": "cam@18.5,14.5,145.7,18.5,12.6,129.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_14.5_145.7_18.5_12.6_129.5_noon_5a17c4a9.png",
       "fps": "20",
-      "drawCalls": "28",
+      "drawCalls": "42",
       "voxels": "102 万"
     }
   ],
@@ -34,8 +34,8 @@
   "meta": {
     "stats": {
       "voxels": 1016267,
-      "archVoxels": 1934545,
-      "archQuads": 2985830,
+      "archVoxels": 1945259,
+      "archQuads": 2946680,
       "wardCount": 104,
       "marketPlots": 4,
       "gateCount": 12,
@@ -76,7 +76,7 @@
         {
           "name": "建筑层无浮空",
           "pass": true,
-          "detail": "建筑层 1934545 体素全部落地连通"
+          "detail": "建筑层 1945259 体素全部落地连通"
         },
         {
           "name": "体素预算",
@@ -110,25 +110,25 @@
         }
       ],
       "stageMs": {
-        "terrain": 289,
+        "terrain": 305,
         "walls": 13,
-        "streets": 15,
-        "wards": 655,
-        "markets": 46,
-        "custom": 42,
-        "palaces": 149,
-        "water": 11,
-        "detail": 65,
-        "seal": 43,
-        "wardId": 8,
-        "audit": 2028,
-        "mesh": 3299
+        "streets": 14,
+        "wards": 642,
+        "markets": 47,
+        "custom": 32,
+        "palaces": 165,
+        "water": 13,
+        "detail": 70,
+        "seal": 38,
+        "wardId": 12,
+        "audit": 2046,
+        "mesh": 3301
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 6675
+      "genMs": 6712
     },
     "voxels": 1016267,
     "views": [

@@ -265,12 +265,12 @@ async function main() {
           + JSON.stringify(b) + ',' + az + ',' + elev + ',' + mul + '))'));
         return 'cam@' + r.cam.map(f2).join(',');
       };
-      // 院内平视：不进 NDC 自适应（会退到街上），机位放在建筑本体外侧 ~0.75 跨，
-      // 即自家院落里，避开街坊邻屋遮挡——单体细部（檐下/柱/门窗）只有这个机位读得出。
+      // 檐下近距：正南（民居坐北朝南，正面在 +z）0.95 跨、仰 7°，瞄檐口带。
+      // 不进 NDC 自适应（会退到街上被邻屋挡），这个机位是判斗拱/窗棂/柱头细部的唯一门。
       const near = (az, elev, mul) => {
         const D = span * mul;
         const px = cx + Math.sin(az) * D, pz = cz + Math.cos(az) * D;
-        const aimY = base + (b.top - base) * 0.62;
+        const aimY = base + (b.top - base) * 0.74;
         const py = aimY + Math.tan(elev) * D;
         return 'cam@' + [f2(px), f2(py), f2(pz), f2(cx), f2(aimY), f2(cz)].join(',');
       };
@@ -278,7 +278,7 @@ async function main() {
         await mk(bestAz, 0.35, 2.4),
         await mk(bestAz + Math.PI / 4, 0.45, 2.0),
         await mk(bestAz, 0.85, 2.0),
-        near(bestAz, 0.14, 0.78),
+        near(0, 0.12, 0.95),
       ];
       console.log('[solo] 建筑#' + a.solo + ' ' + JSON.stringify(b)
         + ' 方位=' + Math.round(bestAz * 180 / Math.PI) + '° 遮挡=' + bestN + ' → 4 视角');
