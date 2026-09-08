@@ -288,6 +288,12 @@ const PALETTE_DEF = [
   ['roofBrown',   '#5a4a42', 'opaque'], // 深褐瓦（少量，破单调）
   ['roofBrownL',  '#726056', 'opaque'],
   ['roofBrownG',  '#453833', 'opaque'],
+  ['roofClay',    '#6b5a4e', 'opaque'], // 灰陶瓦（暖褐灰，与青灰拉开色相）
+  ['roofClayL',   '#84705f', 'opaque'],
+  ['roofClayG',   '#54463c', 'opaque'],
+  ['roofOchre',   '#7a6242', 'opaque'], // 赭石瓦（暖黄褐）
+  ['roofOchreL',  '#94794f', 'opaque'],
+  ['roofOchreG',  '#5e4b32', 'opaque'],
 ];
 const PAL = {}; PALETTE_DEF.forEach((d, i) => { PAL[d[0]] = i + 1; }); // 体素值 1..N，0=空
 const PAL_GROUP = PALETTE_DEF.map(d => d[2]);

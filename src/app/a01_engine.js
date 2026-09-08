@@ -201,8 +201,8 @@ export function adaptFog() {
   const fog = Engine.scene.fog;
   if (!fog) return;
   const y = Engine.camera.position.y;
-  if (y < 20) { fog.near = 60; fog.far = 520; }
-  else if (y < 80) { fog.near = 220; fog.far = 1600; }
+  if (y < 20) { fog.near = 140; fog.far = 900; }   // 地面雾放宽：原 60/520 把中远景洗成灰，抹掉坊间色差
+  else if (y < 80) { fog.near = 300; fog.far = 1800; }
   else { fog.near = 450; fog.far = 2800; }
 }
 

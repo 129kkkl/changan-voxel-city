@@ -389,10 +389,19 @@ CHANGAN.auditArchFloating = function (ctx, arch) {
 
 // ---------------------------------------------------------------- 坊内院落（建筑层 2×）：E1~E3 居住亚型
 // 城市层只负责地坪与树井（archCompoundGround），建筑全部由本函数写进建筑层 —— 单一权威。
+// 屋面色族池：按等级分三档，每档 5 个**真正不同色相**的族
+// （评审实测："民居屋面只有青灰和黛两种近似灰，按坊配色等于空转"）
+const T_GREY = [PAL.roofGrey, PAL.roofLight, PAL.roofGroove];
+const T_SLATE = [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
+const T_CLAY = [PAL.roofClay, PAL.roofClayL, PAL.roofClayG];
+const T_OCHRE = [PAL.roofOchre, PAL.roofOchreL, PAL.roofOchreG];
+const T_BROWN = [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG];
+const T_GREEN = [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG];
+const T_BLUE = [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
 const TONE_BY_LEVEL = [
-  [[PAL.roofGrey, PAL.roofLight, PAL.roofGroove], [PAL.roofGrey, PAL.roofLight, PAL.roofGroove], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]],
-  [[PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG], [PAL.roofGrey, PAL.roofLight, PAL.roofGroove]],
-  [[PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG], [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]],
+  [T_GREY, T_SLATE, T_CLAY, T_OCHRE, T_CLAY],      // 民居：青灰 / 黛 / 灰陶 / 赭石
+  [T_SLATE, T_CLAY, T_OCHRE, T_GREY, T_BROWN],     // 中等宅院
+  [T_GREEN, T_SLATE, T_GREEN, T_SLATE, T_CLAY],    // 大宅府第：琉璃绿（蓝留给官署品级色，避免坊区出现突兀亮蓝）
 ];
 
 // 院落地面（城市层）：浅夯土满铺 + 中轴砖道
@@ -425,13 +434,15 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   const courses = level === 0 ? 2 : 3;
   const g = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', { courses, gateW: 3 });
   const wallTop = ab + courses + 1;
-  // 琉璃色只给大体量院落，小宅保持青灰/黛（评审判"亮翠绿像游乐园"）
+  // 坊级风格：色调由坊位决定（相邻坊不同），高度基调 ±1 —— 破同质化的第一手段
+  const st = (plan && plan.style) || { tone: 0, hBias: 0, eaveBias: 0 };
   const tonePool = (level >= 2 && Math.min(w, d) >= 18) ? TONE_BY_LEVEL[2] : TONE_BY_LEVEL[Math.min(1, level)];
-  const tone = tonePool[Math.floor(rng() * tonePool.length)];
+  // 坊内微差：同坊 35% 的院落用相邻色族 —— 避免"整坊一块纯色"像彩色拼贴（评审判"彩色复制粘贴"）
+  const tone = tonePool[(st.tone + (rng() < 0.35 ? 1 : 0)) % tonePool.length];
   // 亚型分化：打破"千篇一律的合院"（同质化对策 §6）
   const variant = (plan && plan.variant) || CHANGAN.pickCompoundVariant(level, rng);
   const wallVar = rng() < 0.5 ? 0 : 1;   // 屋身高度 ±1
-  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: level === 0 ? 2 : 3 };
+  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: (level === 0 ? 2 : 3) + (st.eaveBias === 2 ? 1 : 0) };
 
   // 正房（坐北朝南，占院北侧）
   const mainD = Math.max(8, Math.min(20, Math.round(d * 0.42) * S));
@@ -439,7 +450,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   let topY = wallTop;
   if (hx1 - hx0 >= 10 && hz1 - hz0 >= 6) {
     const bays = Math.max(3, Math.min(9, Math.round((hx1 - hx0) / 8)));
-    const wallH = level === 0 ? 4 : 6;
+    const wallH = Math.max(3, (level === 0 ? 4 : 6) + st.hBias);
     let y = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, level === 0 ? 2 : 3, { steps: true, stepW: 4 });
     const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 1 ? 2 : 1);
     ARCH.wall(a, hx0, hz0, hx1, hz1, y, wallH, fr.cols, {
