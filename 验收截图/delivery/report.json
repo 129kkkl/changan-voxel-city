@@ -60,7 +60,7 @@
       "view": "lane",
       "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\delivery\\lane_noon_5a17c4a9.png",
       "fps": "20",
-      "drawCalls": "27",
+      "drawCalls": "42",
       "voxels": "100 万"
     }
   ],
@@ -68,20 +68,20 @@
   "errors": [],
   "meta": {
     "stats": {
-      "voxels": 995717,
-      "archVoxels": 1714214,
-      "archQuads": 2621380,
+      "voxels": 996394,
+      "archVoxels": 1716634,
+      "archQuads": 2625214,
       "wardCount": 104,
       "marketPlots": 4,
       "gateCount": 12,
-      "buildings": 374,
+      "buildings": 376,
       "shops": 170,
-      "trees": 949,
+      "trees": 948,
       "towers": 37,
       "wells": 21,
       "bridges": 0,
       "lamps": 367,
-      "checksum": "d784fda6",
+      "checksum": "a2abb099",
       "audits": [
         {
           "name": "坊墙闭合",
@@ -111,12 +111,12 @@
         {
           "name": "建筑层无浮空",
           "pass": true,
-          "detail": "建筑层 1714214 体素全部落地连通"
+          "detail": "建筑层 1716634 体素全部落地连通"
         },
         {
           "name": "体素预算",
           "pass": true,
-          "detail": "995717 / 硬上限 2800000"
+          "detail": "996394 / 硬上限 2800000"
         },
         {
           "name": "地标去模板化",
@@ -145,27 +145,27 @@
         }
       ],
       "stageMs": {
-        "terrain": 291,
-        "walls": 13,
-        "streets": 16,
-        "wards": 565,
-        "markets": 60,
-        "custom": 29,
-        "palaces": 157,
-        "water": 10,
+        "terrain": 303,
+        "walls": 15,
+        "streets": 21,
+        "wards": 554,
+        "markets": 59,
+        "custom": 37,
+        "palaces": 167,
+        "water": 11,
         "detail": 76,
-        "seal": 30,
+        "seal": 31,
         "wardId": 4,
-        "audit": 1772,
-        "mesh": 3089
+        "audit": 1812,
+        "mesh": 2790
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 6123
+      "genMs": 5905
     },
-    "voxels": 995717,
+    "voxels": 996394,
     "views": [
       "mingde",
       "axis",
