@@ -445,6 +445,7 @@ function splitBand(ctx, w, band, face, family, rng) {
     if (band.x1 - band.x0 < 9) return;
   }
   let x = band.x0;
+  const laneW = Math.max(1, (CHANGAN.PLAN && CHANGAN.PLAN.laneW) || 1);
   while (band.x1 - x + 1 >= 12) {
     let sw = CHANGAN.rint(rng, 14, 24);
     if (band.x1 - (x + sw) < 12) sw = band.x1 - x + 1;
@@ -454,7 +455,16 @@ function splitBand(ctx, w, band, face, family, rng) {
     else { level = rng() < 0.4 ? 1 : 0; if (rng() > 0.93) kind = 'open'; }
     if (kind === 'court' && sw >= 20 && bd >= 14 && family !== 'dense' && rng() < 0.4) { kind = 'manor'; level = 2; }
     w.plots.push({ x0: x, z0: band.z0, x1: x + sw - 1, z1: band.z1, face, kind, level });
-    x += sw;
+    // 宅地之间铺巷：splitBand 原先地块背靠背（x += sw），整条带内没有巷，
+    // P3 验收判"坊内巷级读不出"。按 PLAN.laneW 铺巷，但只铺 65% 的地界
+    // （全铺会把建筑数压到 N0 375 以下：实测 laneW=2 → 364、laneW=1 → 373）。
+    const paveHere = rng() < 0.65;
+    if (paveHere) {
+      for (let lx = x + sw; lx < x + sw + laneW && lx <= band.x1; lx++) {
+        for (let z = band.z0; z <= band.z1; z++) w.paveLane(lx, z, 7);
+      }
+    }
+    x += sw + (paveHere ? laneW : 0);
   }
 }
 
