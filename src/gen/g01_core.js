@@ -226,9 +226,9 @@ const PALETTE_DEF = [
   ['zhuBright',   '#cf5032', 'opaque'], // 朱亮
   ['timber',      '#6d4a2f', 'opaque'], // 木
   ['timberDark',  '#4c311e', 'opaque'], // 木深
-  ['roofGrey',    '#4a5358', 'opaque'], // 青灰瓦
-  ['roofLight',   '#6a747c', 'opaque'], // 瓦亮
-  ['roofDark',    '#32383c', 'opaque'], // 瓦暗
+  ['roofGrey',    '#5f6a72', 'opaque'], // 青灰瓦（可看阶段提亮：原 #4a5358 经背光烘焙后落到近黑）
+  ['roofLight',   '#818d95', 'opaque'], // 瓦亮（檐口/剪边）
+  ['roofDark',    '#454e55', 'opaque'], // 瓦暗（正脊/垂脊）
   ['glazeGreen',  '#3f7d5a', 'opaque'], // 琉璃绿（仅剪边/鸱尾）
   ['glazeBlue',   '#3a6d8f', 'opaque'], // 琉璃蓝（仅剪边/鸱尾）
   ['gold',        '#c9a227', 'opaque'], // 金（极小面积）

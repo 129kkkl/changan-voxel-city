@@ -81,7 +81,8 @@ export function applyDayNight() {
   const sunX = -Math.sin(sunRad) * 260;
   const sunZ = Math.cos(sunRad) * 160 + 60;
   const { hemi, sun, amb } = Engine.lights;
-  sun.position.set(sunX, Math.max(8, sunY), sunZ);
+  // 太阳高度下限 60：暮鼓/晨光时太阳若压到 y=8 会低于全部屋顶，全城落入阴影而整体发黑。
+  sun.position.set(sunX, Math.max(60, sunY), sunZ);
   const day = THREE.MathUtils.clamp((sunY + 20) / 280, 0, 1);
   const dusk = Math.max(0, Math.sin(THREE.MathUtils.clamp((t - 16.0) / 3.6, 0, 1) * Math.PI));
   const dawn = Math.max(0, Math.sin(THREE.MathUtils.clamp((t - 4.8) / 3.0, 0, 1) * Math.PI));
@@ -101,14 +102,14 @@ export function applyDayNight() {
   if (dusk > 0.05) hemiGnd.lerp(new THREE.Color(0x5a3c28), dusk * 0.6);
   hemi.groundColor.copy(hemiGnd);
 
-  hemi.intensity = THREE.MathUtils.lerp(0.36, 0.52, day) + dusk * 0.28;
+  hemi.intensity = THREE.MathUtils.lerp(0.40, 0.58, day) + dusk * 0.28;
 
   const ambCol = new THREE.Color(0x344660).lerp(new THREE.Color(0xeef4fa), day);
   if (dusk > 0.05) ambCol.lerp(new THREE.Color(0xa86844), dusk * 0.65);
   amb.color.copy(ambCol);
 
-  amb.intensity = THREE.MathUtils.lerp(0.36, 0.32, day) + dusk * 0.25 + night * 0.15;
-  Engine.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.95, 1.05, day) + dusk * 0.15;
+  amb.intensity = THREE.MathUtils.lerp(0.40, 0.36, day) + dusk * 0.25 + night * 0.15;
+  Engine.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.95, 1.04, day) + dusk * 0.15;
   if (Engine.scene.fog) {
     const fc = new THREE.Color(0x182436).lerp(new THREE.Color(0xd0dce8), day);
     if (dusk > 0.1) fc.lerp(new THREE.Color(0xdca47a), dusk * 0.5);

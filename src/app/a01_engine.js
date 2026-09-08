@@ -19,7 +19,7 @@ export const Engine = {
 const QUALITY_TIERS = {
   // 一级地标质量>普通建筑>微装饰：低档简化远景小物但保地标轮廓（lodDist保含元/双塔/城门块常驻高模）
   low:  { dpr: 1.0, shadow: 0, lodDist: 650, actorMul: 0.35, shadows: false, label: '低' },
-  mid:  { dpr: 1.25, shadow: 1024, lodDist: 1100, actorMul: 0.65, shadows: true, label: '中' },
+  mid:  { dpr: 1.25, shadow: 2048, lodDist: 1100, actorMul: 0.65, shadows: true, label: '中' },
   high: { dpr: 1.5, shadow: 2048, lodDist: 1400, actorMul: 1, shadows: true, label: '高' },
   ultra: { dpr: 2.0, shadow: 4096, lodDist: 1e9, actorMul: 1, shadows: true, label: '超高' },
   photo: { dpr: 2.0, shadow: 4096, lodDist: 1e9, actorMul: 0.2, shadows: true, label: '摄影' },
@@ -64,9 +64,10 @@ export function initEngine(canvasHost) {
   const sun = new THREE.DirectionalLight(0xfff1dc, 1.85);
   sun.position.set(-260, 380, 160);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -440; sun.shadow.camera.right = 440;
-  sun.shadow.camera.top = 440; sun.shadow.camera.bottom = -440;
+  sun.shadow.mapSize.set(2048, 2048);
+  // 阴影正交范围收紧到 ±330：原 ±440 在 1024 图下约 0.86 体素/texel，檐下投影糊成一团
+  sun.shadow.camera.left = -330; sun.shadow.camera.right = 330;
+  sun.shadow.camera.top = 330; sun.shadow.camera.bottom = -330;
   sun.shadow.camera.near = 50;
   sun.shadow.camera.far = 1400;
   sun.shadow.bias = -0.0004;
@@ -251,6 +252,9 @@ export function buildSky() {
         }
         col = mix(col, col * vec3(0.32, 0.38, 0.62), nightMix * 0.86);
         gl_FragColor = vec4(col, 1.0);
+        // 天空必须与场景同处一条色调映射/输出色彩空间链路，否则线性值直出会偏暗发闷
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   });
   const sky = new THREE.Mesh(geo, mat);

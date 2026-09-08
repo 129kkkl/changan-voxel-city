@@ -183,8 +183,12 @@ CHANGAN.checksum = function (ctx) {
 };
 
 // ================================================================ S12 贪心网格化（按块、按材质类；AO 烘焙进顶点色）
-const FACE_SHADE = [0.82, 0.82, 1.0, 0.45, 0.92, 0.72]; // ±x ±y ±z 方向烘焙光
-const AO_FACTOR = [0.5, 0.66, 0.82, 1.0];
+// ±x ±y ±z 方向烘焙光。可看阶段口径：背光面（-z 北 / 底面）必须留出可读明度，
+// 否则地面机位 26~35% 像素落到近黑（实测 lane/wardGate），建筑轮廓与檐下结构全被吞掉。
+// 底面仅作为檐下暗部，不再压到 0.45；北面抬到 0.84 与西面 0.90 接近，靠 AO 与太阳投影拉开层次。
+const FACE_SHADE = [0.90, 0.90, 1.0, 0.62, 0.96, 0.84];
+// 角落遮蔽：保留体积感但不再把墙脚/檐下压成黑块（原 0.5 最低档在近景即纯黑）
+const AO_FACTOR = [0.68, 0.80, 0.90, 1.0];
 CHANGAN.meshAll = function (ctx, want) {
   const W = CFG.WORLD, H = W.H;
   const grid = ctx.denseGrid || CHANGAN.buildDenseGrid(ctx);
@@ -364,20 +368,22 @@ function lodMesh(ctx, ox, oz, ex, ez) {
       idx.push(vi2, vi2 + 1, vi2 + 2, vi2, vi2 + 2, vi2 + 3);
     };
     quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], 2, 1);            // 顶
-    quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], 4, .85);          // 南
-    quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], 5, .8);           // 北
-    quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], 0, .9);           // 东
-    quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], 1, .75);          // 西
+    quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], 4, .96);          // 南
+    quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], 5, .84);          // 北
+    quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], 0, .90);          // 东
+    quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], 1, .90);          // 西
   };
   for (let x = ox; x <= ex; x += S) for (let z = oz; z <= ez; z += S) {
-    let topY = -1, topC = 0;
+    let topY = -1, topC = 0, gMin = 1 << 30;
     for (let dx = 0; dx < S && x + dx <= ex; dx += 2) for (let dz = 0; dz < S && z + dz <= ez; dz += 2) {
       const i = CHANGAN.fieldIndex(x + dx, z + dz);
+      if (fields.groundH[i] < gMin) gMin = fields.groundH[i];
       if (fields.topH[i] > topY) { topY = fields.topH[i]; topC = fields.topColor[i]; }
     }
     if (topY < 0 || !topC) continue;
     const rgb = ctx.palRGB[topC - 1];
-    const y0 = Math.max(0, topY - 6);
+    // LOD 块必须落到地表：原 topY-6 会让高于 6 格的建筑在远处变成浮空板（建筑"塌成薄片"）
+    const y0 = Math.max(0, Math.min(topY - 6, gMin === 1 << 30 ? topY - 6 : gMin));
     pushBox(x - ox, y0, z - oz, Math.min(x + S, ex + 1) - ox, topY + 1, Math.min(z + S, ez + 1) - oz, rgb);
   }
   if (!idx.length) return null;

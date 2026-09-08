@@ -202,10 +202,17 @@ CHANGAN.buildHanyuanComplex = function (ctx, cx, base) {
   // 主体：十三间重檐庑殿（专属11→13间拉宽，出檐3，柱径加粗转角双柱，重檐腰檐分两层铺砌）
   const x0 = cx - 15, x1 = cx + 14, z0 = -288, z1 = -270;
   const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, ty + 1, 5, { bays: 11, colC: PAL.zhuBright, veranda: true });
-  // 墙退柱显：粉壁仅砌柱间下部，上部全开直棂大窗带（与通用hall墙盒不同）
+  // 墙退柱显：粉壁仅砌柱间下部；南向居中留真实门洞（与龙尾道御道相接），其余为粉壁。
   for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
     if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
     if (fr.cols.some(p => p.x === x && p.z === z)) continue;
+    const isDoor = (z === z1 && Math.abs(x - cx) <= 1);
+    if (isDoor) {
+      for (let y = ty + 1; y < ty + 6; y++) {
+        if (y === ty + 5) { store.set(x, y, z, PAL.zhu); continue; }
+      }
+      continue;
+    }
     for (let y = ty + 1; y < ty + 6; y++) {
       if (y === ty + 5) { store.set(x, y, z, PAL.zhu); continue; }
       if (y >= ty + 2 && (z === z0 || z === z1)) { store.set(x, y, z, ((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark); continue; }
@@ -418,9 +425,17 @@ CHANGAN.buildTaijiHall = function (ctx, cx, z0, z1, base) {
   const top = Tang.PlatformBuilder.build(ctx, x0 - 1, z0 - 1, x1 + 1, z1 + 1, base, 5, { door: 'S', tiers: 3, h: 1, name: 'taiji-base' });
   const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, top + 1, 5, { bays: 11, colC: PAL.zhuBright, veranda: true });
   const { store } = ctx;
+  // 南向居中真实门洞（与台基踏道相接），其余柱间为粉壁。
   for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
     if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
     if (fr.cols.some(p => p.x === x && p.z === z)) continue;
+    const isDoor = (z === z1 && Math.abs(x - cx) <= 1);
+    if (isDoor) {
+      for (let y = top + 1; y < top + 5; y++) {
+        if (y === top + 4) store.set(x, y, z, PAL.zhu);
+      }
+      continue;
+    }
     for (let y = top + 1; y < top + 5; y++) store.set(x, y, z, y === top + 4 ? PAL.zhu : (((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark));
   }
   dougong(ctx, x0, z0, x1, z1, top + 4, fr.cols);

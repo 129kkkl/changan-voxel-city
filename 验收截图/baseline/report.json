@@ -1,0 +1,245 @@
+{
+  "shots": [
+    {
+      "view": "mingde",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\mingde_noon_5a17c4a9.png",
+      "fps": "25",
+      "drawCalls": "65",
+      "voxels": "116 万"
+    },
+    {
+      "view": "axis",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\axis_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "54",
+      "voxels": "116 万"
+    },
+    {
+      "view": "hengjie",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\hengjie_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "19",
+      "voxels": "116 万"
+    },
+    {
+      "view": "hanyuan",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\hanyuan_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "11",
+      "voxels": "116 万"
+    },
+    {
+      "view": "hanyuanTop",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\hanyuanTop_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "60",
+      "voxels": "116 万"
+    },
+    {
+      "view": "taiye",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\taiye_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "9",
+      "voxels": "116 万"
+    },
+    {
+      "view": "xingqing",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\xingqing_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "24",
+      "voxels": "116 万"
+    },
+    {
+      "view": "westMarket",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\westMarket_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "56",
+      "voxels": "116 万"
+    },
+    {
+      "view": "eastMarket",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\eastMarket_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "46",
+      "voxels": "116 万"
+    },
+    {
+      "view": "dayanta",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\dayanta_noon_5a17c4a9.png",
+      "fps": "21",
+      "drawCalls": "65",
+      "voxels": "116 万"
+    },
+    {
+      "view": "xiaoyanta",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\xiaoyanta_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "35",
+      "voxels": "116 万"
+    },
+    {
+      "view": "qinglong",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\qinglong_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "56",
+      "voxels": "116 万"
+    },
+    {
+      "view": "jingshan",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\jingshan_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "36",
+      "voxels": "116 万"
+    },
+    {
+      "view": "wardGate",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\wardGate_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "32",
+      "voxels": "116 万"
+    },
+    {
+      "view": "lane",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\lane_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "26",
+      "voxels": "116 万"
+    },
+    {
+      "view": "qujiang",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\qujiang_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "19",
+      "voxels": "116 万"
+    },
+    {
+      "view": "jinguang",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\jinguang_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "38",
+      "voxels": "116 万"
+    },
+    {
+      "view": "curfew",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\baseline\\curfew_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "41",
+      "voxels": "116 万"
+    }
+  ],
+  "console": [],
+  "errors": [],
+  "meta": {
+    "stats": {
+      "voxels": 1160135,
+      "wardCount": 104,
+      "marketPlots": 4,
+      "gateCount": 12,
+      "buildings": 1118,
+      "shops": 271,
+      "trees": 1098,
+      "towers": 35,
+      "wells": 160,
+      "bridges": 0,
+      "lamps": 469,
+      "checksum": "2c051496",
+      "audits": [
+        {
+          "name": "坊墙闭合",
+          "pass": true,
+          "detail": "108 坊环墙连续、门位合规"
+        },
+        {
+          "name": "中轴对齐",
+          "pass": true,
+          "detail": "三门 x=-1,-1,-1"
+        },
+        {
+          "name": "108坊计数",
+          "pass": true,
+          "detail": "坊位=108 其中市=4"
+        },
+        {
+          "name": "临街开店",
+          "pass": true,
+          "detail": "店肆均在两市之内"
+        },
+        {
+          "name": "无浮空",
+          "pass": true,
+          "detail": "全域与基岩连通"
+        },
+        {
+          "name": "体素预算",
+          "pass": true,
+          "detail": "1160135 / 硬上限 2800000"
+        },
+        {
+          "name": "地标去模板化",
+          "pass": true,
+          "detail": "P0/P1主体均走独立builder，仅用primitive"
+        },
+        {
+          "name": "地标LOD",
+          "pass": true,
+          "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+        },
+        {
+          "name": "多样性",
+          "pass": true,
+          "detail": "重复签名14/院落314种/最大重复4"
+        },
+        {
+          "name": "十坊抽检",
+          "pass": true,
+          "detail": "院落布局种类314，最大重复4"
+        },
+        {
+          "name": "地标唯一性",
+          "pass": true,
+          "detail": "六大地标轮廓各异"
+        }
+      ],
+      "stageMs": {
+        "terrain": 336,
+        "walls": 9,
+        "streets": 16,
+        "wards": 228,
+        "markets": 17,
+        "custom": 19,
+        "palaces": 61,
+        "water": 13,
+        "detail": 5,
+        "seal": 19,
+        "wardId": 4,
+        "audit": 172,
+        "mesh": 1908
+      },
+      "budget": {
+        "soft": 2400000,
+        "hard": 2800000
+      },
+      "genMs": 2826
+    },
+    "voxels": 1160135,
+    "views": [
+      "mingde",
+      "axis",
+      "hengjie",
+      "hanyuan",
+      "taiye",
+      "xingqing",
+      "westMarket",
+      "eastMarket",
+      "dayanta",
+      "xiaoyanta",
+      "qinglong",
+      "jingshan",
+      "wardGate",
+      "lane",
+      "qujiang",
+      "jinguang",
+      "kaiyuan"
+    ]
+  }
+}
