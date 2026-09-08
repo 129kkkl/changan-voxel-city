@@ -1340,8 +1340,9 @@ CHANGAN.TempleGrammar = {
     proto.hall(ctx, x1 - 5, midZ - 2, x1 - 2, midZ + 1, base, { roof: 'jian', wallH: 3, windows: false });
     // 大殿（重檐庑殿，琉璃剪边，皇家尺度）
     Tang.HallBuilder.build(ctx, cx - 8, z0 + 6, cx + 8, z0 + 14, base, 4, { roof: 'hip', door: 'S', name: 'royal-hall', colC: PAL.zhuBright });
-    // 法堂+藏经阁（后院双堂）
-    proto.hall(ctx, cx - 5, z0 + 17, cx + 5, z0 + 21, base, { roof: 'xie', door: 'S', platform: 1, wallH: 4 });
+    // 法堂+藏经阁（后院双堂）；opts.pagoda 时后院改立密檐塔（塔在殿后，皇家寺院标识物）
+    if (opts.pagoda) proto.pagodaMiyan(ctx, cx, z0 + 19, base, { layers: opts.pagoda });
+    else proto.hall(ctx, cx - 5, z0 + 17, cx + 5, z0 + 21, base, { roof: 'xie', door: 'S', platform: 1, wallH: 4 });
     // 东西僧院（南北长房+经院小院）
     for (const sx of [x0 + 2, x1 - 7]) {
       proto.hall(ctx, sx, z0 + 4, sx + 5, z0 + 8, base, { roof: 'xuan', wallH: 3, windows: true });
@@ -1677,7 +1678,7 @@ function wardQuads(w) {
 }
 
 regWard('靖善', 'E', (ctx, w) => {
-  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 3, w.z0 + 3, w.x1 - 3, w.z1 - 3, w.base, {});
+  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 3, w.z0 + 3, w.x1 - 3, w.z1 - 3, w.base, { pagoda: 5 });
 });
 regWard('开化', 'E', (ctx, w) => {
   CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 3, w.z0 + 3, w.x1 - 3, w.z1 - 3, w.base, {});
@@ -1697,7 +1698,7 @@ regWard('新昌', 'E', (ctx, w) => {
   // 青龙寺：皇家寺院高台+乐游原亭（与大慈恩不同平面：紧凑纵深+北亭）
   const cx = (w.x0 + w.x1) >> 1;
   platform(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 10, w.base, 2, PAL.stoneWhite, 'S');
-  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 14, w.base + 2, {});
+  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 14, w.base + 2, { pagoda: 5 });
   proto.pavilion(ctx, cx, w.z1 - 6, w.base, 'big');
 });
 regWard('务本', 'E', (ctx, w) => {
