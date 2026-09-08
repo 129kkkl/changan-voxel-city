@@ -279,12 +279,12 @@ const PALETTE_DEF = [
   ['roofSlate',   '#4a5560', 'opaque'], // 黛瓦
   ['roofSlateL',  '#61707c', 'opaque'], // 黛瓦亮（檐口）
   ['roofSlateG',  '#3b4650', 'opaque'], // 黛瓦沟
-  ['roofGreen',   '#3f6b5a', 'opaque'], // 琉璃绿（主要建筑屋面，艺术化用色）
-  ['roofGreenL',  '#568a72', 'opaque'],
-  ['roofGreenG',  '#2f5346', 'opaque'],
-  ['roofBlue',    '#3f5d7a', 'opaque'], // 琉璃蓝
-  ['roofBlueL',   '#57799a', 'opaque'],
-  ['roofBlueG',   '#2f4860', 'opaque'],
+  ['roofGreen',   '#2f7a5a', 'opaque'], // 琉璃绿（主要建筑屋面，艺术化用色；提饱和以便鸟瞰辨识品级）
+  ['roofGreenL',  '#4a9d78', 'opaque'],
+  ['roofGreenG',  '#1f5a42', 'opaque'],
+  ['roofBlue',    '#35669c', 'opaque'], // 琉璃蓝（提饱和，避免与青灰瓦在正午平光下混淆）
+  ['roofBlueL',   '#4a85bd', 'opaque'],
+  ['roofBlueG',   '#234a72', 'opaque'],
   ['roofBrown',   '#5a4a42', 'opaque'], // 深褐瓦（少量，破单调）
   ['roofBrownL',  '#726056', 'opaque'],
   ['roofBrownG',  '#453833', 'opaque'],

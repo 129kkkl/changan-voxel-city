@@ -214,11 +214,14 @@ function buildHuangCheng(ctx) {
     { x0: -96, z0: -184, x1: -54, z1: -144, face: 'E' },
   ];
   for (const o of offices) {
-    proto.office(ctx, o.x0, o.z0, o.x1, o.z1, base, CHANGAN.rngOf(ctx.seed, 'office-' + o.x0), o.face);
+    // 皇城百司改用 **建筑层官署语法**（外垣+仪门+重檐大堂+廊庑+后堂），
+    // 不再复用坊内民居的 proto.office（评审判"皇城跟复制粘贴的小房子一模一样"）。
+    CHANGAN.buildArchOffice(ctx, o.x0, o.z0, o.x1, o.z1, base,
+      CHANGAN.rngOf(ctx.seed, 'office-' + o.x0), o.face, o.z0 <= -192 ? 4 : 3);
   }
   // 左祖右社：太庙在东、太社在西（南带，临承天门街两侧，带琉璃剪边示礼制等级）
-  proto.office(ctx, 12, -134, 56, -100, base, CHANGAN.rngOf(ctx.seed, 'taimiao'), 'W');
-  proto.office(ctx, -56, -134, -12, -100, base, CHANGAN.rngOf(ctx.seed, 'taishe'), 'E');
+  CHANGAN.buildArchOffice(ctx, 12, -134, 56, -100, base, CHANGAN.rngOf(ctx.seed, 'taimiao'), 'W', 4);
+  CHANGAN.buildArchOffice(ctx, -56, -134, -12, -100, base, CHANGAN.rngOf(ctx.seed, 'taishe'), 'E', 4);
   // 太庙正殿加琉璃剪边标识（于 office 正堂顶上加琉璃脊饰）
   proto.hall(ctx, 28, -134, 40, -128, base, { roof: 'xie', platform: 2, trim: PAL.glazeGreen, col: PAL.zhuBright, door: 'S' });
   proto.hall(ctx, -40, -134, -28, -128, base, { roof: 'xie', platform: 2, trim: PAL.glazeGreen, col: PAL.zhuBright, door: 'S' });

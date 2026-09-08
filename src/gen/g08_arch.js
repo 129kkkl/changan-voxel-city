@@ -247,6 +247,94 @@ const ARCH = {
   },
 };
 
+// ---------------------------------------------------------------- 官署（皇城百司）：B1~B3 独立语法
+// 与坊内民居彻底分开：外垣 + 前庭 + 仪门 + 重檐大堂 + 东西廊庑 + 后堂，等级由 rank 控制
+CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank) {
+  const a = ctx.arch;
+  if (!a) return;
+  const S = 2;
+  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
+  const ab = base * S;
+  const R = rank == null ? 3 : rank;
+  // 官署色带：三品以上琉璃绿、以下琉璃蓝，与坊区灰瓦形成鸟瞰可辨的独立色带
+  const tone = R >= 4 ? [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG] : [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
+  // 外垣
+  const g = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', { courses: 3, gateW: 5 });
+  const wallTop = ab + 4;
+
+  // 仪门（第二道门，3 间，歇山）
+  const midZ = Math.round(az0 + (az1 - az0) * 0.42);
+  const gw = 14;
+  const gy = ARCH.platform(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, ab, 2, { steps: true, stepW: 5 });
+  const gf = ARCH.colonnade(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy, 8, 3, PAL.zhuBright, 2);
+  ARCH.wall(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy, 8, gf.cols, {
+    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: gf.xs, doorBay: 1,
+  });
+  ARCH.dougong(a, gf.cols, gy + 7, PAL.zhuBright, PAL.zhu);
+  ARCH.roofGable(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy + 10, {
+    layers: 7, overhang: 4, main: PAL.roofSlate, groove: PAL.roofSlateG, lip: PAL.roofSlateL,
+  });
+
+  // 大堂（坐北，5~7 间，重檐歇山，琉璃剪边）—— 官署的视觉核心
+  const hw = (R >= 4 ? 24 : 19) + Math.round(rng() * 6), hd = 14 + Math.round(rng() * 4);
+  const hcx = (ax0 + ax1) >> 1;
+  const hz1 = az0 + 8 + hd, hz0 = az0 + 8;
+  const hx0 = hcx - hw, hx1 = hcx + hw;
+  let y = ARCH.platform(a, hx0 - 4, hz0 - 4, hx1 + 4, hz1 + 4, ab, 3, { steps: true, stepW: 7 });
+  const bays = (R >= 4 ? 7 : 5) + (rng() < 0.4 ? 2 : 0);
+  const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, 12, bays, PAL.zhuBright, 2);
+  ARCH.wall(a, hx0, hz0, hx1, hz1, y, 12, fr.cols, {
+    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: fr.xs, doorBay: Math.floor(bays / 2),
+  });
+  ARCH.dougong(a, fr.cols, y + 11, PAL.zhuBright, PAL.zhu);
+  // 腰檐
+  const eaveY = y + 14, eo = 5;
+  for (let x = hx0 - eo; x <= hx1 + eo; x++) for (let z = hz0 - eo; z <= hz1 + eo; z++) {
+    const ring = (x === hx0 - eo || x === hx1 + eo || z === hz0 - eo || z === hz1 + eo);
+    if (ring) a.set(x, eaveY, z, PAL.roofSlate);
+  }
+  // 上檐
+  const dx0 = hx0 + 4, dx1 = hx1 - 4, dz0 = hz0 + 4, dz1 = hz1 - 4;
+  const fr2 = ARCH.colonnade(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, Math.max(3, bays - 2), PAL.zhuBright, 2);
+  ARCH.wall(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, fr2.cols, {
+    wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: fr2.xs, doorBay: -1,
+  });
+  ARCH.dougong(a, fr2.cols, eaveY + 7, PAL.zhuBright, PAL.zhu);
+  const topY = ARCH.roofHip(a, dx0, dz0, dx1, dz1, eaveY + 10, {
+    layers: 9, ridgeRatio: 0.6, overhang: 5,
+    main: tone[0], groove: tone[2], lip: tone[1],
+    trim: R >= 4 ? PAL.gold : null, ridgeC: PAL.roofDark, finial: PAL.gold,
+  });
+
+  // 东西廊庑（长条低矮，围出前庭）
+  for (const sx of [ax0 + 5, ax1 - 5]) {
+    const lz0 = midZ + 8, lz1 = az0 + 6 + hd + 6;
+    if (lz1 - lz0 < 8) continue;
+    const ly = ARCH.platform(a, sx - 3, lz0, sx + 3, lz1, ab, 1, { steps: false });
+    const lf = ARCH.colonnade(a, sx - 3, lz0, sx + 3, lz1, ly, 6, 1, PAL.zhu, 1);
+    ARCH.wall(a, sx - 3, lz0, sx + 3, lz1, ly, 6, lf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: lf.xs, doorBay: -1 });
+    ARCH.roofGable(a, sx - 3, lz0, sx + 3, lz1, ly + 7, { layers: 4, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+  }
+
+  // 后堂（大堂之后，较小）
+  const bz1 = az1 - 6, bz0 = bz1 - 10;
+  if (bz0 > hz1 + 6) {
+    const bw = 14, by = ARCH.platform(a, hcx - bw, bz0 - 2, hcx + bw, bz1 + 2, ab, 2, { steps: true, stepW: 5 });
+    const bf = ARCH.colonnade(a, hcx - bw, bz0, hcx + bw, bz1, by, 8, 3, PAL.zhu, 1);
+    ARCH.wall(a, hcx - bw, bz0, hcx + bw, bz1, by, 8, bf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: bf.xs, doorBay: 1 });
+    ARCH.roofGable(a, hcx - bw, bz0, hcx + bw, bz1, by + 9, { layers: 6, overhang: 3, main: tone[0], groove: tone[2], lip: tone[1] });
+  }
+
+  // 占位
+  const topCity = Math.ceil(Math.max(topY, wallTop) / S);
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    const i = CHANGAN.fieldIndex(x, z);
+    if (i < 0) continue;
+    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = tone[0];
+  }
+  return topY;
+};
+
 // ---------------------------------------------------------------- 坊内院落（建筑层 2×）：E1~E3 居住亚型
 // 城市层只负责地坪与树井（archCompoundGround），建筑全部由本函数写进建筑层 —— 单一权威。
 const TONE_BY_LEVEL = [
@@ -269,6 +357,13 @@ CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
   for (let x = x0 + 1; x <= x1 - 1; x++) store.set(x, base, z0 + Math.floor(d * 0.55), PAL.brickPave);
 };
 
+CHANGAN.pickCompoundVariant = function (level, rng) {
+  const r = rng();
+  if (level === 0) return r < 0.5 ? 'small' : (r < 0.82 ? 'winged' : 'shed');
+  if (level === 1) return r < 0.28 ? 'winged' : (r < 0.56 ? 'twoCourt' : (r < 0.82 ? 'tower' : 'garden'));
+  return r < 0.32 ? 'twoCourt' : (r < 0.62 ? 'tower' : (r < 0.86 ? 'garden' : 'winged'));
+};
+
 CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   const a = ctx.arch;
   if (!a) return;
@@ -281,6 +376,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   // 琉璃色只给大体量院落，小宅保持青灰/黛（评审判"亮翠绿像游乐园"）
   const tonePool = (level >= 2 && Math.min(w, d) >= 18) ? TONE_BY_LEVEL[2] : TONE_BY_LEVEL[Math.min(1, level)];
   const tone = tonePool[Math.floor(rng() * tonePool.length)];
+  // 亚型分化：打破"千篇一律的合院"（同质化对策 §6）
+  const variant = (plan && plan.variant) || CHANGAN.pickCompoundVariant(level, rng);
+  const wallVar = rng() < 0.5 ? 0 : 1;   // 屋身高度 ±1
   const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: level === 0 ? 2 : 3 };
 
   // 正房（坐北朝南，占院北侧）
@@ -303,25 +401,75 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
       : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 6 }, roofOpt));
   }
 
-  // 厢房（东西各一，体量低于正房）
+  // 厢房（东西各一，体量低于正房）—— small 亚型不设厢房
   const wingW = 7;
-  if (plan && plan.wingMode !== 'none' && az1 - hz1 >= 12) {
+  if (variant !== 'small' && variant !== 'shed' && az1 - hz1 >= 12) {
     const wz0 = hz1 + 4, wz1 = az1 - 4;
     const buildWing = (side) => {
       const wx0 = side === 'W' ? ax0 + 3 : ax1 - 3 - wingW;
       const wx1 = wx0 + wingW;
       if (wz1 - wz0 < 6) return;
       const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
-      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, 5, 2, PAL.zhu, 1);
-      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, 5, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
-      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + 6, { layers: 6, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, 4 + wallVar, 2, PAL.zhu, 1);
+      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, 4 + wallVar, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
+      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + 5 + wallVar, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
     };
-    if (plan.wingMode === 'both') { buildWing('W'); buildWing('E'); }
-    else buildWing(plan.wingMode === 'E' ? 'E' : 'W');
+    const both = variant === 'twoCourt' || (plan && plan.wingMode === 'both');
+    if (both) { buildWing('W'); buildWing('E'); }
+    else buildWing(plan && plan.wingMode === 'E' ? 'E' : 'W');
   }
 
-  // 门屋（跨在院门上的小屋）
-  if (g.gAxis === 'NS' && g.gz === az1) {
+  // 二进院：在院中加一道腰墙与内门，把院子分成前庭后院
+  if (variant === 'twoCourt' && az1 - az0 >= 26) {
+    const wz = Math.round(az0 + (az1 - az0) * 0.55);
+    const wgate = 4;
+    for (let x = ax0 + 1; x <= ax1 - 1; x++) {
+      if (Math.abs(x - ((ax0 + ax1) >> 1)) <= wgate) continue;
+      a.set(x, ab + 1, wz, PAL.rammed); a.set(x, ab + 2, wz, PAL.rammedLight); a.set(x, ab + 3, wz, PAL.roofDark);
+    }
+    for (const px of [(ax0 + ax1) >> 1 - wgate - 1, ((ax0 + ax1) >> 1) + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
+  }
+
+  // 楼居：正房之上再加一层（两层楼阁）
+  if (variant === 'tower' && topY > wallTop + 6) {
+    const tw0 = hx0 + 3, tw1 = hx1 - 3, td0 = hz0 + 3, td1 = hz1 - 3;
+    const tf = ARCH.colonnade(a, tw0, td0, tw1, td1, topY + 1, 7, 3, PAL.zhuBright, 2);
+    ARCH.wall(a, tw0, td0, tw1, td1, topY + 1, 7, tf.cols, { wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: tf.xs, doorBay: -1 });
+    ARCH.dougong(a, tf.cols, topY + 7, PAL.zhuBright, PAL.zhu);
+    topY = ARCH.roofHip(a, tw0, td0, tw1, td1, topY + 9, Object.assign({ layers: 7, ridgeRatio: 0.6 }, roofOpt));
+  }
+
+  // 仓院：大跨敞棚（无墙，柱列 + 大屋顶）+ 场院
+  if (variant === 'shed') {
+    const sw0 = ax0 + 4, sw1 = ax1 - 4, sd0 = az0 + 4, sd1 = az0 + Math.min(20, Math.round(d * 0.5) * S);
+    if (sw1 - sw0 >= 10 && sd1 - sd0 >= 6) {
+      const sy = ARCH.platform(a, sw0 - 1, sd0 - 1, sw1 + 1, sd1 + 1, ab, 1, { steps: false });
+      const sf = ARCH.colonnade(a, sw0, sd0, sw1, sd1, sy, 7, 4, PAL.timberDark, 1);
+      ARCH.dougong(a, sf.cols, sy + 6, PAL.timber, PAL.timberDark);
+      topY = ARCH.roofGable(a, sw0, sd0, sw1, sd1, sy + 8, { layers: 7, overhang: 3, main: PAL.roofBrown, groove: PAL.roofBrownG, lip: PAL.roofBrownL });
+    }
+  }
+
+  // 园宅：院中置亭（攒尖），留出园地
+  if (variant === 'garden') {
+    const px = ax0 + Math.round(w * 0.6), pz = az1 - Math.round(d * 0.28);
+    const pr = 5;
+    const py = ARCH.platform(a, px - pr, pz - pr, px + pr, pz + pr, ab, 1, { steps: false });
+    const pf = ARCH.colonnade(a, px - pr + 1, pz - pr + 1, px + pr - 1, pz + pr - 1, py, 5, 2, PAL.zhu, 1);
+    let ty2 = py + 5;
+    const hh = pr - 1;
+    for (let L = 0; L < hh; L++) {
+      const st = L;
+      for (let x = px - pr + 1 + st; x <= px + pr - 1 - st; x++) for (let z = pz - pr + 1 + st; z <= pz + pr - 1 - st; z++) {
+        const ring = (x === px - pr + 1 + st || x === px + pr - 1 - st || z === pz - pr + 1 + st || z === pz + pr - 1 - st);
+        if (ring) a.set(x, ty2 + L, z, L === 0 ? PAL.roofGreenL : ((x & 1) ? PAL.roofGreen : PAL.roofGreenG));
+      }
+    }
+    a.set(px, ty2 + hh, pz, PAL.gold); a.set(px, ty2 + hh + 1, pz, PAL.gold);
+  }
+
+  // 门屋（跨在院门上的小屋）—— small 亚型不设
+  if (variant !== 'small' && g.gAxis === 'NS' && g.gz === az1) {
     const gw = 7;
     const gy = ARCH.platform(a, g.gx - gw, az1 - 5, g.gx + gw, az1 + 1, ab, 1, { steps: false });
     const gf = ARCH.colonnade(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy, 4, 3, PAL.zhuBright, 1);
