@@ -226,9 +226,9 @@ const PALETTE_DEF = [
   ['zhuBright',   '#cf5032', 'opaque'], // 朱亮
   ['timber',      '#6d4a2f', 'opaque'], // 木
   ['timberDark',  '#4c311e', 'opaque'], // 木深
-  ['roofGrey',    '#5f6a72', 'opaque'], // 青灰瓦（可看阶段提亮：原 #4a5358 经背光烘焙后落到近黑）
-  ['roofLight',   '#818d95', 'opaque'], // 瓦亮（檐口/剪边）
-  ['roofDark',    '#454e55', 'opaque'], // 瓦暗（正脊/垂脊）
+  ['roofGrey',    '#55616a', 'opaque'], // 青灰瓦（唐式青瓦：偏冷偏深的蓝灰，与夯土墙/白灰墙拉开材质层次）
+  ['roofLight',   '#6e7a84', 'opaque'], // 瓦亮（檐口/剪边）
+  ['roofDark',    '#3f4a52', 'opaque'], // 瓦暗（正脊/垂脊）
   ['glazeGreen',  '#3f7d5a', 'opaque'], // 琉璃绿（仅剪边/鸱尾）
   ['glazeBlue',   '#3a6d8f', 'opaque'], // 琉璃蓝（仅剪边/鸱尾）
   ['gold',        '#c9a227', 'opaque'], // 金（极小面积）
@@ -274,7 +274,7 @@ const PALETTE_DEF = [
   ['mountainFar', '#8fa3b8', 'opaque'], // 终南山剪影
   ['doorDark',    '#3a2a1c', 'opaque'], // 板门
   ['paperWhite',  '#f2ead8', 'opaque'], // 纸幡
-  ['roofGroove',  '#525c64', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
+  ['roofGroove',  '#46505a', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
 ];
 const PAL = {}; PALETTE_DEF.forEach((d, i) => { PAL[d[0]] = i + 1; }); // 体素值 1..N，0=空
 const PAL_GROUP = PALETTE_DEF.map(d => d[2]);
