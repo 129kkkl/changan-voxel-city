@@ -1186,6 +1186,11 @@ proto.pagodaMiyan = function (ctx, cx, cz, base, opts) {
     // 密檐出挑：逐层向上叠收，呈现唐代柔和曲线
     const half = Math.max(1, size - Math.floor(L / 3.2));
     store.fill(cx - half, y, cz - half, cx + half, y, cz + half, L % 2 ? PAL.roofGrey : PAL.roofLight);
+    // 密檐出挑 1 格 + 琉璃剪边：视觉验收判"塔身是偏灰的方块叠台、缺琉璃瓦细节，
+    // 佛塔辨识度中等"。每层外扩一圈绿琉璃檐口，让塔在远处也读成"琉璃密檐塔"。
+    const h2 = half + 1, trimC = (L % 2 === 0) ? PAL.roofGreen : PAL.glazeGreen;
+    for (let x = cx - h2; x <= cx + h2; x++) { store.set(x, y, cz - h2, trimC); store.set(x, y, cz + h2, trimC); }
+    for (let z = cz - h2; z <= cz + h2; z++) { store.set(cx - h2, y, z, trimC); store.set(cx + h2, y, z, trimC); }
     y++;
   }
 
