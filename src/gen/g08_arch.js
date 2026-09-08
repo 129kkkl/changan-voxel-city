@@ -212,7 +212,7 @@ const ARCH = {
     const rLong = opts.ridgeRatio == null ? 0.55 : opts.ridgeRatio;
     let lx0 = ex0, lx1 = ex1, lz0 = ez0, lz1 = ez1;
     for (let L = 0; L < layers; L++) {
-      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);   // 举折：下缓上陡（1.15 近线性，评审判"方正木盒感"）
+      const t = Math.pow(L / Math.max(1, layers - 1), opts.curve || 1.15);   // 举折幂次：大体量屋顶可用 opts.curve 加大（层多时曲线才读得出）
       const ix = Math.round(hx * t * (alongX ? rLong : 1));
       const iz = Math.round(hz * t * (alongX ? 1 : rLong));
       const xa = ex0 + ix, xb = ex1 - ix, za = ez0 + iz, zb = ez1 - iz;
@@ -1039,7 +1039,7 @@ CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {
   ARCH.roofHip(a, dx0, dz0, dx1, dz1, topY, {
     main: PAL.roofGreen, groove: PAL.roofGreenG, lip: PAL.roofGreenL,
     trim: PAL.gold, ridgeC: PAL.glazeGreen, overhang: 7, layers: 15,
-    finial: PAL.gold, ridgeRatio: 0.55,
+    finial: PAL.gold, ridgeRatio: 0.55, curve: 1.32,   // 大屋顶层多，加大举折幂次才读得出曲线
   });
   return topY;
 };
