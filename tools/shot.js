@@ -240,8 +240,9 @@ async function main() {
       const midY = base + (b.top - base) * 0.5;
       // 取景解算：用页面里的相机把建筑 AABB 8 个角投影到 NDC，
       // 迭代拉远直到 max|ndc| ≤ 0.82 —— 保证整栋建筑完整入画（此前机位常被裁边/被前景挡）。
-      await cdp.eval(`(function(){window.__soloFit=function(b,az,elev,mul){
+      await cdp.eval(`(function(){window.__soloFit=function(b,az,elev,mul,tgt){
         var E=window.__CHANGAN__.Engine, c=E.camera.clone(), V=E.camera.position.constructor;
+        var T=tgt||0.82;
         var cx=b.x+b.w/2, cz=b.z+b.d/2, span=Math.max(b.w,b.d), base=b.top-span*0.55;
         var aim=new V(cx, base+(b.top-base)*0.5, cz), cs=[];
         for(var i=0;i<2;i++)for(var j=0;j<2;j++)for(var k=0;k<2;k++)
@@ -254,31 +255,25 @@ async function main() {
           var mx=0;
           for(var n=0;n<cs.length;n++){var q=cs[n].clone().project(c); mx=Math.max(mx, Math.abs(q.x), Math.abs(q.y));}
           if(!isFinite(mx)||mx<1e-4) break;
-          if(Math.abs(mx-0.82)<0.03) break;
-          m*=Math.max(0.6, Math.min(3, mx/0.82));
+          if(Math.abs(mx-T)<0.03) break;
+          m*=Math.max(0.6, Math.min(3, mx/T));
         }
         D=span*mul*m;
         return {m:Math.round(m*100)/100, cam:[cx+Math.sin(az)*D, aim.y+Math.tan(elev)*D, cz+Math.cos(az)*D, cx, aim.y, cz]};
       };return 1})()`);
-      const mk = async (az, elev, mul) => {
+      const mk = async (az, elev, mul, tgt) => {
         const r = JSON.parse(await cdp.eval('JSON.stringify(window.__soloFit('
-          + JSON.stringify(b) + ',' + az + ',' + elev + ',' + mul + '))'));
+          + JSON.stringify(b) + ',' + az + ',' + elev + ',' + mul + ',' + (tgt || 0.82) + '))'));
         return 'cam@' + r.cam.map(f2).join(',');
       };
-      // 檐下近距：正南（民居坐北朝南，正面在 +z）0.95 跨、仰 7°，瞄檐口带。
-      // 不进 NDC 自适应（会退到街上被邻屋挡），这个机位是判斗拱/窗棂/柱头细部的唯一门。
-      const near = (az, elev, mul) => {
-        const D = span * mul;
-        const px = cx + Math.sin(az) * D, pz = cz + Math.cos(az) * D;
-        const aimY = base + (b.top - base) * 0.74;
-        const py = aimY + Math.tan(elev) * D;
-        return 'cam@' + [f2(px), f2(py), f2(pz), f2(cx), f2(aimY), f2(cz)].join(',');
-      };
+      // 檐下近距：从正南偏 45° 的角部近看，用同一套 NDC 解算但允许贴到 tgt=1.02
+      // （整栋略微出框 → 构件占满画幅）。旧写法手写 0.95 跨距离，大体量建筑常拍到
+      // 一面空白墙或被厢房挡住（视觉验收判"近乎全空白"）。
       views = [
         await mk(bestAz, 0.35, 2.4),
         await mk(bestAz + Math.PI / 4, 0.45, 2.0),
         await mk(bestAz, 0.85, 2.0),
-        near(0, 0.12, 0.95),
+        await mk(bestAz + Math.PI / 4, 0.12, 1.15, 1.02),
       ];
       console.log('[solo] 建筑#' + a.solo + ' ' + JSON.stringify(b)
         + ' 方位=' + Math.round(bestAz * 180 / Math.PI) + '° 遮挡=' + bestN + ' → 4 视角');

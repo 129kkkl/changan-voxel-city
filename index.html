@@ -84154,10 +84154,15 @@ const ARCH = {
     for (const [x, z] of cols) for (let y = y0; y < y0 + h; y++) {
       for (let dx = 0; dx < R; dx++) for (let dz = 0; dz < R; dz++) a.set(x + dx, y, z + dz, colC);
     }
-    // 额枋（柱头之间横贯，一层高）
+    // 额枋（柱头之间横贯，一层高）。
+    // 高等级（柱色 = zhuBright，宫殿/官署/寺院）走"七朱八白"彩画带：
+    // 每 3 格 2 朱 1 白，让檐下有一条读得出的彩带 —— 视觉验收反复判
+    // "装饰彩绘素净、奢华度中等"，这条带子是最便宜的补偿。民居保持素朱。
+    const archi = (colC === PAL.zhuBright);
+    const ac = v => (archi && v % 3 === 2) ? PAL.plaster : colC;
     for (const [x, z] of cols) for (let dx = 0; dx < R; dx++) a.set(x + dx, y0 + h, z, colC);
-    for (let x = x0; x <= x1; x++) { for (let dz = 0; dz < R; dz++) { a.set(x, y0 + h, z0 + dz, colC); a.set(x, y0 + h, z1 - dz, colC); } }
-    for (let z = z0; z <= z1; z++) { for (let dx = 0; dx < R; dx++) { a.set(x0 + dx, y0 + h, z, colC); a.set(x1 - dx, y0 + h, z, colC); } }
+    for (let x = x0; x <= x1; x++) { for (let dz = 0; dz < R; dz++) { a.set(x, y0 + h, z0 + dz, ac(x)); a.set(x, y0 + h, z1 - dz, ac(x)); } }
+    for (let z = z0; z <= z1; z++) { for (let dx = 0; dx < R; dx++) { a.set(x0 + dx, y0 + h, z, ac(z)); a.set(x1 - dx, y0 + h, z, ac(z)); } }
     return { cols, xs: uniq };
   },
 
