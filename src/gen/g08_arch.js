@@ -85,15 +85,23 @@ const ARCH = {
   },
 
   // 斗拱：柱头一垛（向外挑 2、向上 1），补间一朵
-  dougong(a, cols, y, colC, outC) {
+  dougong(a, cols, y, colC, outC, scale) {
     // 柱头斗拱向外挑 2 格（华拱两层）+ 挑檐枋环：
     // P0 判"柱顶到檐口之间仍是同一平面贴附，结构性进深只完成一半"。
     for (const [x, z] of cols) {
+      // 一攒斗拱：坐斗 → 华栱一跳（出 2）→ 散斗/令栱收头；高等级再加第二跳（出 3）
+      // P0/单体评审："檐下就是一条平直灰色横带，像一根扁梁而非一攒斗拱"。
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        a.set(x + dx, y + 1, z + dz, outC);
+        a.set(x + dx, y + 1, z + dz, outC);          // 华栱一跳
         a.set(x + 2 * dx, y + 1, z + 2 * dz, outC);
-        a.set(x + 2 * dx, y + 2, z + 2 * dz, outC);
+        a.set(x + 2 * dx, y + 2, z + 2 * dz, colC);  // 散斗
+        if (scale >= 2) {
+          a.set(x + 3 * dx, y + 2, z + 3 * dz, outC); // 第二跳
+          a.set(x + 4 * dx, y + 2, z + 4 * dz, outC);
+          a.set(x + 4 * dx, y + 3, z + 4 * dz, colC); // 撩檐枋
+        }
       }
+      if (scale >= 2) a.set(x, y + 3, z, colC);
       // 柱头斗拱：三层叠出
       a.set(x, y + 1, z, colC);
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) a.set(x + dx, y + 1, z + dz, outC);
@@ -488,7 +496,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
       wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
       xs: fr.xs, doorBay: Math.floor(bays / 2),
     });
-    ARCH.dougong(a, fr.cols, y + wallH - 1, PAL.zhuBright, PAL.zhu);
+    ARCH.dougong(a, fr.cols, y + wallH - 1, PAL.zhuBright, PAL.zhu, level >= 2 ? 2 : 1);
     const roofY = y + wallH + 2;
     if (variant === 'tower' && hx1 - hx0 >= 18 && hz1 - hz0 >= 12) {
       // 楼居：**二层直接起在一层额枋之上**（不先盖屋顶），中间只做一圈腰檐。
@@ -588,7 +596,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const gy = ARCH.platform(a, g.gx - gw, az1 - 5, g.gx + gw, az1 + 1, ab, 1, { steps: false });
     const gf = ARCH.colonnade(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy, 4, 3, PAL.zhuBright, 1);
     // 门屋也要有柱头斗拱层（P0 判"近景门殿/穿堂柱顶到檐口同平面贴附"）
-    ARCH.dougong(a, gf.cols, gy + 3, PAL.zhuBright, PAL.zhu);
+    ARCH.dougong(a, gf.cols, gy + 3, PAL.zhuBright, PAL.zhu, 1);
     ARCH.roofGable(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy + 6, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
     topY = Math.max(topY, gy + 10);
   }
