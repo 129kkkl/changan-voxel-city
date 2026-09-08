@@ -165,6 +165,37 @@ export function buildChunks(chunkData) {
   }
 }
 
+// ---------------------------------------------------------------- 建筑层网格（2× 分辨率，顶点已折算回城市单位）
+export function buildArchMesh(m) {
+  if (Engine.archMesh) {
+    Engine.chunkGroup.remove(Engine.archMesh);
+    Engine.archMesh.geometry.dispose();
+    Engine.archMesh = null;
+  }
+  if (!m || !m.idx || !m.idx.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+  const n = m.pos.length / 3;
+  const colors = new Uint8Array(n * 3);
+  colors.set(m.col);
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+  const normals = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const N = NORMALS[m.nor[i]];
+    normals[i * 3] = N[0]; normals[i * 3 + 1] = N[1]; normals[i * 3 + 2] = N[2];
+  }
+  g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  g.setIndex(new THREE.BufferAttribute(m.idx, 1));
+  g.computeBoundingSphere();
+  const mesh = new THREE.Mesh(g, Engine.materials.opaque);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = true;
+  Engine.chunkGroup.add(mesh);
+  Engine.archMesh = mesh;
+  return mesh;
+}
+
 // LOD 切换：按块心距
 export function adaptFog() {
   const fog = Engine.scene.fog;

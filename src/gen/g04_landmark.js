@@ -199,30 +199,18 @@ CHANGAN.buildHanyuanComplex = function (ctx, cx, base) {
     // 道侧矮墙
     for (let s = 0; s < 14; s++) { store.set(cx + dx - w2 - 1, base + 2, -265 + s, PAL.stoneGrey); store.set(cx + dx + w2 + 1, base + 2, -265 + s, PAL.stoneGrey); }
   }
-  // 主体：十三间重檐庑殿（专属11→13间拉宽，出檐3，柱径加粗转角双柱，重檐腰檐分两层铺砌）
-  const x0 = cx - 15, x1 = cx + 14, z0 = -288, z1 = -270;
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, ty + 1, 5, { bays: 11, colC: PAL.zhuBright, veranda: true });
-  // 墙退柱显：粉壁仅砌柱间下部；南向居中留真实门洞（与龙尾道御道相接），其余为粉壁。
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    const isDoor = (z === z1 && Math.abs(x - cx) <= 1);
-    if (isDoor) {
-      for (let y = ty + 1; y < ty + 6; y++) {
-        if (y === ty + 5) { store.set(x, y, z, PAL.zhu); continue; }
-      }
-      continue;
-    }
-    for (let y = ty + 1; y < ty + 6; y++) {
-      if (y === ty + 5) { store.set(x, y, z, PAL.zhu); continue; }
-      if (y >= ty + 2 && (z === z0 || z === z1)) { store.set(x, y, z, ((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark); continue; }
-      store.set(x, y, z, PAL.plaster);
-    }
+  // 主体：十三间重檐庑殿 —— 改用 **2× 建筑层（ArchGrid）** 生成。
+  // 城市层（1 体素 ≈ 13.8m）无法表达柱列/斗拱/瓦垄/棂条；建筑层（1 体素 = 0.5 城市体素）
+  // 才做得出"单拉出来够看"的宫殿。见 10_建筑大升级计划_v4.md §3。
+  ctx.arch = ctx.arch || new CHANGAN.ArchStore();
+  CHANGAN.buildArchGrandHall(ctx.arch, 2 * cx, 2 * -279, 2 * (ty + 1), { bays: 13, W: 64, D: 38 });
+  // 把建筑层占位戳进城市字段，保证碰撞、小地图与远景 LOD 与建筑层一致
+  for (let x = cx - 17; x <= cx + 16; x++) for (let z = -290; z <= -268; z++) {
+    const i = CHANGAN.fieldIndex(x, z);
+    if (i >= 0) { ctx.fields.topH[i] = ty + 21; ctx.fields.topColor[i] = PAL.roofGrey; }
   }
-  dougong(ctx, x0, z0, x1, z1, ty + 5, fr.cols);
-  // 下檐（腰檐大出檐3）+上檐（重檐庑殿顶，琉璃剪边+金鸱尾）
-  Tang.RoofBuilder.build(ctx, 'hip', x0 - 1, z0 - 1, x1 + 1, z1 + 1, ty + 4, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, ty + 8, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
+  CHANGAN.exitLandmark(ctx);
+  CHANGAN.enterLandmark(ctx, 'hanyuan-ge');
   // 翔鸾/栖凤二阁（非对称细节：东阁三层西阁两层，打破完全对称，体量呼应而非复制）
   const ge = [[cx - 27, 3], [cx + 27, 2]];
   for (const [gx, fl] of ge) {

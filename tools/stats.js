@@ -7,7 +7,7 @@ const vm = require('vm');
 const SRC = path.join(__dirname, '..', 'src');
 const GEN_FILES = [
   'gen/g01_core.js', 'gen/g02_skeleton.js', 'gen/g03_wards.js',
-  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g07_pipeline.js',
+  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g07_pipeline.js',
 ];
 const seed = (parseInt(process.argv[2] || '5a17c4a9', 16) >>> 0) || 0x5a17c4a9;
 

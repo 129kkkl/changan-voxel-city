@@ -83,15 +83,23 @@ CHANGAN.generate = function (seed, onProgress) {
   const checksum = CHANGAN.checksum(ctx);
   ctx.progress('mesh', 0.92);
   let chunks;
+  let archMesh = null, archVoxels = 0;
   try {
     const tS = Date.now();
     chunks = CHANGAN.meshAll(ctx, 'full');
+    // 建筑层（2× 分辨率）：单独网格化，顶点坐标已折算回城市单位
+    if (ctx.arch && ctx.arch.count) {
+      archVoxels = ctx.arch.count;
+      archMesh = CHANGAN.meshArch(ctx, ctx.arch);
+    }
     stageMs.mesh = Date.now() - tS;
   } catch (err) {
     return { ok: false, error: '网格化失败：' + (err && err.stack || err) };
   }
   const stats = {
     voxels: store.count,
+    archVoxels,
+    archQuads: archMesh ? archMesh.quads : 0,
     wardCount: ctx.wards.filter(w => w.type === 'ward').length,
     marketPlots: ctx.wards.filter(w => w.type === 'market').length,
     gateCount: ctx.gates.filter(g => g.city).length,
@@ -121,6 +129,7 @@ CHANGAN.generate = function (seed, onProgress) {
       road: fields.road, wardId: fields.wardId, water: fields.water,
     },
     chunks,
+    archMesh, archVoxels,
     _ctx: ctx, // Worker 侧保留供 edit/doors；主线程收到的是结构化克隆，不含此项
   };
 };
@@ -190,7 +199,11 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
           transfer.push(m.pos.buffer, m.nor.buffer, m.col.buffer, m.idx.buffer);
         }
       }
-      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks }, transfer);
+      // 建筑层网格（2× 分辨率）也要过桥
+      if (result.archMesh) {
+        transfer.push(result.archMesh.pos.buffer, result.archMesh.nor.buffer, result.archMesh.col.buffer, result.archMesh.idx.buffer);
+      }
+      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks, archMesh: result.archMesh || null }, transfer);
     } else if (msg.cmd === 'edit' && liveCtx) {
       const r = CHANGAN.applyOps(liveCtx, msg.ops);
       sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches);

@@ -71,6 +71,7 @@ function onWorld(data) {
   App.meta = data.meta;
   App.fields = data.fields;
   buildChunks(data.chunks);
+  if (data.archMesh) buildArchMesh(data.archMesh);
   const vc = document.getElementById('voxel-count');
   if (vc) vc.textContent = (data.stats.voxels / 10000).toFixed(0) + ' 万';
   bindViews(App);

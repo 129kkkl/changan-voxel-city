@@ -8,7 +8,7 @@ const vm = require('vm');
 const SRC = __dirname;
 const GEN_FILES = [
   'gen/g01_core.js', 'gen/g02_skeleton.js', 'gen/g03_wards.js',
-  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g07_pipeline.js',
+  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g07_pipeline.js',
 ];
 
 function makeHarness(seed) {
