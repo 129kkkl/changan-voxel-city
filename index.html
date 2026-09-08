@@ -80386,15 +80386,24 @@ function fillWardPlots(ctx, w, family) {
         plan.level = p.level != null ? p.level : plan.rank;
         ctx.residencePlans = ctx.residencePlans || [];
         ctx.residencePlans.push([plan.rank, plan.facing, plan.courtyardCount, plan.mainHallBays, plan.wingMode, plan.rearHall ? 1 : 0, plan.sideCourt ? 1 : 0, plan.serviceCourt ? 1 : 0, plan.garden ? 1 : 0, plan.well ? 1 : 0, plan.gateType].join('|') + '|' + rw + 'x' + rd);
-        proto.courtyard(ctx, r.x0, r.z0, rw, rd, w.base, plan.level, rng, p.face, plan);
+        // 建筑层（2×）：地坪留在城市层，建筑全部由建筑层生成（单一权威，守则铁律一）
+        CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+        CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, plan.level, rng, p.face, plan);
+        ctx.counters.houses++;
         break;
       }
       case 'manor': {
         if (rw < 14 || rd < 12 || !rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) {
-          if (rw >= 6 && rd >= 6 && rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) proto.courtyard(ctx, r.x0, r.z0, rw, rd, w.base, 1, rng, p.face);
+          if (rw >= 6 && rd >= 6 && rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) {
+            CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+            CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, 1, rng, p.face, { wingMode: 'W' });
+            ctx.counters.houses++;
+          }
           break;
         }
-        proto.manor(ctx, r.x0, r.z0, r.x1, r.z1, w.base, p.face, rng, { level: p.level || 2 });
+        CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+        CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, 2, rng, p.face, { wingMode: 'both', gateType: 'wutou' });
+        ctx.counters.houses++;
         break;
       }
       case 'temple': {
@@ -84122,6 +84131,159 @@ const ARCH = {
     }
     return ry + 5;
   },
+
+  // 悬山两坡（民居/厢房）：沿长轴起坡，两端山面封板
+  roofGable(a, x0, z0, x1, z1, y0, opts) {
+    opts = opts || {};
+    const main = opts.main || PAL.roofGrey, groove = opts.groove || PAL.roofGroove;
+    const lip = opts.lip || PAL.roofLight;
+    const over = opts.overhang == null ? 2 : opts.overhang;
+    const ex0 = x0 - over, ex1 = x1 + over, ez0 = z0 - over, ez1 = z1 + over;
+    const hz = (ez1 - ez0) >> 1;
+    const layers = Math.max(3, Math.min(opts.layers || 6, hz));
+    for (let L = 0; L < layers; L++) {
+      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);
+      const iz = Math.round(hz * t);
+      const za = ez0 + iz, zb = ez1 - iz;
+      if (za > zb) break;
+      const y = y0 + L;
+      for (let x = ex0; x <= ex1; x++) for (let z = za; z <= zb; z++) {
+        const isEave = (z === za || z === zb);
+        let c = ((x & 1) ? main : groove);
+        if (L === 0 && isEave) c = lip;
+        a.set(x, y, z, c);
+      }
+      for (const sx of [ex0, ex1]) for (let z = za; z <= zb; z++) a.set(sx, y, z, L === 0 ? lip : PAL.plasterWarm);
+    }
+    const ry = y0 + layers;
+    const cz = (ez0 + ez1) >> 1;
+    for (let x = ex0; x <= ex1; x++) a.set(x, ry, cz, PAL.roofDark);
+    a.set(ex0, ry + 1, cz, PAL.roofDark); a.set(ex1, ry + 1, cz, PAL.roofDark);
+    return ry + 2;
+  },
+
+  // 院墙：夯土墙身 + 瓦顶压边（外挑 1 + 瓦暗脊）+ 门洞与门柱
+  enclosure(a, x0, z0, x1, z1, base, facing, opts) {
+    opts = opts || {};
+    const courses = opts.courses || 3;
+    const cap = base + courses + 1;
+    const cx = (x0 + x1) >> 1, cz = (z0 + z1) >> 1;
+    const gateW = opts.gateW || 3;
+    let gx = cx, gz = z1, gAxis = 'NS';
+    if (facing === 'N') { gx = x0 + 4; gz = z0; }
+    else if (facing === 'E') { gx = x1; gz = cz; gAxis = 'EW'; }
+    else if (facing === 'W') { gx = x0; gz = cz; gAxis = 'EW'; }
+    const isGate = (x, z) => gAxis === 'NS' ? (z === gz && Math.abs(x - gx) <= gateW) : (x === gx && Math.abs(z - gz) <= gateW);
+    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+      if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
+      if (isGate(x, z)) continue;
+      a.set(x, base + 1, z, PAL.rammed);
+      if (courses >= 2) a.set(x, base + 2, z, PAL.rammedLight);
+      if (courses >= 3) a.set(x, base + 3, z, PAL.rammedLight);
+      a.set(x, cap, z, PAL.roofDark);
+      const ox = x === x0 ? -1 : x === x1 ? 1 : 0;
+      const oz = z === z0 ? -1 : z === z1 ? 1 : 0;
+      if (ox) a.set(x + ox, cap, z, PAL.roofGrey);
+      if (oz) a.set(x, cap, z + oz, PAL.roofGrey);
+    }
+    const posts = gAxis === 'NS' ? [[gx - gateW - 1, gz], [gx + gateW + 1, gz]] : [[gx, gz - gateW - 1], [gx, gz + gateW + 1]];
+    for (const [px, pz] of posts) for (let y = 1; y <= courses + 1; y++) a.set(px, base + y, pz, PAL.zhu);
+    for (let s = -gateW; s <= gateW; s++) a.set(gAxis === 'NS' ? gx + s : gx, cap, gAxis === 'NS' ? gz : gz + s, PAL.roofDark);
+    return { gx, gz, gAxis };
+  },
+};
+
+// ---------------------------------------------------------------- 坊内院落（建筑层 2×）：E1~E3 居住亚型
+// 城市层只负责地坪与树井（archCompoundGround），建筑全部由本函数写进建筑层 —— 单一权威。
+const TONE_BY_LEVEL = [
+  [[PAL.roofGrey, PAL.roofLight, PAL.roofGroove], [PAL.roofGrey, PAL.roofLight, PAL.roofGroove], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]],
+  [[PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG], [PAL.roofGrey, PAL.roofLight, PAL.roofGroove]],
+  [[PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG], [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG], [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]],
+];
+
+// 院落地面（城市层）：浅夯土满铺 + 中轴砖道
+CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
+  const { store } = ctx;
+  const x1 = x0 + w - 1, z1 = z0 + d - 1;
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    const i = CHANGAN.fieldIndex(x, z);
+    if (i < 0 || ctx.fields.road[i] || ctx.fields.water[i]) continue;
+    store.set(x, base, z, PAL.loessLight);
+  }
+  const cx = (x0 + x1) >> 1;
+  for (let z = z0; z <= z1; z++) store.set(cx, base, z, PAL.brickPave);
+  for (let x = x0 + 1; x <= x1 - 1; x++) store.set(x, base, z0 + Math.floor(d * 0.55), PAL.brickPave);
+};
+
+CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
+  const a = ctx.arch;
+  if (!a) return;
+  const S = 2;
+  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
+  const ab = base * S;
+  const courses = level === 0 ? 2 : 3;
+  const g = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', { courses, gateW: 3 });
+  const wallTop = ab + courses + 1;
+  // 琉璃色只给大体量院落，小宅保持青灰/黛（评审判"亮翠绿像游乐园"）
+  const tonePool = (level >= 2 && Math.min(w, d) >= 18) ? TONE_BY_LEVEL[2] : TONE_BY_LEVEL[Math.min(1, level)];
+  const tone = tonePool[Math.floor(rng() * tonePool.length)];
+  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: level === 0 ? 2 : 3 };
+
+  // 正房（坐北朝南，占院北侧）
+  const mainD = Math.max(8, Math.min(20, Math.round(d * 0.42) * S));
+  const hx0 = ax0 + 3, hx1 = ax1 - 3, hz0 = az0 + 3, hz1 = Math.min(az1 - 6, az0 + 3 + mainD);
+  let topY = wallTop;
+  if (hx1 - hx0 >= 10 && hz1 - hz0 >= 6) {
+    const bays = Math.max(3, Math.min(9, Math.round((hx1 - hx0) / 8)));
+    const wallH = level === 0 ? 4 : 6;
+    let y = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, level === 0 ? 2 : 3, { steps: true, stepW: 4 });
+    const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 1 ? 2 : 1);
+    ARCH.wall(a, hx0, hz0, hx1, hz1, y, wallH, fr.cols, {
+      wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
+      xs: fr.xs, doorBay: Math.floor(bays / 2),
+    });
+    ARCH.dougong(a, fr.cols, y + wallH - 1, PAL.zhuBright, PAL.zhu);
+    const roofY = y + wallH + 2;
+    topY = level >= 2
+      ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt))
+      : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 6 }, roofOpt));
+  }
+
+  // 厢房（东西各一，体量低于正房）
+  const wingW = 7;
+  if (plan && plan.wingMode !== 'none' && az1 - hz1 >= 12) {
+    const wz0 = hz1 + 4, wz1 = az1 - 4;
+    const buildWing = (side) => {
+      const wx0 = side === 'W' ? ax0 + 3 : ax1 - 3 - wingW;
+      const wx1 = wx0 + wingW;
+      if (wz1 - wz0 < 6) return;
+      const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
+      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, 5, 2, PAL.zhu, 1);
+      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, 5, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
+      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + 6, { layers: 6, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+    };
+    if (plan.wingMode === 'both') { buildWing('W'); buildWing('E'); }
+    else buildWing(plan.wingMode === 'E' ? 'E' : 'W');
+  }
+
+  // 门屋（跨在院门上的小屋）
+  if (g.gAxis === 'NS' && g.gz === az1) {
+    const gw = 7;
+    const gy = ARCH.platform(a, g.gx - gw, az1 - 5, g.gx + gw, az1 + 1, ab, 1, { steps: false });
+    const gf = ARCH.colonnade(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy, 4, 3, PAL.zhuBright, 1);
+    ARCH.roofGable(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy + 5, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+    topY = Math.max(topY, gy + 10);
+  }
+
+  // 占位戳进城市字段：碰撞 / 小地图 / 远景 LOD 与建筑层一致
+  const topCity = Math.ceil(topY / S);
+  for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
+    const i = CHANGAN.fieldIndex(x, z);
+    if (i < 0) continue;
+    ctx.fields.topH[i] = topCity;
+    ctx.fields.topColor[i] = tone[0];
+  }
+  return topY;
 };
 
 // ---------------------------------------------------------------- 样板：含元殿式重檐庑殿大朝正殿
@@ -84247,6 +84409,7 @@ CHANGAN.generate = function (seed, onProgress) {
   });
   const ctx = {
     seed, store, fields, palRGB,
+    arch: new CHANGAN.ArchStore(),
     CFG: CHANGAN.CFG, PAL: CHANGAN.PAL,
     wards: CHANGAN.buildWardTable(),
     counters: CHANGAN.makeCounters(),

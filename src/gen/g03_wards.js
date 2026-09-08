@@ -475,15 +475,24 @@ function fillWardPlots(ctx, w, family) {
         plan.level = p.level != null ? p.level : plan.rank;
         ctx.residencePlans = ctx.residencePlans || [];
         ctx.residencePlans.push([plan.rank, plan.facing, plan.courtyardCount, plan.mainHallBays, plan.wingMode, plan.rearHall ? 1 : 0, plan.sideCourt ? 1 : 0, plan.serviceCourt ? 1 : 0, plan.garden ? 1 : 0, plan.well ? 1 : 0, plan.gateType].join('|') + '|' + rw + 'x' + rd);
-        proto.courtyard(ctx, r.x0, r.z0, rw, rd, w.base, plan.level, rng, p.face, plan);
+        // 建筑层（2×）：地坪留在城市层，建筑全部由建筑层生成（单一权威，守则铁律一）
+        CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+        CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, plan.level, rng, p.face, plan);
+        ctx.counters.houses++;
         break;
       }
       case 'manor': {
         if (rw < 14 || rd < 12 || !rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) {
-          if (rw >= 6 && rd >= 6 && rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) proto.courtyard(ctx, r.x0, r.z0, rw, rd, w.base, 1, rng, p.face);
+          if (rw >= 6 && rd >= 6 && rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) {
+            CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+            CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, 1, rng, p.face, { wingMode: 'W' });
+            ctx.counters.houses++;
+          }
           break;
         }
-        proto.manor(ctx, r.x0, r.z0, r.x1, r.z1, w.base, p.face, rng, { level: p.level || 2 });
+        CHANGAN.archCompoundGround(ctx, r.x0, r.z0, rw, rd, w.base);
+        CHANGAN.buildArchCompound(ctx, r.x0, r.z0, rw, rd, w.base, 2, rng, p.face, { wingMode: 'both', gateType: 'wutou' });
+        ctx.counters.houses++;
         break;
       }
       case 'temple': {

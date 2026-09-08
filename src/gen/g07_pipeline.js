@@ -22,6 +22,7 @@ CHANGAN.generate = function (seed, onProgress) {
   });
   const ctx = {
     seed, store, fields, palRGB,
+    arch: new CHANGAN.ArchStore(),
     CFG: CHANGAN.CFG, PAL: CHANGAN.PAL,
     wards: CHANGAN.buildWardTable(),
     counters: CHANGAN.makeCounters(),
