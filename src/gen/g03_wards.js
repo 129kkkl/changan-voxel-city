@@ -303,7 +303,7 @@ function buildWardLanes(ctx, w) {
 function splitQuad(ctx, w, q, family) {
   const rng = CHANGAN.rngOf(ctx.seed, 'wq-' + w.id + '-' + q.cn);
   const qw = q.x1 - q.x0 + 1, qd = q.z1 - q.z0 + 1;
-  if (qw < 7 || qd < 7) return;
+  if (qw < 12 || qd < 12) return;
   const northQuad = q.cn === 'NW' || q.cn === 'NE';
   const faceStreet = northQuad ? 'S' : 'N'; // 朝十字横街
 
@@ -331,7 +331,7 @@ function splitQuad(ctx, w, q, family) {
     w.plots.push({ ...q, face: faceStreet, kind, level: kind === 'manor' ? 2 : 2 });
     return;
   }
-  if (mode < 0.52 && qw >= 16) {
+  if (mode < 0.52 && qw >= 22) {
     // 坊曲纵巷偏置贯通，两侧分深
     const lx = CHANGAN.rint(rng, q.x0 + Math.floor(qw * 0.3), q.x0 + Math.floor(qw * 0.7));
     for (let z = q.z0; z <= q.z1; z++) w.paveLane(lx, z, 7);
@@ -339,7 +339,7 @@ function splitQuad(ctx, w, q, family) {
     splitStripZ(ctx, w, { x0: lx + 1, z0: q.z0, x1: q.x1, z1: q.z1 }, 'W', family, rng);
     return;
   }
-  if (mode < 0.72 && qd >= 16) {
+  if (mode < 0.72 && qd >= 22) {
     // 坊曲横巷偏置
     const lz = CHANGAN.rint(rng, q.z0 + Math.floor(qd * 0.3), q.z0 + Math.floor(qd * 0.7));
     for (let x = q.x0; x <= q.x1; x++) w.paveLane(x, lz, 7);
@@ -380,11 +380,11 @@ function splitStripZ(ctx, w, rect, face, family, rng) {
 function splitStripX(ctx, w, rect, face, family, rng) {
   const rw = rect.x1 - rect.x0 + 1, rd = rect.z1 - rect.z0 + 1;
   if (rw < 5 || rd < 5) return;
-  if (rw < 7 || rd < 7) { if (rw >= 5 && rd >= 5) w.plots.push({ ...rect, face, kind: 'grove' }); return; }
+  if (rw < 12 || rd < 12) { if (rw >= 5 && rd >= 5) w.plots.push({ ...rect, face, kind: 'grove' }); return; }
   let x = rect.x0;
-  while (rect.x1 - x + 1 >= 7) {
-    let sw = CHANGAN.rint(rng, 8, 12);
-    if (rect.x1 - (x + sw) < 7) sw = rect.x1 - x + 1; // 收尾并入末段
+  while (rect.x1 - x + 1 >= 12) {
+    let sw = CHANGAN.rint(rng, 14, 24);
+    if (rect.x1 - (x + sw) < 12) sw = rect.x1 - x + 1; // 收尾并入末段
     pushStripPlot(ctx, w, { x0: x, z0: rect.z0, x1: x + sw - 1, z1: rect.z1 }, face, family, rng);
     x += sw;
   }
@@ -397,7 +397,7 @@ function pushStripPlot(ctx, w, rect, face, family, rng) {
   else if (family === 'estate') level = rng() < 0.8 ? 1 : 0;
   else { const t = rng(); level = t < 0.3 ? 1 : 0; if (t > 0.92) kind = 'open'; }
   // 大进深地块升级为多进府第（大小宅地混合的"大"）
-  if (kind === 'court' && rw >= 14 && rd >= 12 && (family === 'estate' || family === 'mixed') && rng() < 0.5) {
+  if (kind === 'court' && rw >= 20 && rd >= 14 && (family === 'estate' || family === 'mixed') && rng() < 0.5) {
     kind = 'manor'; level = 2;
   }
   w.plots.push({ ...rect, face, kind, level });
@@ -406,7 +406,7 @@ function pushStripPlot(ctx, w, rect, face, family, rng) {
 // 小坊一字街南北带分段
 function splitBand(ctx, w, band, face, family, rng) {
   const bw = band.x1 - band.x0 + 1, bd = band.z1 - band.z0 + 1;
-  if (bw < 7 || bd < 7) {
+  if (bw < 12 || bd < 12) {
     if (bw >= 5 && bd >= 5) w.plots.push({ ...band, face, kind: 'grove' });
     return;
   }
@@ -419,14 +419,14 @@ function splitBand(ctx, w, band, face, family, rng) {
     if (band.x1 - band.x0 < 9) return;
   }
   let x = band.x0;
-  while (band.x1 - x + 1 >= 7) {
-    let sw = CHANGAN.rint(rng, 8, 12);
-    if (band.x1 - (x + sw) < 7) sw = band.x1 - x + 1;
+  while (band.x1 - x + 1 >= 12) {
+    let sw = CHANGAN.rint(rng, 14, 24);
+    if (band.x1 - (x + sw) < 12) sw = band.x1 - x + 1;
     let kind = 'court', level = 0;
     if (family === 'sparse') { const t = rng(); kind = t < 0.25 ? 'court' : t < 0.6 ? 'field' : 'grove'; }
     else if (family === 'dense') level = rng() < 0.28 ? 1 : 0;
     else { level = rng() < 0.4 ? 1 : 0; if (rng() > 0.93) kind = 'open'; }
-    if (kind === 'court' && sw >= 14 && bd >= 12 && family !== 'dense' && rng() < 0.4) { kind = 'manor'; level = 2; }
+    if (kind === 'court' && sw >= 20 && bd >= 14 && family !== 'dense' && rng() < 0.4) { kind = 'manor'; level = 2; }
     w.plots.push({ x0: x, z0: band.z0, x1: x + sw - 1, z1: band.z1, face, kind, level });
     x += sw;
   }
@@ -468,7 +468,7 @@ function fillWardPlots(ctx, w, family) {
     if (rw < 5 || rd < 5) continue;
     switch (p.kind) {
       case 'court': {
-        if (rw < 6 || rd < 6) { growGrove(ctx, r, rng, 2); break; }
+        if (rw < 10 || rd < 10) { growGrove(ctx, r, rng, 2); break; }
         if (!rectFree(ctx, r.x0, r.z0, r.x1, r.z1)) { growGrove(ctx, r, rng, 2); break; }
         // ResidencePlan先行：组件组合而非整栋复制（院墙/门屋/正房/厢/后寝/跨院/仓厨/井园/廊）
         const plan = CHANGAN.residencePlan(ctx, r, w.profile || { wealth: 0.5, estate: 0.2, garden: 0.2 }, rng, p.face);

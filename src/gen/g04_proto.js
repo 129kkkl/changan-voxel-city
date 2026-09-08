@@ -529,8 +529,24 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const cnt = ctx.counters;
   cnt['roof_' + type] = (cnt['roof_' + type] || 0) + 1;
   cnt['roofspan_' + Math.min(24, x1 - x0 + 1)] = (cnt['roofspan_' + Math.min(24, x1 - x0 + 1)] || 0) + 1;
-  const main = opts.main || PAL.roofGrey;
-  const lip = opts.lip || PAL.roofLight;
+  // 屋面色族：**按建筑规模分配**——大屋顶（面阔或进深 >=13）用琉璃绿/蓝/黛作地标色，
+  // 小屋顶保持青灰/黛/深褐，避免"大块连续同色"与"小房子喧宾夺主"。
+  // 用户明确要求"不拘泥专业性、增加艺术性与观赏性"。
+  const bigRoof = (x1 - x0 + 1) >= 10 || (z1 - z0 + 1) >= 10;
+  const TONE_GREY = [PAL.roofGrey, PAL.roofLight, PAL.roofGroove];
+  const TONE_SLATE = [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
+  const TONE_GREEN = [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG];
+  const TONE_BLUE = [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
+  const TONE_BROWN = [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG];
+  const ROOF_TONES = bigRoof
+    ? [TONE_GREEN, TONE_BLUE, TONE_SLATE, TONE_SLATE, TONE_GREY, TONE_GREEN, TONE_BLUE, TONE_GREY]
+    : [TONE_GREY, TONE_GREY, TONE_GREY, TONE_GREY, TONE_SLATE, TONE_SLATE, TONE_SLATE, TONE_BROWN];
+  const toneIdx = opts.tone != null ? (opts.tone | 0)
+    : (Math.abs(Math.imul(x0, 73856093) ^ Math.imul(z0, 19349663)) >>> 0) % ROOF_TONES.length;
+  const tone = ROOF_TONES[toneIdx] || ROOF_TONES[0];
+  const main = opts.main || tone[0];
+  const lip = opts.lip || tone[1];
+  const tileGroove = tone[2];
   const trim = opts.trim;
   const ridgeC = PAL.roofDark;
 
@@ -562,14 +578,14 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   // 近景法医式检查判定"所有体块顶部都是纯平顶"。本轮把层数上限提到 8，
   // 保证 5 格以内的小屋顶也是 1 格一级的连续台阶（45° 体素坡），中景即可读出屋盖。
   const pitch = opts.pitch == null ? 1 : Math.max(0.75, Math.min(1, opts.pitch));
-  const layers = Math.max(2, Math.min(8, Math.round(halfSpan * pitch)));
+  const layers = Math.max(2, Math.min(10, Math.round(halfSpan * pitch)));
   // 归一化到 layers-1，保证顶层一定收到脊线宽度（悬山/庑殿/歇山都能闭合成脊）
   const insetOf = L => Math.round(halfSpan * Math.pow(L / Math.max(1, layers - 1), 1.12));
 
   // 瓦垄：屋面按垄分色（一格垄 + 一格沟），远看是瓦面、近看有垄。
   // 上轮屋面是纯色平板，这是"屋顶像水泥板"最直接的来源。沟色用 roofGroove 而非 roofDark，
   // 避免远处出现摩尔纹与"花掉"。
-  const tileC = (x, z) => (((alongX ? x : z) & 1) ? main : PAL.roofGroove);
+  const tileC = (x, z) => (((alongX ? x : z) & 1) ? main : tileGroove);
 
   // 檐下椽头带：出檐外圈的下皮压木色，并按 (x+z) 奇偶交替深浅，形成可辨的椽头节奏。
   // 行人平视时看到的是檐底，原来檐底与瓦面同色，读作一块悬着的灰板。
@@ -899,25 +915,25 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   // 正房（居北，坐北朝南；开间按Plan.mainHallBays）；北墙开角门时让出西侧通道
   const shift = (g.facing === 'N') ? 3 : 2;
   if (level === 0) {
-    const mainD = Math.max(3, Math.min(5, Math.floor(d * 0.42)));
+    const mainD = Math.max(5, Math.min(9, Math.floor(d * 0.42)));
     // 普通民居也要有屋顶形制差异：悬山为主，混入歇山/攒尖，墙高 2~3 随机。
     // 全城 86% 墙高=3、58% 悬山是"千篇一律"的直接来源。
     const t0 = rng();
     const roof0 = t0 < 0.55 ? 'xuan' : (t0 < 0.85 ? 'xie' : 'jian');
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: roof0, door: 'S', wallH: rng() < 0.35 ? 2 : 3, overhang: 1, windows: true, openDoor: true,
+      roof: roof0, door: 'S', wallH: rng() < 0.3 ? 3 : 4, overhang: 1, windows: true, openDoor: true,
       pitch: 0.88 + rng() * 0.12,
-      wall: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster,
+      wall: [PAL.plaster, PAL.plaster, PAL.plasterWarm, PAL.rammedLight, PAL.loessLight][Math.floor(rng() * 5)],
     });
     if (plan.well && w >= 10 && d >= 10) proto.well(ctx, x0 + 2, z1 - 4, base);
     else if (rng() < 0.35) proto.tree(ctx, x1 - 2, z1 - 2, base, rng() < 0.5 ? 'apricot' : 'elm', rng);
     if (plan.garden) { store.set(x1 - 2, base, z1 - 2, PAL.grass); proto.tree(ctx, x1 - 3, z1 - 3, base, 'elm', rng); }
   } else if (level === 1) {
-    const mainD = Math.max(4, Math.min(6, Math.floor(d * 0.40)));
+    const mainD = Math.max(6, Math.min(10, Math.floor(d * 0.40)));
     const t1 = rng();
     const roof1 = t1 < 0.3 ? 'xuan' : (t1 < 0.8 ? 'xie' : 'hip');
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: roof1, door: 'S', platform: 1, wallH: rng() < 0.4 ? 3 : 4, overhang: 1, openDoor: true,
+      roof: roof1, door: 'S', platform: 1, wallH: rng() < 0.4 ? 4 : 5, overhang: 1, openDoor: true,
       pitch: 0.85 + rng() * 0.15,
     });
     // 厢房按Plan.wingMode：W/E/both/none（非随机单厢，破复制感）
@@ -941,11 +957,11 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   } else {
     // 小宅第：乌头门 + 高台正堂 + 东西回廊（Plan控制跨院/后寝）
     if (g.gAxis === 'NS' && plan.gateType === 'wutou') proto.wutouGate(ctx, g.gx, g.gz, base, 'NS');
-    const mainD = Math.max(4, Math.min(6, Math.floor(d * 0.38)));
+    const mainD = Math.max(7, Math.min(12, Math.floor(d * 0.38)));
     const t2 = rng();
     const roof2 = t2 < 0.2 ? 'xie' : 'hip';
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: roof2, doubleEave: t2 >= 0.7, door: 'S', platform: 1, wallH: 4 + (rng() < 0.3 ? 1 : 0),
+      roof: roof2, doubleEave: t2 >= 0.7, door: 'S', platform: 1, wallH: 5 + (rng() < 0.4 ? 1 : 0),
       col: PAL.zhuBright, overhang: 2, openDoor: true, pitch: 0.82 + rng() * 0.18,
     });
     if (d >= 11 && w >= 12) {

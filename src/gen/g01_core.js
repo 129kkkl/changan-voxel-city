@@ -275,6 +275,19 @@ const PALETTE_DEF = [
   ['doorDark',    '#3a2a1c', 'opaque'], // 板门
   ['paperWhite',  '#f2ead8', 'opaque'], // 纸幡
   ['roofGroove',  '#46505a', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
+  // ---- 屋面色族（艺术化：一城之内拉开屋顶色调，避免"清一色蓝灰平顶"的同质化）----
+  ['roofSlate',   '#4a5560', 'opaque'], // 黛瓦
+  ['roofSlateL',  '#61707c', 'opaque'], // 黛瓦亮（檐口）
+  ['roofSlateG',  '#3b4650', 'opaque'], // 黛瓦沟
+  ['roofGreen',   '#3f6b5a', 'opaque'], // 琉璃绿（主要建筑屋面，艺术化用色）
+  ['roofGreenL',  '#568a72', 'opaque'],
+  ['roofGreenG',  '#2f5346', 'opaque'],
+  ['roofBlue',    '#3f5d7a', 'opaque'], // 琉璃蓝
+  ['roofBlueL',   '#57799a', 'opaque'],
+  ['roofBlueG',   '#2f4860', 'opaque'],
+  ['roofBrown',   '#5a4a42', 'opaque'], // 深褐瓦（少量，破单调）
+  ['roofBrownL',  '#726056', 'opaque'],
+  ['roofBrownG',  '#453833', 'opaque'],
 ];
 const PAL = {}; PALETTE_DEF.forEach((d, i) => { PAL[d[0]] = i + 1; }); // 体素值 1..N，0=空
 const PAL_GROUP = PALETTE_DEF.map(d => d[2]);
