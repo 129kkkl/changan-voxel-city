@@ -84207,13 +84207,15 @@ const ARCH = {
       const za = ez0 + iz, zb = ez1 - iz;
       if (za > zb) break;
       const y = y0 + L;
-      for (let x = ex0; x <= ex1; x++) for (let z = za; z <= zb; z++) {
-        const isEave = (z === za || z === zb);
+      // 檐口挑出：最下一层再向外挑 2 格（P0 判"檐口零出挑，像扣在盒子上的帽檐"）
+      const out = (L === 0) ? 2 : 0;
+      for (let x = ex0 - out; x <= ex1 + out; x++) for (let z = za - out; z <= zb + out; z++) {
+        const isEave = (z === za - out || z === zb + out);
         let c = ((x & 1) ? main : groove);
         if (L === 0 && isEave) c = lip;
         a.set(x, y, z, c);
       }
-      for (const sx of [ex0, ex1]) for (let z = za; z <= zb; z++) a.set(sx, y, z, L === 0 ? lip : PAL.plasterWarm);
+      for (const sx of [ex0 - out, ex1 + out]) for (let z = za - out; z <= zb + out; z++) a.set(sx, y, z, L === 0 ? lip : PAL.plasterWarm);
     }
     const ry = y0 + layers;
     const cz = (ez0 + ez1) >> 1;
