@@ -51,10 +51,17 @@ function buildWardShell(ctx, w) {
       fields.topColor[i] = P.brickPave;
       continue;
     }
+    // 坊墙：夯土墙身 + 瓦顶压边。原墙仅 3 格高且顶面与墙身同色，远看与院落墙无异，
+    // 里坊边界读不出来。加高一格并压瓦顶（外挑 1 格 + 瓦暗脊线），坊才成其为坊。
     store.set(x, base + 1, z, P.rammed);
     store.set(x, base + 2, z, P.rammed);
     store.set(x, base + 3, z, P.rammedLight);
-    fields.topH[i] = base + 3; fields.topColor[i] = P.rammedLight;
+    store.set(x, base + 4, z, P.roofDark);
+    const wox = x === w.x0 ? -1 : x === w.x1 ? 1 : 0;
+    const woz = z === w.z0 ? -1 : z === w.z1 ? 1 : 0;
+    if (wox) store.set(x + wox, base + 4, z, P.roofGrey);
+    if (woz) store.set(x, base + 4, z + woz, P.roofGrey);
+    fields.topH[i] = base + 4; fields.topColor[i] = P.roofDark;
   }
   // 坊门重楼（门洞上方木构门楼，歇山顶+小鸱尾）+ 坊榜
   for (const g of w.gateCells) {

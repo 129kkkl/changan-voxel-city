@@ -274,6 +274,7 @@ const PALETTE_DEF = [
   ['mountainFar', '#8fa3b8', 'opaque'], // 终南山剪影
   ['doorDark',    '#3a2a1c', 'opaque'], // 板门
   ['paperWhite',  '#f2ead8', 'opaque'], // 纸幡
+  ['roofGroove',  '#525c64', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
 ];
 const PAL = {}; PALETTE_DEF.forEach((d, i) => { PAL[d[0]] = i + 1; }); // 体素值 1..N，0=空
 const PAL_GROUP = PALETTE_DEF.map(d => d[2]);

@@ -47,3 +47,46 @@ if (fields && fields.wardId) {
   const pct = v => (v / tot * 100).toFixed(1) + '%';
   console.log(`坊内构成(${tot}列): 建筑/铺装=${pct(built)} 道路=${pct(road)} 水=${pct(water)} 裸地/植被=${pct(bare)}`);
 }
+
+// 建筑类型学分布（来自 ctx.buildLog）
+const log = res._ctx && res._ctx.buildLog;
+if (log && log.length) {
+  const tally = (f) => {
+    const m = new Map();
+    for (const e of log) { const k = f(e); if (k == null) continue; m.set(k, (m.get(k) || 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  console.log(`建筑记录 ${log.length} 条`);
+  console.log('  屋顶形制: ' + tally(e => e.roofProfile).map(([k, v]) => `${k}=${v}`).join(' '));
+  console.log('  等级:     ' + tally(e => 'r' + e.rank).map(([k, v]) => `${k}=${v}`).join(' '));
+  console.log('  面阔:     ' + tally(e => 'w' + Math.min(24, e.x1 - e.x0 + 1)).sort((a, b) => +a[0].slice(1) - +b[0].slice(1)).map(([k, v]) => `${k}=${v}`).join(' '));
+  console.log('  总高:     ' + tally(e => 'h' + Math.min(20, e.h)).sort((a, b) => +a[0].slice(1) - +b[0].slice(1)).map(([k, v]) => `${k}=${v}`).join(' '));
+  console.log('  开间:     ' + tally(e => e.bayPattern).slice(0, 12).map(([k, v]) => `${k}=${v}`).join(' '));
+  const hashes = new Set(log.map(e => e.silhouetteHash));
+  console.log(`  轮廓签名去重: ${hashes.size} 种 / ${log.length} 条（重复率 ${(100 * (1 - hashes.size / log.length)).toFixed(1)}%）`);
+  const real = log.filter(e => !e.generic);
+  const rh = new Set(real.map(e => e.silhouetteHash));
+  console.log(`  非 generic 记录: ${real.length} 条，轮廓去重 ${rh.size} 种`);
+}
+
+// 屋顶/厅堂类型学普查（由 proto.roof / proto.hall 直接计数）
+{
+  const c2 = (res._ctx && res._ctx.counters) || {};
+  const pick2 = (prefix) => Object.keys(c2).filter(k => k.startsWith(prefix))
+    .map(k => [k.slice(prefix.length), c2[k]])
+    .sort((a, b) => (/^\d+$/.test(a[0]) && /^\d+$/.test(b[0])) ? (+a[0] - +b[0]) : b[1] - a[1]);
+  const roofT = pick2('roof_');
+  const roofS = pick2('roofspan_');
+  const hallW = pick2('hallw_');
+  const hallH = pick2('hallh_');
+  if (roofT.length) console.log('屋顶形制普查: ' + roofT.map(([k, v]) => `${k}=${v}`).join(' '));
+  const roofHalf = pick2('roofhalf_');
+  if (roofHalf.length) {
+    const tot = roofHalf.reduce((a, [, v]) => a + v, 0);
+    const bad = roofHalf.filter(([k]) => +k <= 2).reduce((a, [, v]) => a + v, 0);
+    console.log('  屋面半跨分布: ' + roofHalf.map(([k, v]) => `${k}=${v}`).join(' ') + `  ← 半跨<=2（读作平顶）占 ${(bad / tot * 100).toFixed(1)}%`);
+  }
+  if (roofS.length) console.log('  屋面跨度: ' + roofS.map(([k, v]) => `${k}=${v}`).join(' '));
+  if (hallW.length) console.log('  厅堂面阔: ' + hallW.map(([k, v]) => `${k}=${v}`).join(' '));
+  if (hallH.length) console.log('  厅堂墙高: ' + hallH.map(([k, v]) => `${k}=${v}`).join(' '));
+}

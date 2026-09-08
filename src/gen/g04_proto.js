@@ -525,14 +525,23 @@ CHANGAN._wallRing = wallRing; CHANGAN._dougong = dougong; CHANGAN._chiwei = chiw
 proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   opts = opts || {};
   const { store } = ctx;
+  // 类型学普查：屋顶形制 × 跨度档 × 层数档
+  const cnt = ctx.counters;
+  cnt['roof_' + type] = (cnt['roof_' + type] || 0) + 1;
+  cnt['roofspan_' + Math.min(24, x1 - x0 + 1)] = (cnt['roofspan_' + Math.min(24, x1 - x0 + 1)] || 0) + 1;
   const main = opts.main || PAL.roofGrey;
   const lip = opts.lip || PAL.roofLight;
   const trim = opts.trim;
   const ridgeC = PAL.roofDark;
 
-  // 深远出檐：出檐必须明确挑出墙身/柱列之外，才能在墙面留下檐下阴影带，
-  // 近景才读得出"屋顶压在柱网上"的支承关系（上轮 1~2 格出檐与墙身齐平）。
-  const over = opts.overhang == null ? ((x1 - x0) >= 10 ? 3 : ((x1 - x0) >= 6 ? 2 : 1)) : opts.overhang;
+  // 深远出檐：出檐必须明确挑出墙身/柱列之外，才能在墙面留下檐下阴影带。
+  let over = opts.overhang == null ? ((x1 - x0) >= 10 ? 3 : ((x1 - x0) >= 4 ? 2 : 1)) : opts.overhang;
+  // 屋面跨度兜底：半跨 <3 时屋面只有 2 层台阶，必读成平顶（实测 71% 的屋面落在这一档）。
+  // 小建筑靠加大出檐把屋面撑到至少 7 格宽，宁可有深檐也不能没有坡。
+  {
+    const s0 = Math.min(x1 - x0 + 1, z1 - z0 + 1);
+    if (s0 + 2 * over < 7) over = Math.min(4, Math.ceil((7 - s0) / 2));
+  }
   const ex0 = x0 - over, ex1 = x1 + over, ez0 = z0 - over, ez1 = z1 + over;
   const w = ex1 - ex0 + 1, d = ez1 - ez0 + 1;
   const alongX = (w >= d);
@@ -540,14 +549,27 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const cx = (ex0 + ex1) >> 1, cz = (ez0 + ez1) >> 1;
   const minSpan = alongX ? d : w;
   const halfSpan = Math.max(1, Math.floor((minSpan - 1) / 2));
+  cnt['roofmin_' + Math.min(24, minSpan)] = (cnt['roofmin_' + Math.min(24, minSpan)] || 0) + 1;
+  cnt['roofhalf_' + Math.min(12, halfSpan)] = (cnt['roofhalf_' + Math.min(12, halfSpan)] || 0) + 1;
 
   // 举折平缓 + 真坡度：层数取半跨（上限 5），每层内收 1~2 格。
   // 上轮"2 层大平板 + 一条脊"是屋顶看起来像水泥平板的直接原因；本轮改为
   // 层数 = 半跨（封顶 5），内收按举折曲线（檐口缓、近脊陡）分配，保证：
   //   ① 最大层间内收 <= 2 格，不出现整面墙式跳变；
   //   ② 顶层收到脊线宽度（悬山/庑殿/歇山都能闭合成脊），正脊才真正落在屋面上。
-  const layers = Math.max(2, Math.min(5, halfSpan));
-  const insetOf = L => Math.round(halfSpan * Math.pow(L / layers, 1.12));
+  // 举折 + 真坡度：**每层内收 1 格、层数 = 半跨**，这是体素屋顶唯一能读出"坡"的写法。
+  // 上轮层数被压到 2~4 层、每层内收 2~3 格，结果是"两张平板叠一条脊"，
+  // 近景法医式检查判定"所有体块顶部都是纯平顶"。本轮把层数上限提到 8，
+  // 保证 5 格以内的小屋顶也是 1 格一级的连续台阶（45° 体素坡），中景即可读出屋盖。
+  const pitch = opts.pitch == null ? 1 : Math.max(0.75, Math.min(1, opts.pitch));
+  const layers = Math.max(2, Math.min(8, Math.round(halfSpan * pitch)));
+  // 归一化到 layers-1，保证顶层一定收到脊线宽度（悬山/庑殿/歇山都能闭合成脊）
+  const insetOf = L => Math.round(halfSpan * Math.pow(L / Math.max(1, layers - 1), 1.12));
+
+  // 瓦垄：屋面按垄分色（一格垄 + 一格沟），远看是瓦面、近看有垄。
+  // 上轮屋面是纯色平板，这是"屋顶像水泥板"最直接的来源。沟色用 roofGroove 而非 roofDark，
+  // 避免远处出现摩尔纹与"花掉"。
+  const tileC = (x, z) => (((alongX ? x : z) & 1) ? main : PAL.roofGroove);
 
   // 檐下椽头带：出檐外圈的下皮压木色，并按 (x+z) 奇偶交替深浅，形成可辨的椽头节奏。
   // 行人平视时看到的是檐底，原来檐底与瓦面同色，读作一块悬着的灰板。
@@ -573,7 +595,7 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
           for (let z = za; z <= zb; z++) {
             const isEave = (z === za || z === zb);
             const isEdge = (x === ex0 || x === ex1);
-            let c = main;
+            let c = tileC(x, z);
             if (L === 0 && isEave) c = lip;
             if (isEdge) c = (L === 0) ? lip : (trim || main);
             store.set(x, yy, z, c);
@@ -590,7 +612,7 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
           for (let x = xa; x <= xb; x++) {
             const isEave = (x === xa || x === xb);
             const isEdge = (z === ez0 || z === ez1);
-            let c = main;
+            let c = tileC(x, z);
             if (L === 0 && isEave) c = lip;
             if (isEdge) c = (L === 0) ? lip : (trim || main);
             store.set(x, yy, z, c);
@@ -635,7 +657,7 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
       for (let x = xa; x <= xb; x++) {
         for (let z = za; z <= zb; z++) {
           const ring = (x === xa || x === xb || z === za || z === zb);
-          let c = main;
+          let c = tileC(x, z);
           if (L === 0 && ring) c = lip;
           if (trim && (L === 0 || L === layers - 1) && ring) c = trim;
           store.set(x, yy, z, c);
@@ -683,7 +705,7 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
     for (let x = xa; x <= xb; x++) {
       for (let z = za; z <= zb; z++) {
         const ring = (x === xa || x === xb || z === za || z === zb);
-        let c = main;
+        let c = tileC(x, z);
         if (L === 0 && ring) c = lip;
         if (trim && (L === 0 || L === layers - 1) && ring) c = trim;
 
@@ -730,6 +752,9 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
 
 // ================================================================ 通用殿堂（台基 + 开间柱网 + 柱头斗栱 + 屋顶）
 proto.hall = function (ctx, x0, z0, x1, z1, base, opts) {
+  // 退化地块保护：1~2 格宽/深会在近景变成"孤零零的灰色薄鳍"（法医检查已确认为最丑之处）。
+  // 小于 3×3 直接不生成，宁可留空也不留一根墙片。
+  if (x1 - x0 < 3 || z1 - z0 < 3) return base;
   CHANGAN._noteGeneric(ctx, 'proto.hall');
   opts = opts || {};
   const { store } = ctx;
@@ -776,6 +801,8 @@ proto.hall = function (ctx, x0, z0, x1, z1, base, opts) {
   }
 
   ctx.counters.halls++;
+  ctx.counters['hallw_' + Math.min(24, x1 - x0 + 1)] = (ctx.counters['hallw_' + Math.min(24, x1 - x0 + 1)] || 0) + 1;
+  ctx.counters['hallh_' + Math.min(12, wallH)] = (ctx.counters['hallh_' + Math.min(12, wallH)] || 0) + 1;
   return ry;
 };
 
@@ -873,8 +900,13 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   const shift = (g.facing === 'N') ? 3 : 2;
   if (level === 0) {
     const mainD = Math.max(3, Math.min(5, Math.floor(d * 0.42)));
+    // 普通民居也要有屋顶形制差异：悬山为主，混入歇山/攒尖，墙高 2~3 随机。
+    // 全城 86% 墙高=3、58% 悬山是"千篇一律"的直接来源。
+    const t0 = rng();
+    const roof0 = t0 < 0.55 ? 'xuan' : (t0 < 0.85 ? 'xie' : 'jian');
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: 'xuan', door: 'S', wallH: 3, overhang: 1, windows: true, openDoor: true,
+      roof: roof0, door: 'S', wallH: rng() < 0.35 ? 2 : 3, overhang: 1, windows: true, openDoor: true,
+      pitch: 0.88 + rng() * 0.12,
       wall: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster,
     });
     if (plan.well && w >= 10 && d >= 10) proto.well(ctx, x0 + 2, z1 - 4, base);
@@ -882,15 +914,18 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
     if (plan.garden) { store.set(x1 - 2, base, z1 - 2, PAL.grass); proto.tree(ctx, x1 - 3, z1 - 3, base, 'elm', rng); }
   } else if (level === 1) {
     const mainD = Math.max(4, Math.min(6, Math.floor(d * 0.40)));
+    const t1 = rng();
+    const roof1 = t1 < 0.3 ? 'xuan' : (t1 < 0.8 ? 'xie' : 'hip');
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: rng() < 0.5 ? 'xie' : 'xuan', door: 'S', platform: 1, wallH: 3, overhang: 1, openDoor: true,
+      roof: roof1, door: 'S', platform: 1, wallH: rng() < 0.4 ? 3 : 4, overhang: 1, openDoor: true,
+      pitch: 0.85 + rng() * 0.15,
     });
     // 厢房按Plan.wingMode：W/E/both/none（非随机单厢，破复制感）
     const buildWing = (side) => {
       const wx0 = (side === 'W') ? x0 + 2 : x1 - 4;
       const wx1 = (side === 'W') ? x0 + 4 : x1 - 2;
       if (wx1 - wx0 < 2 || z1 - (z0 + mainD + 2) < 3) return;
-      proto.hall(ctx, wx0, z0 + mainD + 2, wx1, z1 - 2, base, { roof: 'xuan', door: side === 'W' ? 'E' : 'W', wallH: 3, overhang: 1, windows: false });
+      proto.hall(ctx, wx0, z0 + mainD + 2, wx1, z1 - 2, base, { roof: rng() < 0.7 ? 'xuan' : 'xie', door: side === 'W' ? 'E' : 'W', wallH: 2 + (rng() < 0.5 ? 1 : 0), overhang: 1, windows: false, pitch: 0.92 });
     };
     if (d >= 10 && w >= 10) {
       if (plan.wingMode === 'both') { buildWing('W'); buildWing('E'); }
@@ -907,8 +942,11 @@ proto.courtyard = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
     // 小宅第：乌头门 + 高台正堂 + 东西回廊（Plan控制跨院/后寝）
     if (g.gAxis === 'NS' && plan.gateType === 'wutou') proto.wutouGate(ctx, g.gx, g.gz, base, 'NS');
     const mainD = Math.max(4, Math.min(6, Math.floor(d * 0.38)));
+    const t2 = rng();
+    const roof2 = t2 < 0.2 ? 'xie' : 'hip';
     proto.hall(ctx, x0 + shift, z0 + 1, x1 - 2, z0 + mainD, base, {
-      roof: 'xie', door: 'S', platform: 1, wallH: 4, col: PAL.zhuBright, overhang: 2, openDoor: true,
+      roof: roof2, doubleEave: t2 >= 0.7, door: 'S', platform: 1, wallH: 4 + (rng() < 0.3 ? 1 : 0),
+      col: PAL.zhuBright, overhang: 2, openDoor: true, pitch: 0.82 + rng() * 0.18,
     });
     if (d >= 11 && w >= 12) {
       colonnade(ctx, x0 + 2, z0 + mainD + 1, x0 + 2, z1 - 2, base);
