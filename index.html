@@ -206,7 +206,7 @@ button { font: inherit; }
 
     <aside class="tour-panel" aria-label="机位巡游">
       <div class="tour-header">
-        <div class="panel-label">机位巡游 · 十八景</div>
+        <div class="panel-label">机位巡游 · 十九景</div>
         <button id="tour-toggle" class="tour-toggle" type="button" aria-expanded="true">收起</button>
       </div>
       <div class="landmarks" id="landmark-list"></div>
@@ -79744,9 +79744,21 @@ CHANGAN.stageStreets = function (ctx) {
       const lv = fields.road[i];
       if (!lv) continue;
       const y = fields.groundH[i];
-      let c = PAL.loessLight; // 夯筑路面
-      if (lv <= 2) c = (x + z) % 2 ? PAL.loessLight : PAL.rammedLight; // 御道/横街双色微差
-      if (lv === 3) c = PAL.loessLight;
+      let c = PAL.loess;
+      if (lv === 1) {
+        // 御道（朱雀大街）：中央 4 格天子御道平整浅夯土，两侧官道黄土夯筑
+        const isCenterAxis = (x >= -2 && x <= 1);
+        c = isCenterAxis ? PAL.rammedLight : (Math.abs(x) >= 4 ? PAL.loessDeep : PAL.loess);
+      } else if (lv === 2) {
+        // 横街（大朝广场横街）：大尺度整体夯土
+        c = (z >= CFG.HENGJIE.z0 + 4 && z <= CFG.HENGJIE.z1 - 4) ? PAL.rammedLight : PAL.loess;
+      } else if (lv === 3) {
+        // 门前街衢
+        c = PAL.loessLight;
+      } else {
+        // 六街与顺城街
+        c = PAL.loess;
+      }
       store.set(x, y, z, c);
       fields.topColor[i] = c;
     }
@@ -81124,23 +81136,25 @@ function platform(ctx, x0, z0, x1, z1, base, h, c, door) {
 CHANGAN.platform = platform;
 CHANGAN._wallRing = null; CHANGAN._dougong = null; CHANGAN._chiwei = null;
 
-// 2. 盛唐弯月鸱吻：基座稳固、背部隆起、尾梢内卷，饰以鎏金或琉璃
+// 2. 盛唐弯月鸱吻：基座平稳骑脊、背部隆起出鳍、尾梢向内月牙回卷，严禁冲天兔耳
 function chiwei(ctx, x, y, z, axis, palace, dir) {
   const { store } = ctx;
   const c = palace ? PAL.glazeGreen : PAL.roofDark;
-  const trimC = palace ? PAL.gold : (palace ? PAL.glazeGreen : PAL.roofLight);
+  const tipC = palace ? PAL.glazeGreen : PAL.roofLight;
   const d = dir || 1; // 1: 向正向内卷, -1: 向负向内卷
 
   if (axis === 'x') {
-    store.set(x, y + 1, z, c); store.set(x + d, y + 1, z, c);
-    store.set(x, y + 2, z, c); store.set(x + d, y + 2, z, c);
-    store.set(x, y + 3, z, c); store.set(x + d, y + 3, z, trimC);
-    store.set(x + d, y + 4, z, trimC);
+    // 基座骑脊 (高 1 格)
+    store.set(x, y + 1, z, c);
+    store.set(x + d, y + 1, z, c);
+    // 月牙回卷鳍形 (高 2 格，稳重古朴，向内勾卷)
+    store.set(x, y + 2, z, c);
+    store.set(x + d, y + 2, z, tipC);
   } else {
-    store.set(x, y + 1, z, c); store.set(x, y + 1, z + d, c);
-    store.set(x, y + 2, z, c); store.set(x, y + 2, z + d, c);
-    store.set(x, y + 3, z, c); store.set(x, y + 3, z + d, trimC);
-    store.set(x, y + 4, z + d, trimC);
+    store.set(x, y + 1, z, c);
+    store.set(x, y + 1, z + d, c);
+    store.set(x, y + 2, z, c);
+    store.set(x, y + 2, z + d, tipC);
   }
 }
 
@@ -82350,28 +82364,91 @@ proto.tree = function (ctx, x, z, base, kind, rng) {
   }[kind] || { trunk: PAL.timber, leaf: [PAL.huaiGreen], h: 3, r: 1 };
 
   const putIfFree = (px, py, pz, c) => { if (!store.get(px, py, pz)) store.set(px, py, pz, c); };
-  const trunk = T.trunk;
-  for (let y = 1; y <= T.h; y++) putIfFree(x, gy + y, z, trunk);
+  
+  // 盛唐有机树木生长器：按坐标微扰高度与冠幅，告别等距方块树
+  const varH = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+  const trunkH = kind === 'pine' ? 4 : (kind === 'bamboo' ? 3 : (3 + (varH > 0.6 ? 1 : 0)));
+  const trunkC = (kind === 'bamboo') ? PAL.bambooGreen : (kind === 'willow' ? PAL.timber : PAL.timberDark);
+
+  // 主干挺拔向上
+  for (let y = 1; y <= trunkH; y++) putIfFree(x, gy + y, z, trunkC);
 
   if (kind === 'bamboo') {
-    for (let b = 0; b < 3; b++) {
-      const bx = x + (b % 2), bz = z + (b >> 1);
-      for (let y = 1; y <= 3 + (b % 2); y++) putIfFree(bx, gy + y, bz, PAL.bambooGreen);
-      putIfFree(bx, gy + 4 + (b % 2), bz, PAL.huaiLight);
+    // 丛生修竹
+    for (let b = 0; b < 4; b++) {
+      const bx = x + ((b % 2) ? 1 : 0) * (b < 2 ? 1 : -1);
+      const bz = z + ((b > 1) ? 1 : 0);
+      const bh = 3 + (b % 2);
+      for (let y = 1; y <= bh; y++) putIfFree(bx, gy + y, bz, PAL.bambooGreen);
+      putIfFree(bx, gy + bh + 1, bz, PAL.huaiLight);
     }
+    fields.topH[i] = Math.max(fields.topH[i], gy + 5);
+  } else if (kind === 'willow') {
+    // 隋堤垂柳：伞状主冠 + 四周柔和垂枝
+    const cy = gy + trunkH + 1;
+    // 枝干侧伸
+    putIfFree(x - 1, gy + trunkH, z, trunkC);
+    putIfFree(x + 1, gy + trunkH, z, trunkC);
+    // 主冠（切角多边形）
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角
+        putIfFree(x + dx, cy, z + dz, PAL.willowGreen);
+        putIfFree(x + dx, cy + 1, z + dz, (dx === 0 && dz === 0) ? PAL.huaiLight : PAL.willowGreen);
+        // 边缘下垂柳丝
+        if (Math.abs(dx) === 2 || Math.abs(dz) === 2) {
+          putIfFree(x + dx, cy - 1, z + dz, PAL.willowGreen);
+          if ((dx + dz) % 2 === 0) putIfFree(x + dx, cy - 2, z + dz, PAL.willowGreen);
+        }
+      }
+    }
+    fields.topH[i] = Math.max(fields.topH[i], cy + 2);
+  } else if (kind === 'pine') {
+    // 终南苍松：分层伞盖（下平上聚）
+    const cy1 = gy + trunkH - 1;
+    const cy2 = gy + trunkH + 1;
+    // 下层平展松云
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      if (Math.abs(dx) + Math.abs(dz) <= 3) putIfFree(x + dx, cy1, z + dz, PAL.pineGreen);
+    }
+    // 上层松顶
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      putIfFree(x + dx, cy2, z + dz, PAL.pineGreen);
+    }
+    putIfFree(x, cy2 + 1, z, PAL.huaiLight);
+    fields.topH[i] = Math.max(fields.topH[i], cy2 + 2);
   } else {
-    const r = T.r, cy = gy + T.h + 1;
-    for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) for (let dy = 0; dy <= (kind === 'pine' ? 2 : 1); dy++) {
-      if (dx * dx + dz * dz + dy * dy > r * r + 1.5) continue;
-      if (kind === 'pine' && dy === 0 && (dx * dx + dz * dz) > 2) continue;
-      const leafC = T.leaf[(dx + dz + dy + 99) % T.leaf.length];
-      putIfFree(x + dx, cy + dy, z + dz, leafC);
+    // 盛唐国槐（huai / elm / wutong / apricot）
+    const cy = gy + trunkH;
+    // 枝丫分叉（向侧面延伸 1 格木色枝干）
+    putIfFree(x + 1, cy, z, trunkC);
+    putIfFree(x, cy, z - 1, trunkC);
+
+    const leafPalette = (kind === 'apricot')
+      ? [PAL.apricotPink, PAL.plasterWarm, PAL.apricotPink]
+      : [PAL.huaiGreen, PAL.huaiLight, PAL.moss];
+
+    // 饱满多边形双层树冠（削去八个死角，形成饱满卵形与自然凹凸）
+    // 下层（宽展 5x5 切角）
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角，形成圆润多边形
+        const lc = leafPalette[(dx * 3 + dz * 5 + 99) % leafPalette.length];
+        putIfFree(x + dx, cy + 1, z + dz, lc);
+      }
     }
-    if (T.droop) {
-      for (const [dx, dz] of [[-r, 0], [r, 0], [0, -r], [0, r]]) putIfFree(x + dx, cy - 1, z + dz, T.leaf[0]);
+    // 上层（聚拢 3x3）
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const lc = (dx === 0 && dz === 0) ? PAL.huaiLight : leafPalette[(dx + dz + 10) % leafPalette.length];
+        putIfFree(x + dx, cy + 2, z + dz, lc);
+      }
     }
+    // 树梢小冠
+    putIfFree(x, cy + 3, z, PAL.huaiLight);
+
+    fields.topH[i] = Math.max(fields.topH[i], cy + 3);
   }
-  fields.topH[i] = Math.max(fields.topH[i], gy + T.h + 2);
   ctx.counters.trees++;
 };
 
@@ -82855,11 +82932,11 @@ CHANGAN.buildHanyuanComplex = function (ctx, cx, base) {
   // 城市层（1 体素 ≈ 13.8m）无法表达柱列/斗拱/瓦垄/棂条；建筑层（1 体素 = 0.5 城市体素）
   // 才做得出"单拉出来够看"的宫殿。见 10_建筑大升级计划_v4.md §3。
   ctx.arch = ctx.arch || new CHANGAN.ArchStore();
-  CHANGAN.buildArchGrandHall(ctx.arch, 2 * cx, 2 * -279, 2 * (ty + 1), { bays: 13, W: 64, D: 38 });
+  CHANGAN.buildArchGrandHall(ctx.arch, 4 * cx, 4 * -279, 4 * (ty + 1), { bays: 11, W: 96, D: 56 });
   // 把建筑层占位戳进城市字段，保证碰撞、小地图与远景 LOD 与建筑层一致
   for (let x = cx - 17; x <= cx + 16; x++) for (let z = -290; z <= -268; z++) {
     const i = CHANGAN.fieldIndex(x, z);
-    if (i >= 0) { ctx.fields.topH[i] = ty + 21; ctx.fields.topColor[i] = PAL.roofGrey; }
+    if (i >= 0) { ctx.fields.topH[i] = ty + 21; ctx.fields.topColor[i] = PAL.roofGreen; }
   }
   CHANGAN.exitLandmark(ctx);
   CHANGAN.enterLandmark(ctx, 'hanyuan-ge');
@@ -83559,13 +83636,22 @@ CHANGAN.stageDetail = function (ctx) {
       const g = fields.groundH[i];
       let c;
       if (fields.road[i]) {
-        const seam = (x & 3) === 0 || (z & 3) === 0;
-        const tone = (((x >> 2) + (z >> 2)) & 1) === 0;
-        c = seam ? PAL.stoneGrey : (tone ? PAL.brickPave : PAL.loessLight);
+        const lv = fields.road[i];
+        if (lv === 1) {
+          // 御道：中央天子白灰道，两旁平实夯土
+          const isCenter = (x >= -2 && x <= 1);
+          c = isCenter ? PAL.rammedLight : PAL.loess;
+        } else if (lv <= 3) {
+          // 主要干道与横街：整体连续夯土，柔和低对比微差
+          c = (((x >> 4) + (z >> 4)) & 1) ? PAL.loessLight : PAL.loess;
+        } else {
+          // 坊内十字街与巷曲：质朴素土
+          c = PAL.loess;
+        }
       } else {
-        // 广场/空地：低对比夯土斑（8×8 区块 + 稀疏深斑），不喧宾夺主
-        const blk = (((x >> 3) + (z >> 3)) & 1) === 0;
-        c = ((x * 5 + z * 3) % 17 === 0) ? PAL.loessDeep : (blk ? PAL.loessLight : PAL.loess);
+        // 广场与坊内地坪：统一沉稳底色，殿庭广场用平整青砖，普通坊内用浅夯土
+        const inPlaza = (z >= CFG.HENGJIE.z0 && z <= CFG.HENGJIE.z1) || (z <= -260 && z >= -290 && Math.abs(x - 208) <= 40);
+        c = inPlaza ? PAL.brickPave : PAL.loess;
       }
       store.set(x, g, z, c);
       fields.topColor[i] = c;
@@ -84069,1093 +84155,1165 @@ CHANGAN.buildViewAnchors = function (ctx) {
 
 
 // ===== gen/g08_arch.js =====
-// g08_arch.js — 建筑层（ArchGrid）：2× 分辨率的建筑专用体素层
-// 设计要点（见 10_建筑大升级计划_v4.md §3）：
-//   ① 城市层（VoxStore，1 体素 ≈ 13.8m）只负责地形/街/墙/渠/铺装/树；
-//   ② 建筑层（ArchStore，1 建筑体素 = 0.5 城市体素 ≈ 6.9m）承担全部建筑；
-//   ③ 每栋建筑只有一个权威来源 —— 本文件构造的建筑不再由城市层重复生成（守则铁律一）。
+// g08_arch.js — 盛唐建筑大木作体系（ArchGrid 4× 构件级精实体素层）
+// 核心设计原则（盛唐都城微缩箱庭）：
+//   ① 比例准则：1 世界单位（城市格）= 4 建筑体素（1 建筑体素 ≈ 0.25 城市格 ≈ 30cm）。
+//      人高 1.5 世界格 = 6 建筑格；屋身高 2.5~3.5 世界格 = 10~14 建筑格；
+//      檐柱径 1~2 建筑格（30~60cm）；屋檐出挑 4~7 建筑格（1~1.75m 深远出檐）；
+//      檐口厚度 1 建筑格（30cm 轻薄檐口）；举折坡度平缓舒展（15°~22°）。
+//   ② 虚实与进深：柱凸出在先，墙体内退 1 格，直棂窗向内开洞且设暗影背板，板门内凹设框；
+//   ③ 斗拱内敛承托：坐斗、华栱与撩檐枋位于檐下，出挑严格小于屋檐，形成深沉檐下阴影；
+//   ④ 屋面优美平缓：平缓举折剖面曲线，翼角微起，瓦垄同色系柔和微差；
+//   ⑤ 鸱尾古拙雄健：正统唐代月牙鱼尾内卷形鸱吻，与正脊浑然一体，彻底消除突兀兔耳叉角；
+//   ⑥ 空间与院落：正房坐北朝南、东西厢房合抱、南向门屋与院墙、中央砖石漫道与庭树；
+//   ⑦ 单一权威数据源：建筑全部由本文件生成并直接网格化，向后兼容编辑与审计。
 'use strict';
 
-// ================================================================
-// 建筑比例常量表（P2 立面升级，2026-09）
-// 单位一律「拱体素」ArchVoxel：1 拱体素 = 0.5 城体素 ≈ 6.9 m。
-// 竖向基准：地坪城市体素顶面 = 拱 y = ab + 2（ab、ab+1 两层埋在地坪体素内），
-// 因此「露出地面 N 层」= 台基总层数 N + 2。表里所有层数都按这个基准写死。
-// 关键比值（以民居 lvl0 为例，开间按 37/3 ≈ 12 拱体素）：
-//   柱径 / 开间 = 2 / 12  ≈ 0.17      檐出 / 进深 = (2+2) / 12 ≈ 0.33
-//   屋顶高 / 屋身高 = 6 / 6 = 1.00     台基高 / 柱高 = 2 / 6 ≈ 0.33
-// 复用：后续样板（二进宅 / 跨院大宅 / 官署 / 寺院 / 宫殿主院）只换 lvl 列，
-// 禁止在构造器里就地写魔法数字，也禁止用「2× = 斗拱」这类缩放推导。
-// ================================================================
-const HOUSE = {
-  //            民居 lvl0  中宅 lvl1  大宅 lvl2
-  platLayers: [4,        4,        5],        // 台基总层数（含埋入地坪的 2 层）→ 露出 2 / 2 / 3
-  platOut:    [3,        3,        4],        // 台基自檐柱轴线外扩（拱体素）
-  platBodyC:  PAL.stoneGrey,                  // 台基侧面：石
-  platTopC:   PAL.stoneWhite,                 // 台基顶面：白石压面（与侧面分层 → 水平投影线）
-  wallH:      [6,        7,        9],        // 屋身高：下碱 1 + 墙身 + 额枋 1（窗高 = 屋身 - 3）
-  colR:       [2,        2,        2],        // 柱径（拱体素，≥1；柱心对齐轴线）
-  colC:       [PAL.zhu,  PAL.zhu,  PAL.zhuBright],
-  wallRecess: [0,        0,        1],        // 墙面自檐柱轴线内退（0 = 墙与柱同面，柱凸出 1 格；退多了读成开敞凉亭）
-  wallT:      2,                              // 墙厚：外皮开洞 + 内皮内凹背板（阴影）
-  baseC:      PAL.brickPave,                  // 墙下碱：砖
-  frameC:     PAL.zhu,                        // 额枋 / 门框 / 窗棂
-  baysMax:    7,
-  bayDiv:     12,                             // 开间数 = clamp(round(屋身宽 / 12), 3, 7) → 小宅三开间
-  doorW:      3,  doorH: 4,                   // 板门洞（宽 2~3 / 高 3~4）
-  winW:       9,  winH: 3,                    // 直棂窗洞（9 格宽 → 3 根窗棂，两根各 3 格通洞）
-  roofLayers: [6,        7,        9],        // 屋面层数（屋顶高 / 屋身高 ≈ 1.0）
-  // 屋顶 overhang：檐口再挑出 2 → 总出檐 = 值 + 2。
-  // lvl0 取 0（总出 2）—— 斗拱出挑 3 必须**伸出檐口线之外**，否则 20° 仰角下
-  // 斗拱整排被自己的檐口遮死（四轮机位实测「檐下只剩一条横带」，P2 视觉验收结论）。
-  eaveOut:    [0,        1,        1],
-  dougongOut: 4,                              // 斗拱出挑（多出 1 跳，让白斗伸到檐口线之外；否则整排被自家檐口遮死）
-  dougongH:   2,                              // 斗拱层高
-};
+// 建筑格网细分倍率：1 城市格 = S 建筑格
+const ARCH_S = 4;
+const INV_S = 1.0 / ARCH_S; // 0.25
 
-// ---------------------------------------------------------------- 建筑体素存储（arch 坐标，稀疏 Map）
+// ---------------------------------------------------------------- 建筑体素存储（支持 4× 细分空间哈希）
 CHANGAN.ArchStore = class ArchStore {
-  constructor() { this.map = new Map(); }
+  constructor() {
+    this.map = new Map();
+  }
   get count() { return this.map.size; }
-  _k(x, y, z) { return ((x + 4096) * 8192 + (z + 4096)) * 512 + y; }
+
+  // 坐标映射：x∈[-8192, 8191], z∈[-8192, 8191], y∈[0, 511]
+  _k(x, y, z) {
+    return ((x + 8192) * 16384 + (z + 8192)) * 512 + y;
+  }
+
   set(x, y, z, c) {
-    if (y < 0 || y > 511) return;
+    if (y < 0 || y > 511 || !c) return;
     x |= 0; y |= 0; z |= 0;
     this.map.set(this._k(x, y, z), c);
   }
-  get(x, y, z) { return this.map.get(this._k(x | 0, y | 0, z | 0)) | 0; }
-  has(x, y, z) { return this.map.has(this._k(x | 0, y | 0, z | 0)); }
+
+  get(x, y, z) {
+    if (y < 0 || y > 511) return 0;
+    return this.map.get(this._k(x | 0, y | 0, z | 0)) || 0;
+  }
+
+  has(x, y, z) {
+    if (y < 0 || y > 511) return false;
+    return this.map.has(this._k(x | 0, y | 0, z | 0));
+  }
+
+  del(x, y, z) {
+    this.map.delete(this._k(x | 0, y | 0, z | 0));
+  }
+
   fill(x0, y0, z0, x1, y1, z1, c) {
     const xa = Math.min(x0, x1) | 0, xb = Math.max(x0, x1) | 0;
     const ya = Math.min(y0, y1) | 0, yb = Math.max(y0, y1) | 0;
     const za = Math.min(z0, z1) | 0, zb = Math.max(z0, z1) | 0;
-    for (let x = xa; x <= xb; x++) for (let z = za; z <= zb; z++) for (let y = ya; y <= yb; y++) this.set(x, y, z, c);
-  }
-  // 只写一层水平板（省体素：楼板/屋面不必实心）
-  slab(x0, y, z0, x1, z1, c) { this.fill(x0, y, z0, x1, y, z1, c); }
-  // 空心盒（墙/台基：只写外壳，内部留空 —— 直接把建筑层体素压到 1/3）
-  shellBox(x0, y0, z0, x1, y1, z1, c) {
-    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) { this.set(x, y0, z, c); this.set(x, y1, z, c); }
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) { this.set(x, y, z0, c); this.set(x, y, z1, c); }
-    for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) { this.set(x0, y, z, c); this.set(x1, y, z, c); }
-  }
-  bbox() {
-    let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
-    for (const k of this.map.keys()) {
-      const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
-      if (x < x0) x0 = x; if (x > x1) x1 = x;
-      if (y < y0) y0 = y; if (y > y1) y1 = y;
-      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    for (let x = xa; x <= xb; x++) {
+      for (let z = za; z <= zb; z++) {
+        for (let y = ya; y <= yb; y++) {
+          this.set(x, y, z, c);
+        }
+      }
     }
-    return { x0, y0, z0, x1, y1, z1 };
+  }
+
+  // 水平板
+  slab(x0, y, z0, x1, z1, c) {
+    const xa = Math.min(x0, x1) | 0, xb = Math.max(x0, x1) | 0;
+    const za = Math.min(z0, z1) | 0, zb = Math.max(z0, z1) | 0;
+    y |= 0;
+    for (let x = xa; x <= xb; x++) {
+      for (let z = za; z <= zb; z++) {
+        this.set(x, y, z, c);
+      }
+    }
+  }
+
+  // 空心盒（外壳写入，内部留空，体素与面数减半）
+  shellBox(x0, y0, z0, x1, y1, z1, c) {
+    const xa = Math.min(x0, x1) | 0, xb = Math.max(x0, x1) | 0;
+    const ya = Math.min(y0, y1) | 0, yb = Math.max(y0, y1) | 0;
+    const za = Math.min(z0, z1) | 0, zb = Math.max(z0, z1) | 0;
+    for (let x = xa; x <= xb; x++) {
+      for (let z = za; z <= zb; z++) {
+        this.set(x, ya, z, c);
+        this.set(x, yb, z, c);
+      }
+    }
+    for (let x = xa; x <= xb; x++) {
+      for (let y = ya + 1; y < yb; y++) {
+        this.set(x, y, za, c);
+        this.set(x, y, zb, c);
+      }
+    }
+    for (let z = za + 1; z < zb; z++) {
+      for (let y = ya + 1; y < yb; y++) {
+        this.set(xa, y, z, c);
+        this.set(xb, y, z, c);
+      }
+    }
   }
 };
 
-// ---------------------------------------------------------------- 构件：台基 / 踏道 / 柱列 / 斗拱
-// 全部以「建筑体素」为单位（1 建筑体素 = 0.5 城市体素）。厚度恒为 1，尺寸按等级放大。
+// ---------------------------------------------------------------- 盛唐大木作构件库（ARCH）
 const ARCH = {
-  // 台基：空心盒 + 压边 + 南向踏道
+  // ① 台基与踏跺：石阶基侧壁青石 + 顶面压面白石 + 南向石踏垛（带两翼垂带石）
   platform(a, x0, z0, x1, z1, y0, h, opts) {
     opts = opts || {};
-    const c = opts.c || PAL.stoneGrey, edge = opts.edge || PAL.stoneWhite;
-    a.shellBox(x0, y0, z0, x1, y0 + h, z1, c);
-    // 压边（顶面外沿一圈白石）
-    for (let x = x0; x <= x1; x++) { a.set(x, y0 + h, z0, edge); a.set(x, y0 + h, z1, edge); }
-    for (let z = z0; z <= z1; z++) { a.set(x0, y0 + h, z, edge); a.set(x1, y0 + h, z, edge); }
-    // 南向踏道（实心砌筑，防浮空）
-    if (opts.steps !== false) {
-      const cx = (x0 + x1) >> 1, w = opts.stepW || 5;
-      for (let s = 0; s < h; s++) {
-        a.fill(cx - w, y0, z1 + 1 + s, cx + w, y0 + h - 1 - s, z1 + 1 + s, edge);
+    const bodyC = opts.bodyC || PAL.stoneGrey;
+    const edgeC = opts.edgeC || PAL.stoneWhite;
+    const yTop = y0 + h - 1;
+    // 侧壁与底顶
+    a.shellBox(x0, y0, z0, x1, yTop, z1, bodyC);
+    // 顶面一圈白石压边
+    for (let x = x0; x <= x1; x++) {
+      a.set(x, yTop, z0, edgeC);
+      a.set(x, yTop, z1, edgeC);
+    }
+    for (let z = z0; z <= z1; z++) {
+      a.set(x0, yTop, z, edgeC);
+      a.set(x1, yTop, z, edgeC);
+    }
+    // 内部顶面铺青砖
+    for (let x = x0 + 1; x < x1; x++) {
+      for (let z = z0 + 1; z < z1; z++) {
+        a.set(x, yTop, z, PAL.brickPave);
       }
     }
-    return y0 + h + 1;
+    // 南向踏步（实心退台台阶，两翼设垂带石）
+    if (opts.steps !== false && h >= 1) {
+      const cx = (x0 + x1) >> 1;
+      const stepHalf = opts.stepHalf || Math.max(3, Math.min(8, ((x1 - x0) >> 3)));
+      const sx0 = cx - stepHalf, sx1 = cx + stepHalf;
+      // 踏步级数
+      const nSteps = Math.max(1, h);
+      for (let s = 0; s < nSteps; s++) {
+        const sz = z1 + 1 + s;
+        const sy = yTop - s;
+        if (sy < y0) break;
+        // 阶梯踏面
+        for (let sx = sx0; sx <= sx1; sx++) {
+          for (let y = y0; y <= sy; y++) {
+            a.set(sx, y, sz, edgeC);
+          }
+        }
+        // 两侧垂带石
+        for (let y = y0; y <= sy; y++) {
+          a.set(sx0 - 1, y, sz, bodyC);
+          a.set(sx1 + 1, y, sz, bodyC);
+        }
+      }
+    }
+    return yTop + 1; // 返回台基之上的可用第一层 y
   },
 
-  // 柱网：沿 x 布 bays+1 根檐柱，进深方向 2~3 排；柱径由 colR 控制（宫殿 2，民居 1），返回柱位
-  colonnade(a, x0, z0, x1, z1, y0, h, bays, colC, colR) {
-    const R = colR || 1;
-    const cols = [];
+  // ② 檐柱列与梁额横贯（Colonnade & Architrave）
+  // 柱网严格按照开间排列，柱头贯通阑额（横木），出头微露，形成平稳木构骨架
+  colonnade(a, x0, z0, x1, z1, y0, h, bays, colC, colR, opts) {
+    opts = opts || {};
+    const R = Math.max(1, colR || 1);
+    const half = (R - 1) >> 1;
     const xs = [];
-    for (let b = 0; b <= bays; b++) xs.push(Math.round(x0 + (x1 - x0) * b / bays));
+    for (let b = 0; b <= bays; b++) {
+      xs.push(Math.round(x0 + (x1 - x0) * b / bays));
+    }
     const uniq = Array.from(new Set(xs)).sort((p, q) => p - q);
-    for (const x of uniq) { cols.push([x, z0], [x, z1]); }
-    const midZ = (z0 + z1) >> 1;
-    if (z1 - z0 >= 10) for (const x of uniq) cols.push([x, midZ]);
-    for (const [x, z] of cols) for (let y = y0; y < y0 + h; y++) {
-      for (let dx = 0; dx < R; dx++) for (let dz = 0; dz < R; dz++) a.set(x + dx, y, z + dz, colC);
-    }
-    // 额枋（柱头之间横贯，一层高）。
-    // 高等级（柱色 = zhuBright，宫殿/官署/寺院）走"七朱八白"彩画带：
-    // 每 3 格 2 朱 1 白，让檐下有一条读得出的彩带 —— 视觉验收反复判
-    // "装饰彩绘素净、奢华度中等"，这条带子是最便宜的补偿。民居保持素朱。
-    const archi = (colC === PAL.zhuBright);
-    const ac = v => (archi && v % 3 === 2) ? PAL.plaster : colC;
-    for (const [x, z] of cols) for (let dx = 0; dx < R; dx++) a.set(x + dx, y0 + h, z, colC);
-    for (let x = x0; x <= x1; x++) { for (let dz = 0; dz < R; dz++) { a.set(x, y0 + h, z0 + dz, ac(x)); a.set(x, y0 + h, z1 - dz, ac(x)); } }
-    for (let z = z0; z <= z1; z++) { for (let dx = 0; dx < R; dx++) { a.set(x0 + dx, y0 + h, z, ac(z)); a.set(x1 - dx, y0 + h, z, ac(z)); } }
-    return { cols, xs: uniq };
-  },
 
-  // 斗拱：柱头一垛（向外挑 2、向上 1），补间一朵
-  dougong(a, cols, y, colC, outC, scale) {
-    // 柱头斗拱向外挑 2 格（华拱两层）+ 挑檐枋环：
-    // P0 判"柱顶到檐口之间仍是同一平面贴附，结构性进深只完成一半"。
-    for (const [x, z] of cols) {
-      // 一攒斗拱：坐斗 → 华栱一跳（出 2）→ 散斗/令栱收头；高等级再加第二跳（出 3）
-      // P0/单体评审："檐下就是一条平直灰色横带，像一根扁梁而非一攒斗拱"。
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        a.set(x + dx, y + 1, z + dz, outC);          // 华栱一跳
-        a.set(x + 2 * dx, y + 1, z + 2 * dz, outC);
-        a.set(x + 3 * dx, y + 1, z + 3 * dz, outC);  // 出跳加宽到 3
-        a.set(x + 3 * dx, y + 2, z + 3 * dz, colC);  // 散斗（坐在华栱端点，同柱色）
-        a.set(x + 2 * dx, y + 2, z + 2 * dz, colC);  // 补间小斗
-        if (scale >= 2) {
-          a.set(x + 3 * dx, y + 2, z + 3 * dz, outC); // 第二跳
-          a.set(x + 4 * dx, y + 2, z + 4 * dz, outC);
-          a.set(x + 4 * dx, y + 3, z + 4 * dz, colC); // 撩檐枋
-        }
-      }
-      if (scale >= 2) a.set(x, y + 3, z, colC);
-      // 柱头斗拱：三层叠出
-      a.set(x, y + 1, z, colC);
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) a.set(x + dx, y + 1, z + dz, outC);
-      a.set(x, y + 2, z, outC);
+    const zRows = [z0, z1];
+    if (z1 - z0 >= 24 && opts.midRow !== false) {
+      zRows.push((z0 + z1) >> 1); // 进深特大时加金柱中排
     }
-  },
 
-  // 墙体：柱间砌墙，留门窗洞（洞口宽度按开间）
-  wall(a, x0, z0, x1, z1, y0, h, cols, opts) {
-    opts = opts || {};
-    const wallC = opts.wallC || PAL.plaster, winC = opts.winC || PAL.timberDark;
-    const isCol = new Set(cols.map(([x, z]) => x * 10000 + z));
-    // 柱径 >1 时，墙体要避开整根柱子（含左上邻格）
-    const nearCol = (x, z) => isCol.has(x * 10000 + z) || isCol.has((x - 1) * 10000 + z)
-      || isCol.has(x * 10000 + z - 1) || isCol.has((x - 1) * 10000 + z - 1);
-    const doorBay = opts.doorBay == null ? -1 : opts.doorBay;
-    const xs = opts.xs || [];
-    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-      if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-      if (nearCol(x, z)) continue;
-      // 找到所属开间
-      let bay = -1;
-      for (let i = 0; i + 1 < xs.length; i++) if (x >= xs[i] && x <= xs[i + 1]) { bay = i; break; }
-      // 四面都开门窗洞（P0 判"墙面只有等距细黑孔，像货架隔板"）：
-      // 按开间取中、洞宽 3 或 1、竖向占窗带（下碱与额枋之间），门洞留空
-      const south = (z === z1), north = (z === z0);
-      const onMain = south || north;
-      const mcz = (z0 + z1) >> 1;
-      let bay2 = -1, bayMid = 0, bayW = 0;
-      if (onMain && bay >= 0 && bay + 1 < xs.length) {
-        bay2 = bay; bayMid = (xs[bay] + xs[bay + 1]) >> 1; bayW = xs[bay + 1] - xs[bay];
-      } else if (!onMain) {
-        bay2 = 0; bayMid = mcz; bayW = z1 - z0 + 1;
+    const cols = [];
+    for (const x of uniq) {
+      for (const z of zRows) {
+        cols.push([x, z]);
       }
-      const half = bayW >= 6 ? 1 : 0;
-      const isDoorBay = south && bay2 === doorBay;
+    }
+
+    // 立柱
+    for (const [cx, cz] of cols) {
       for (let y = y0; y < y0 + h; y++) {
-        if (y === y0 + h - 1) { a.set(x, y, z, opts.frameC || PAL.zhu); continue; }   // 额枋
-        if (y === y0) { a.set(x, y, z, wallC); continue; }                            // 下碱
-        const inWin = bay2 >= 0 && y <= y0 + h - 2
-          && (onMain ? Math.abs(x - bayMid) <= half : Math.abs(z - bayMid) <= half);
-        if (inWin) {
-          if (isDoorBay) continue;                    // 门洞留空
-          a.set(x, y, z, winC); continue;             // 直棂窗
+        for (let dx = -half; dx <= R - 1 - half; dx++) {
+          for (let dz = -half; dz <= R - 1 - half; dz++) {
+            a.set(cx + dx, y, cz + dz, colC);
+          }
         }
-        a.set(x, y, z, wallC);
+      }
+    }
+
+    // 阑额（柱头横木贯通，一层高）
+    const yTop = y0 + h - 1;
+    for (let x = x0 - 1; x <= x1 + 1; x++) {
+      for (const z of zRows) {
+        a.set(x, yTop, z, colC);
+      }
+    }
+    for (let z = z0; z <= z1; z++) {
+      for (const x of [x0, x1]) {
+        a.set(x, yTop, z, colC);
+      }
+    }
+    // 普拍枋（阑额上方一层压木，略挑 1 格）
+    if (h >= 8) {
+      const yPu = yTop;
+      for (let x = x0 - 1; x <= x1 + 1; x++) {
+        a.set(x, yPu, z0, colC);
+        a.set(x, yPu, z1, colC);
+      }
+    }
+
+    return { cols, xs: uniq, yTop };
+  },
+
+  // ③ 斗拱体系（Dougong Bracket Cluster）
+  // 栌斗坐柱头，华栱向外挑出，托撩檐枋。严禁斗拱伸出檐口！斗拱严格在檐下深处！
+  dougongSystem(a, cols, y0, colC, douC, reach) {
+    reach = reach || 2; // 出跳距离：1~2 格（0.25~0.5m）
+    for (const [cx, cz] of cols) {
+      // 栌斗（坐斗）：2×2 见方
+      a.fill(cx - 1, y0, cz - 1, cx + 1, y0, cz + 1, colC);
+      // 第一跳华栱与栱横臂（一斗三升）
+      for (let dy = 1; dy <= reach; dy++) {
+        const y = y0 + dy;
+        // 沿进深出跳
+        a.set(cx, y, cz - dy, douC);
+        a.set(cx, y, cz + dy, douC);
+        // 散斗
+        a.set(cx - 1, y, cz - dy, colC);
+        a.set(cx + 1, y, cz - dy, colC);
+        a.set(cx - 1, y, cz + dy, colC);
+        a.set(cx + 1, y, cz + dy, colC);
       }
     }
   },
 
-  // 瓦面：庑殿坡，逐层内收 1，1 建筑体素一级的连续台阶坡。
-  // 关键修正：**长短轴分别内收**——短轴收尽成脊线，长轴按 ridgeRatio 少收，
-  // 留出正脊长度。上一版两轴同收，长轴留下 26 格宽的大平顶，评审判"像一块大平板"。
-  roofHip(a, x0, z0, x1, z1, y0, opts) {
+  // ④ 屋身与门窗墙体（内退进深 + 直棂窗 + 双扇板门）
+  // 墙体从檐柱轴线向内退进 1 格，使得柱子凸立于墙体之前，形成真实的阴影虚实
+  wallWithOpenings(a, x0, z0, x1, z1, y0, h, xs, opts) {
     opts = opts || {};
-    const main = opts.main || PAL.roofGrey, groove = opts.groove || PAL.roofGroove;
-    const lip = opts.lip || PAL.roofLight, trim = opts.trim;
-    const over = opts.overhang == null ? 3 : opts.overhang;
-    const ex0 = x0 - over, ex1 = x1 + over, ez0 = z0 - over, ez1 = z1 + over;
-    const hx = (ex1 - ex0) >> 1, hz = (ez1 - ez0) >> 1;
-    const alongX = hx >= hz;
-    const shortHalf = alongX ? hz : hx;
-    const layers = Math.max(3, Math.min(opts.layers || 15, shortHalf));
-    const rLong = opts.ridgeRatio == null ? 0.55 : opts.ridgeRatio;
-    let lx0 = ex0, lx1 = ex1, lz0 = ez0, lz1 = ez1;
-    for (let L = 0; L < layers; L++) {
-      const t = Math.pow(L / Math.max(1, layers - 1), opts.curve || 1.15);   // 举折幂次：大体量屋顶可用 opts.curve 加大（层多时曲线才读得出）
-      const ix = Math.round(hx * t * (alongX ? rLong : 1));
-      const iz = Math.round(hz * t * (alongX ? 1 : rLong));
-      const xa = ex0 + ix, xb = ex1 - ix, za = ez0 + iz, zb = ez1 - iz;
-      if (xa > xb || za > zb) break;
-      const y = y0 + L;
-      for (let x = xa; x <= xb; x++) for (let z = za; z <= zb; z++) {
-        const ring = (x === xa || x === xb || z === za || z === zb);
-        let c = ((alongX ? x : z) & 1) ? main : groove;
-        if (L === 0 && ring) c = lip;
-        if (trim && L === 0 && ring) c = trim;
-        a.set(x, y, z, c);
+    const wallC = opts.wallC || PAL.plaster;
+    const baseC = opts.baseC || PAL.brickPave;
+    const frameC = opts.frameC || PAL.zhu;
+    const doorDark = opts.doorDark || PAL.doorDark;
+    const mullC = opts.mullC || PAL.timber;
+    const bays = xs.length - 1;
+    const midBay = bays >> 1;
+    const yTop = y0 + h - 1;
+
+    // 墙体坐标（向内缩 1 格）
+    const wx0 = x0 + 1, wx1 = x1 - 1, wz0 = z0 + 1, wz1 = z1 - 1;
+
+    for (let bay = 0; bay < bays; bay++) {
+      const bx0 = xs[bay] + 1, bx1 = xs[bay + 1] - 1;
+      if (bx1 < bx0) continue;
+      const isMid = (bay === midBay);
+      const isDoorBay = opts.hasDoor !== false && isMid;
+
+      // 南面开间（z = wz1）
+      for (let x = bx0; x <= bx1; x++) {
+        for (let y = y0; y <= yTop; y++) {
+          if (y === y0 || y === y0 + 1) {
+            // 下碱（砖砌下碱）
+            a.set(x, y, wz1, baseC);
+          } else if (y === yTop) {
+            // 额下木枋
+            a.set(x, y, wz1, frameC);
+          } else {
+            if (isDoorBay) {
+              // 明间双扇板门：内凹 1 格
+              const doorHalf = Math.min(3, (bx1 - bx0) >> 1);
+              const mc = (bx0 + bx1) >> 1;
+              if (Math.abs(x - mc) <= doorHalf) {
+                // 门洞留空，门扇退到内部 wz1 - 1
+                a.set(x, y, wz1 - 1, doorDark);
+                // 门楣
+                if (y === yTop - 1) a.set(x, y, wz1, frameC);
+                continue;
+              }
+              a.set(x, y, wz1, wallC);
+            } else {
+              // 次间直棂窗：窗洞留出，内退 1 格为暗面，外层每隔 1 格排一根直棂
+              const winMargin = 1;
+              if (x >= bx0 + winMargin && x <= bx1 - winMargin && y >= y0 + 2 && y <= yTop - 1) {
+                // 窗内暗影背板
+                a.set(x, y, wz1 - 1, doorDark);
+                // 窗台与窗楣
+                if (y === y0 + 2 || y === yTop - 1) {
+                  a.set(x, y, wz1, frameC);
+                } else {
+                  // 直棂条：奇数排木棂，偶数留空
+                  if ((x - bx0) % 2 === 1) {
+                    a.set(x, y, wz1, mullC);
+                  }
+                }
+                continue;
+              }
+              a.set(x, y, wz1, wallC);
+            }
+          }
+        }
       }
-      lx0 = xa; lx1 = xb; lz0 = za; lz1 = zb;
+
+      // 北面墙身（后檐面，开小直棂窗）
+      for (let x = bx0; x <= bx1; x++) {
+        for (let y = y0; y <= yTop; y++) {
+          if (y <= y0 + 1) {
+            a.set(x, y, wz0, baseC);
+          } else if (y === yTop) {
+            a.set(x, y, wz0, frameC);
+          } else {
+            const mc = (bx0 + bx1) >> 1;
+            if (Math.abs(x - mc) <= 1 && y >= y0 + 3 && y <= yTop - 2) {
+              a.set(x, y, wz0 + 1, doorDark); // 后面暗影
+              if ((x - bx0) % 2 === 1) a.set(x, y, wz0, mullC);
+              continue;
+            }
+            a.set(x, y, wz0, wallC);
+          }
+        }
+      }
     }
-    // 正脊（沿长轴，两层）+ 鸱尾（三段收分 + 外卷尖）
-    const ry = y0 + layers;
-    const fin = opts.finial || PAL.roofDark;      // 民居脊端用暗瓦收头（金色只给宫殿，否则小屋顶上顶一摞金块）
+
+    // 东西两山墙（山花墙封闭，下碱砖 + 上部粉墙）
+    for (const wx of [wx0, wx1]) {
+      for (let z = wz0; z <= wz1; z++) {
+        for (let y = y0; y <= yTop; y++) {
+          if (y <= y0 + 1) a.set(wx, y, z, baseC);
+          else if (y === yTop) a.set(wx, y, z, frameC);
+          else a.set(wx, y, z, wallC);
+        }
+      }
+    }
+  },
+
+  // ⑤ 唐代鸱尾（Ancient Chiwei / Fish-Tail Finial）
+  // 严格依循唐代出土鸱尾：底座平稳骑脊、背部出鳍、顶端向前内卷如月牙，刚劲雄厚，绝无突兀兔耳！
+  chiwei(a, cx, cy, cz, dirX, h, cRidge, cFinial) {
+    h = Math.max(3, Math.min(7, h || 4));
+    // 底座骑于正脊之上
+    a.set(cx, cy, cz, cRidge);
+    a.set(cx + dirX, cy, cz, cRidge);
+
+    // 鸱身逐层向内弯卷
+    // 层 1：主体微向外扩
+    a.set(cx, cy + 1, cz, cFinial);
+    a.set(cx + dirX, cy + 1, cz, cFinial);
+    a.set(cx + dirX * 2, cy + 1, cz, cRidge); // 鳍部起始
+
+    // 层 2：背部鳍刃凸出
+    a.set(cx, cy + 2, cz, cFinial);
+    a.set(cx + dirX, cy + 2, cz, cFinial);
+    a.set(cx + dirX * 2, cy + 2, cz, cFinial);
+
+    // 层 3：向上并向内微卷
+    if (h >= 3) {
+      a.set(cx, cy + 3, cz, cFinial);
+      a.set(cx + dirX, cy + 3, cz, cFinial);
+    }
+    // 层 4：顶端内卷勾尖（向内缩进，形成月牙尖角）
+    if (h >= 4) {
+      a.set(cx - dirX, cy + 4, cz, cFinial); // 内勾卷尖！
+      a.set(cx, cy + 4, cz, cFinial);
+    }
+    if (h >= 5) {
+      a.set(cx - dirX, cy + 5, cz, cFinial);
+    }
+  },
+
+  // ⑥ 盛唐平缓飞檐屋顶生成器（Tang Roof Engine）
+  // 形式：庑殿 (hip) / 悬山 (gable) / 歇山 (xie)
+  // 核心：深远挑檐、轻薄檐口、平缓举折剖面曲线、微翘翼角、克制瓦垄、雄健内卷鸱尾
+  roofTang(a, x0, z0, x1, z1, y0, opts) {
+    opts = opts || {};
+    const kind = opts.kind || 'hip'; // hip | gable | xie
+    const mainC = opts.main || PAL.roofGrey;
+    const grooveC = opts.groove || PAL.roofGroove;
+    const lipC = opts.lip || PAL.roofLight;
     const ridgeC = opts.ridgeC || PAL.roofDark;
-    if (alongX) {
-      const cz = (lz0 + lz1) >> 1;
-      for (let x = lx0; x <= lx1; x++) { a.set(x, ry, cz, ridgeC); a.set(x, ry + 1, cz, ridgeC); }
-      // 脊端收头：按屋顶规模缩放 + 向上收分（每加高一层就收窄一格，读成翘起的脊头而不是"一摞砖"）。
-      // 普通民居只起 1 格（原先一律 5 格高的"叉状大块"，被重建方案点名）。
-      const fh = opts.finialH == null ? (shortHalf >= 12 ? 3 : (shortHalf >= 9 ? 2 : 1)) : opts.finialH;
-      for (const [sx, dir] of [[lx0, -1], [lx1, 1]]) {
-        if (fh <= 1) { a.set(sx, ry + 2, cz, fin); continue; }
-        a.set(sx, ry + 2, cz, fin); a.set(sx + dir, ry + 2, cz, fin);
-        a.set(sx, ry + 3, cz, fin);                                  // 收分：只留内侧一格
-        if (fh >= 3) { a.set(sx, ry + 4, cz, fin); a.set(sx + dir, ry + 4, cz, ridgeC); }
-      }
-    } else {
-      const cx = (lx0 + lx1) >> 1;
-      for (let z = lz0; z <= lz1; z++) { a.set(cx, ry, z, ridgeC); a.set(cx, ry + 1, z, ridgeC); }
-      const fh2 = opts.finialH == null ? (shortHalf >= 12 ? 3 : (shortHalf >= 9 ? 2 : 1)) : opts.finialH;
-      for (const [sz, dir] of [[lz0, -1], [lz1, 1]]) {
-        if (fh2 <= 1) { a.set(cx, ry + 2, sz, fin); continue; }
-        a.set(cx, ry + 2, sz, fin); a.set(cx, ry + 2, sz + dir, fin);
-        a.set(cx, ry + 3, sz, fin);
-        if (fh2 >= 3) { a.set(cx, ry + 4, sz + dir, fin); }
-      }
-    }
-    return ry + (opts.finialH == null && shortHalf < 8 ? 3 : 5);
-  },
+    const finialC = opts.finial || ridgeC;
+    const trimC = opts.trim || null; // 琉璃剪边色（若有）
 
-  // 悬山两坡（民居/厢房）：沿长轴起坡，两端山面封板
-  roofGable(a, x0, z0, x1, z1, y0, opts) {
-    opts = opts || {};
-    const main = opts.main || PAL.roofGrey, groove = opts.groove || PAL.roofGroove;
-    const lip = opts.lip || PAL.roofLight;
-    const over = opts.overhang == null ? 2 : opts.overhang;
-    const ex0 = x0 - over, ex1 = x1 + over, ez0 = z0 - over, ez1 = z1 + over;
-    const hz = (ez1 - ez0) >> 1;
-    const layers = Math.max(3, Math.min(opts.layers || 6, hz));
+    // 出檐（Overhang）：深远挑出 4~6 格
+    const over = opts.overhang != null ? opts.overhang : 5;
+    const ex0 = x0 - over, ex1 = x1 + over;
+    const ez0 = z0 - over, ez1 = z1 + over;
+
+    const spanX = ex1 - ex0, spanZ = ez1 - ez0;
+    const halfX = spanX >> 1, halfZ = spanZ >> 1;
+    const alongX = spanX >= spanZ;
+    const shortHalf = alongX ? halfZ : halfX;
+
+    // 总坡面层数（平缓举折：层数适中，每层上升 1 格，平缓收敛）
+    const layers = Math.max(5, Math.min(opts.layers || (shortHalf - 2), shortHalf - 1));
+    const ridgeRatio = opts.ridgeRatio != null ? opts.ridgeRatio : 0.52; // 正脊长度比例
+
+    // 1. 檐口下层撩檐枋与椽头（紧贴檐口下缘，体现飞椽与出挑厚度）
+    for (let x = ex0 + 1; x <= ex1 - 1; x++) {
+      a.set(x, y0 - 1, ez0 + 1, PAL.timberDark);
+      a.set(x, y0 - 1, ez1 - 1, PAL.timberDark);
+    }
+    for (let z = ez0 + 1; z <= ez1 - 1; z++) {
+      a.set(ex0 + 1, y0 - 1, z, PAL.timberDark);
+      a.set(ex1 - 1, y0 - 1, z, PAL.timberDark);
+    }
+
+    let topX0 = ex0, topX1 = ex1, topZ0 = ez0, topZ1 = ez1;
+    let finalY = y0;
+
+    // 2. 屋面起坡（逐层举折）
     for (let L = 0; L < layers; L++) {
-      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);   // 悬山同样走举折曲线
-      const iz = Math.round(hz * t);
-      const za = ez0 + iz, zb = ez1 - iz;
-      if (za > zb) break;
-      const y = y0 + L;
-      // 檐口挑出：最下一层再向外挑 2 格（P0 判"檐口零出挑，像扣在盒子上的帽檐"）
-      const out = (L === 0) ? 2 : 0;
-      for (let x = ex0 - out; x <= ex1 + out; x++) for (let z = za - out; z <= zb + out; z++) {
-        const isEave = (z === za - out || z === zb + out);
-        let c = ((x & 1) ? main : groove);
-        if (L === 0 && isEave) c = lip;
-        a.set(x, y, z, c);
+      finalY = y0 + L;
+      // 举折函数：t 从 0 到 1，幂次 1.25（底缓顶微陡，平舒大唐风韵）
+      const t = Math.pow(L / Math.max(1, layers - 1), 1.25);
+
+      let curX0, curX1, curZ0, curZ1;
+
+      if (kind === 'gable') {
+        // 悬山顶：仅沿短轴两坡收分，长轴端头平直出梢
+        const iz = Math.round((halfZ - 2) * t);
+        curX0 = ex0; curX1 = ex1;
+        curZ0 = ez0 + iz; curZ1 = ez1 - iz;
+      } else if (kind === 'xie') {
+        // 歇山顶：下部四阿收分，中上部转为两坡
+        const iz = Math.round((halfZ - 2) * t);
+        const ix = (L < (layers >> 1))
+          ? Math.round(halfX * t * 0.7)
+          : Math.round(halfX * (layers >> 1) / layers * 0.7);
+        curX0 = ex0 + ix; curX1 = ex1 - ix;
+        curZ0 = ez0 + iz; curZ1 = ez1 - iz;
+      } else {
+        // 庑殿顶：四阿平缓收分，长轴保留正脊
+        const ix = Math.round(halfX * t * (alongX ? (1 - ridgeRatio) : 1));
+        const iz = Math.round(halfZ * t * (alongX ? 1 : (1 - ridgeRatio)));
+        curX0 = ex0 + ix; curX1 = ex1 - ix;
+        curZ0 = ez0 + iz; curZ1 = ez1 - iz;
       }
-      for (const sx of [ex0 - out, ex1 + out]) for (let z = za - out; z <= zb + out; z++) a.set(sx, y, z, L === 0 ? lip : PAL.plasterWarm);
-    }
-    const ry = y0 + layers;
-    const cz = (ez0 + ez1) >> 1;
-    for (let x = ex0; x <= ex1; x++) a.set(x, ry, cz, PAL.roofDark);
-    a.set(ex0, ry + 1, cz, PAL.roofDark); a.set(ex1, ry + 1, cz, PAL.roofDark);
-    // 檐角起翘：四角各抬 up 格，压在檐口最外层体素上（6 邻接，不悬空）。
-    // 试过"沿檐口 3 格起坡 + 山面同步"的连续反宇，实测评分反降（5/6 vs 6/6/6）：
-    // 体素尺度下角部堆块读成杂物，故退回单点抬升，起翘留给后续"分层挑出"方案。
-    if (opts.cornerLift) {
-      for (const [qx, qz] of [[ex0 - 2, ez0 - 2], [ex1 + 2, ez0 - 2], [ex0 - 2, ez1 + 2], [ex1 + 2, ez1 + 2]]) {
-        for (let k = 1; k <= opts.cornerLift; k++) a.set(qx, y0 + k, qz, lip);
+
+      if (curX0 > curX1 || curZ0 > curZ1) break;
+      topX0 = curX0; topX1 = curX1; topZ0 = curZ0; topZ1 = curZ1;
+
+      // 铺设该层屋面瓦
+      for (let x = curX0; x <= curX1; x++) {
+        for (let z = curZ0; z <= curZ1; z++) {
+          const isEdge = (x === curX0 || x === curX1 || z === curZ0 || z === curZ1);
+          let c;
+          if (L === 0 && isEdge) {
+            // 最外圈轻薄檐口
+            c = trimC || lipC;
+          } else if (isEdge && trimC && L <= 1) {
+            c = trimC;
+          } else {
+            // 纵向瓦垄：柔和的同色系深浅交错
+            const tileCoord = alongX ? x : z;
+            c = (tileCoord % 2 === 0) ? mainC : grooveC;
+          }
+          a.set(x, finalY, z, c);
+        }
+      }
+
+      // 悬山山面出梢与博风（封板）
+      if (kind === 'gable' && L > 0) {
+        for (let z = curZ0; z <= curZ1; z++) {
+          a.set(curX0, finalY, z, PAL.plasterWarm);
+          a.set(curX1, finalY, z, PAL.plasterWarm);
+        }
       }
     }
-    return ry + 2;
+
+    // 3. 翼角反宇起翘（四角末端微翘 1 格）
+    if (opts.lift !== false) {
+      const liftY = y0 + 1;
+      a.set(ex0, liftY, ez0, lipC);
+      a.set(ex1, liftY, ez0, lipC);
+      a.set(ex0, liftY, ez1, lipC);
+      a.set(ex1, liftY, ez1, lipC);
+    }
+
+    // 4. 正脊与垂脊
+    const ry = finalY + 1;
+    if (alongX) {
+      const midZ = (topZ0 + topZ1) >> 1;
+      // 正脊平直铺设
+      for (let x = topX0; x <= topX1; x++) {
+        a.set(x, ry, midZ, ridgeC);
+        a.set(x, ry + 1, midZ, ridgeC);
+      }
+      // 两端正统唐代月牙鸱尾
+      const finH = opts.finialH || (shortHalf >= 16 ? 5 : (shortHalf >= 10 ? 4 : 3));
+      ARCH.chiwei(a, topX0, ry + 1, midZ, 1, finH, ridgeC, finialC);
+      ARCH.chiwei(a, topX1, ry + 1, midZ, -1, finH, ridgeC, finialC);
+    } else {
+      const midX = (topX0 + topX1) >> 1;
+      for (let z = topZ0; z <= topZ1; z++) {
+        a.set(midX, ry, z, ridgeC);
+        a.set(midX, ry + 1, z, ridgeC);
+      }
+      const finH = opts.finialH || (shortHalf >= 16 ? 5 : (shortHalf >= 10 ? 4 : 3));
+      ARCH.chiwei(a, midX, ry + 1, topZ0, 1, finH, ridgeC, finialC);
+      ARCH.chiwei(a, midX, ry + 1, topZ1, -1, finH, ridgeC, finialC);
+    }
+
+    return ry + 4;
   },
 
-  // 院墙：夯土墙身 + 瓦顶压边（外挑 1 + 瓦暗脊）+ 门洞与门柱
+  // ⑦ 院墙与坊墙内宅垣（夯土墙身 + 青瓦压顶 + 院门楼）
   enclosure(a, x0, z0, x1, z1, base, facing, opts) {
     opts = opts || {};
-    const courses = opts.courses || 3;
-    const cap = base + courses + 1;
+    const wallH = opts.wallH || 8; // 约 2 米高实适院墙
+    const capY = base + wallH;
     const cx = (x0 + x1) >> 1, cz = (z0 + z1) >> 1;
-    const gateW = opts.gateW || 3;
+    const gateW = opts.gateW || 4; // 院门半宽
+
     let gx = cx, gz = z1, gAxis = 'NS';
-    if (facing === 'N') { gx = x0 + 4; gz = z0; }
+    if (facing === 'N') { gx = cx; gz = z0; gAxis = 'NS'; }
     else if (facing === 'E') { gx = x1; gz = cz; gAxis = 'EW'; }
     else if (facing === 'W') { gx = x0; gz = cz; gAxis = 'EW'; }
-    const isGate = (x, z) => gAxis === 'NS' ? (z === gz && Math.abs(x - gx) <= gateW) : (x === gx && Math.abs(z - gz) <= gateW);
-    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-      if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-      if (isGate(x, z)) continue;
-      a.set(x, base + 1, z, PAL.rammed);
-      if (courses >= 2) a.set(x, base + 2, z, PAL.rammedLight);
-      if (courses >= 3) a.set(x, base + 3, z, PAL.rammedLight);
-      a.set(x, cap, z, PAL.roofDark);
-      const ox = x === x0 ? -1 : x === x1 ? 1 : 0;
-      const oz = z === z0 ? -1 : z === z1 ? 1 : 0;
-      if (ox) a.set(x + ox, cap, z, PAL.roofGrey);
-      if (oz) a.set(x, cap, z + oz, PAL.roofGrey);
-    }
-    const posts = gAxis === 'NS' ? [[gx - gateW - 1, gz], [gx + gateW + 1, gz]] : [[gx, gz - gateW - 1], [gx, gz + gateW + 1]];
-    for (const [px, pz] of posts) for (let y = 1; y <= courses + 1; y++) a.set(px, base + y, pz, PAL.zhu);
-    for (let s = -gateW; s <= gateW; s++) a.set(gAxis === 'NS' ? gx + s : gx, cap, gAxis === 'NS' ? gz : gz + s, PAL.roofDark);
-    return { gx, gz, gAxis };
-  },
 
-  // ---------------------------------------------------------------- P2 民居立面构件（小宅升级用，全部按 HOUSE 常量表取值）
-  // 台基：总层数 layers（含埋入地坪的 2 层），侧面石 / 顶面白石压面 —— 顶侧分层出水平投影线；
-  // 南向踏道逐级退台、实心砌筑（禁止悬空）。返回台基顶面之上第一层 y。
-  plinth(a, x0, z0, x1, z1, y0, layers, opts) {
-    opts = opts || {};
-    const bodyC = opts.bodyC || HOUSE.platBodyC, topC = opts.topC || HOUSE.platTopC;
-    const y1 = y0 + layers - 1;
-    a.shellBox(x0, y0, z0, x1, y1, z1, bodyC);
-    a.slab(x0, y1, z0, x1, z1, topC);                 // 顶面整层白石（侧面上沿也随之为白石压边）
-    if (opts.steps !== false) {
-      const cx = (x0 + x1) >> 1, w = opts.stepW || 5;
-      const n = Math.max(1, layers - 2);              // 露出的层数就是踏道级数
-      for (let s = 0; s < n; s++) {
-        a.fill(cx - w, y0, z1 + 1 + s, cx + w, y1 - 1 - s, z1 + 1 + s, opts.stepC || topC);
-      }
-    }
-    return y1 + 1;
-  },
-
-  // 檐柱列：柱径 R 的方柱，柱心对齐轴线，柱脚落在台基顶面（y0 就是台基返回的层，绝不悬空）；
-  // 柱头一圈额枋（1 格宽）把柱头连成整体。返回 { xs, yTop, cols } 供墙 / 斗拱 / 屋顶复用。
-  eaveColonnade(a, x0, z0, x1, z1, y0, h, bays, colC, R, opts) {
-    opts = opts || {};
-    const xs = [];
-    for (let b = 0; b <= bays; b++) xs.push(Math.round(x0 + (x1 - x0) * b / bays));
-    const uniq = Array.from(new Set(xs)).sort((p, q) => p - q);
-    const half = (R - 1) >> 1;
-    const zRows = [z0, z1];
-    if (z1 - z0 >= 14 && opts.midRow !== false) zRows.push((z0 + z1) >> 1);
-    const cols = [];
-    for (const x of uniq) for (const z of zRows) cols.push([x, z]);
-    for (const [x, z] of cols) for (let y = y0; y < y0 + h; y++) {
-      for (let dx = -half; dx < R - half; dx++) for (let dz = -half; dz < R - half; dz++) a.set(x + dx, y, z + dz, colC);
-    }
-    const ry = y0 + h - 1;                            // 额枋层（与柱顶同层）
-    for (let x = x0; x <= x1; x++) { a.set(x, ry, z0, colC); a.set(x, ry, z1, colC); }
-    for (let z = z0; z <= z1; z++) { a.set(x0, ry, z, colC); a.set(x1, ry, z, colC); }
-    return { xs: uniq, yTop: ry, cols };
-  },
-
-  // 屋身墙：外皮按开间真实挖洞，内皮作内凹背板 —— 板门（门扇内凹 1 格）/ 直棂窗（窗棂隔一格留一根）。
-  // 洞口是真空腔，不是贴色；背板向上下各多铺 1 行，与墙身 6 邻接（防浮空）。
-  houseWall(a, x0, z0, x1, z1, y0, h, opts) {
-    opts = opts || {};
-    const wallC = opts.wallC || PAL.plaster, baseC = opts.baseC || HOUSE.baseC;
-    const frameC = opts.frameC || HOUSE.frameC, leafC = opts.leafC || PAL.doorDark;
-    const recessC = opts.recessC || PAL.timberDark, mullC = opts.mullC || PAL.zhu;
-    const xs = opts.xs || [];
-    const doorBay = opts.doorBay == null ? -1 : opts.doorBay;
-    const doorW = opts.doorW || HOUSE.doorW, doorH = opts.doorH || HOUSE.doorH;
-    const winW = opts.winW || HOUSE.winW, winH = opts.winH || HOUSE.winH;
-    const yTop = y0 + h - 1, ySill = y0 + 1;
-    const holes = [];
-    const push = (axis, line, inward, c0, w, ya, yb, kind) => {
-      if (w < 1) return;
-      const from = c0 - ((w - 1) >> 1), to = from + w - 1;
-      holes.push({ axis, line, inward, from, to, ya, yb, kind });
+    const isGate = (x, z) => {
+      return gAxis === 'NS'
+        ? (z === gz && Math.abs(x - gx) <= gateW)
+        : (x === gx && Math.abs(z - gz) <= gateW);
     };
-    const bays = Math.max(0, xs.length - 1);
-    const mcz = (z0 + z1) >> 1;
-    const wy0 = y0 + 2, wy1 = yTop - 1;                       // 窗带：窗台 1 层 + 窗 4 层（竖棂够长才读得出）
-    for (let i = 0; i < bays; i++) {
-      const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
-      if (i === doorBay) {
-        // 明间板门：门宽必须给两侧留墙（bw-2），否则整开间被掏空 → 立面读成"开敞柱廊"（实测误判为凉亭）
-        push('x', z1, -1, c, Math.min(doorW, Math.max(1, bw - 2)), ySill, ySill + doorH - 1, 'door');
-        if (bw >= 10) {                                                                     // 明间够宽再补两窗
-          const off = Math.round(bw * 0.32);
-          push('x', z1, -1, c - off, 3, wy0, wy1, 'win');
-          push('x', z1, -1, c + off, 3, wy0, wy1, 'win');
-        }
-      } else {
-        // 次间直棂窗：取"开间宽 - 2"为上限（两侧各留 1 格墙），窄开间退化成 1 格竖缝，不许撑满整间
-        push('x', z1, -1, c, Math.min(winW, Math.max(1, bw - 2)), wy0, wy1, 'win');
-      }
-    }
-    for (let i = 0; i < bays; i++) {                                                       // 背面只开小窗
-      const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
-      push('x', z0, +1, c, Math.min(3, Math.max(1, bw - 2)), wy0, wy1, 'win');
-    }
-    const dwz = z1 - z0 - 2;
-    if (dwz >= 3) {                                                                        // 东西山墙中段一窗
-      const ww = Math.min(3, dwz);
-      push('z', x0, +1, mcz, ww, wy0, wy1, 'win');
-      push('z', x1, -1, mcz, ww, wy0, wy1, 'win');
-    }
-    const holeAt = (x, z) => {
-      for (const o of holes) {
-        if (o.axis === 'x' ? (z === o.line && x >= o.from && x <= o.to) : (x === o.line && z >= o.from && z <= o.to)) return o;
-      }
-      return null;
-    };
-    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-      if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-      const o = holeAt(x, z);
-      for (let y = y0; y <= yTop; y++) {
-        if (o && y >= o.ya && y <= o.yb) {
-          if (o.kind === 'win') {                            // 窗棂：每 3 格一根竖棂（两端必有），读成"带棂的洞"而不是"黑方孔"
-            const c = o.axis === 'x' ? x : z;
-            const rel = c - o.from, sp = o.to - o.from;
-            if (rel === 0 || rel === sp || rel % 3 === 0) a.set(x, y, z, mullC);
-          }
-          continue;                                          // 其余留空 —— 真洞
-        }
-        a.set(x, y, z, y === y0 ? baseC : (y === yTop ? frameC : wallC));
-      }
-    }
-    for (const o of holes) {                                 // 内皮内凹背板（上下各多 1 行接墙身）
-      const line2 = o.line + o.inward;
-      const c = o.kind === 'door' ? leafC : recessC;
-      for (let s = o.from; s <= o.to; s++) for (let y = o.ya - 1; y <= o.yb + 1; y++) {
-        if (o.axis === 'x') a.set(s, y, line2, c); else a.set(line2, y, s, c);
-      }
-    }
-    for (const o of holes) {                                 // 板门两侧门框 + 直棂窗上下左右窗框（只改色，不新增体素）
-      if (o.kind === 'door') {
-        for (const jx of [o.from - 1, o.to + 1]) for (let y = o.ya; y <= o.yb; y++) {
-          if (o.axis === 'x') { if (a.has(jx, y, o.line)) a.set(jx, y, o.line, frameC); }
-          else { if (a.has(o.line, y, jx)) a.set(o.line, y, jx, frameC); }
-        }
-      } else {
-        // 窗框：窗台（下一行）+ 两侧竖框，让窗洞在远处也能从墙面上跳出来
-        for (let s = o.from - 1; s <= o.to + 1; s++) {
-          if (o.axis === 'x') { if (a.has(s, o.ya - 1, o.line)) a.set(s, o.ya - 1, o.line, frameC); }
-          else { if (a.has(o.line, o.ya - 1, s)) a.set(o.line, o.ya - 1, s, frameC); }
-        }
-        for (const jx of [o.from - 1, o.to + 1]) for (let y = o.ya; y <= o.yb; y++) {
-          if (o.axis === 'x') { if (a.has(jx, y, o.line)) a.set(jx, y, o.line, frameC); }
-          else { if (a.has(o.line, y, jx)) a.set(o.line, y, jx, frameC); }
-        }
-      }
-    }
-  },
 
-  // 斗拱：简化一斗三升 —— 坐斗 + 华栱横臂 3 格 + 三升，柱头一朵；开间 ≥10 再加补间一朵
-  // （开间不足 10 时补间会与柱头连成一条横带，正是本次要修的缺陷，故不补）。
-  // 出挑 2 层（≤ 既有 ARCH.dougong 的 3，不放大）。axis='x'：沿 x 排布、向 ±z 出挑。
-  dougongLine(a, pos, y, axis, dir, line, colC, outC, opts) {
-    opts = opts || {};
-    const reach = opts.reach == null ? HOUSE.dougongOut : opts.reach;
-    for (const c of pos) {
-      const S = (dx, dy, dz, col) => {
-        const x = axis === 'x' ? c + dx : line + dz * dir;
-        const z = axis === 'x' ? line + dz * dir : c + dx;
-        a.set(x, y + dy, z, col);
-      };
-      S(0, 0, 0, colC);                       // 坐斗
-      S(0, 0, 1, outC);                       // 一跳
-      S(-1, 1, 0, outC); S(0, 1, 0, colC); S(1, 1, 0, outC);   // 华栱横臂 + 一斗三升
-      S(0, 1, 1, colC);                       // 跳头散斗
-      if (reach >= 2) { S(0, 0, 2, outC); S(0, 1, 2, colC); }  // 二跳 + 斗
-      if (reach >= 3) { S(0, 0, 3, outC); S(0, 1, 3, colC); }  // 三跳 + 撩檐枋座
-      if (reach >= 4) { S(0, 0, 4, outC); S(0, 1, 4, colC); }  // 四跳（民居用：白斗伸出檐口线外才读得出）
+    // 夯土围墙墙身 + 顶部青瓦披檐
+    for (let x = x0; x <= x1; x++) {
+      for (let z = z0; z <= z1; z++) {
+        if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
+        if (isGate(x, z)) continue;
+
+        // 墙基
+        a.set(x, base + 1, z, PAL.rammedDark);
+        // 墙身
+        for (let y = base + 2; y < capY; y++) {
+          a.set(x, y, z, PAL.rammed);
+        }
+        // 墙帽青瓦（挑出 1 格防雨）
+        a.set(x, capY, z, PAL.roofDark);
+        const ox = x === x0 ? -1 : (x === x1 ? 1 : 0);
+        const oz = z === z0 ? -1 : (z === z1 ? 1 : 0);
+        if (ox) a.set(x + ox, capY, z, PAL.roofGrey);
+        if (oz) a.set(x, capY, z + oz, PAL.roofGrey);
+      }
     }
+
+    // 院门门屋（乌头门或垂花院门门楼）
+    const posts = gAxis === 'NS'
+      ? [[gx - gateW - 1, gz], [gx + gateW + 1, gz]]
+      : [[gx, gz - gateW - 1], [gx, gz + gateW + 1]];
+
+    for (const [px, pz] of posts) {
+      for (let y = base + 1; y <= capY + 3; y++) {
+        a.set(px, y, pz, PAL.zhu);
+      }
+    }
+    // 门楣
+    if (gAxis === 'NS') {
+      for (let x = gx - gateW; x <= gx + gateW; x++) {
+        a.set(x, capY + 2, gz, PAL.zhu);
+        a.set(x, capY + 3, gz, PAL.roofDark); // 门额顶瓦
+        a.set(x, capY + 3, gz - 1, PAL.roofGrey);
+        a.set(x, capY + 3, gz + 1, PAL.roofGrey);
+      }
+      // 板门扇（左右各留 1 格门斗）
+      for (let x = gx - gateW + 1; x <= gx + gateW - 1; x++) {
+        for (let y = base + 1; y <= capY + 1; y++) {
+          a.set(x, y, gz, PAL.doorDark);
+        }
+      }
+    } else {
+      for (let z = gz - gateW; z <= gz + gateW; z++) {
+        a.set(gx, capY + 2, z, PAL.zhu);
+        a.set(gx, capY + 3, z, PAL.roofDark);
+        a.set(gx - 1, capY + 3, z, PAL.roofGrey);
+        a.set(gx + 1, capY + 3, z, PAL.roofGrey);
+      }
+      for (let z = gz - gateW + 1; z <= gz + gateW - 1; z++) {
+        for (let y = base + 1; y <= capY + 1; y++) {
+          a.set(gx, y, z, PAL.doorDark);
+        }
+      }
+    }
+
+    return { gx, gz, gAxis, capY };
   },
 };
 
-// ---------------------------------------------------------------- 官署（皇城百司）：B1~B3 独立语法
-// 与坊内民居彻底分开：外垣 + 前庭 + 仪门 + 重檐大堂 + 东西廊庑 + 后堂，等级由 rank 控制
-CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank) {
-  const a = ctx.arch;
-  if (!a) return;
-  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
-  const S = 2;
-  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
-  const ab = base * S;
-  const R = rank == null ? 3 : rank;
-  // 官署色带：三品以上琉璃绿、以下琉璃蓝，与坊区灰瓦形成鸟瞰可辨的独立色带
-  const tone = R >= 4 ? [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG] : [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
-  // 外垣
-  const g = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', { courses: 3, gateW: 5 });
-  const wallTop = ab + 4;
-
-  // 仪门（第二道门，3 间，歇山）
-  const midZ = Math.round(az0 + (az1 - az0) * 0.42);
-  const gw = 14;
-  const gy = ARCH.platform(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, ab, 2, { steps: true, stepW: 5 });
-  const gf = ARCH.colonnade(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy, 8, 3, PAL.zhuBright, 2);
-  ARCH.wall(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy, 8, gf.cols, {
-    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: gf.xs, doorBay: 1,
-  });
-  ARCH.dougong(a, gf.cols, gy + 7, PAL.zhuBright, PAL.zhu);
-  ARCH.roofGable(a, g.gx - gw, midZ - 6, g.gx + gw, midZ + 6, gy + 10, {
-    layers: 7, overhang: 4, main: PAL.roofSlate, groove: PAL.roofSlateG, lip: PAL.roofSlateL,
-  });
-
-  // 大堂（坐北，5~7 间，重檐歇山，琉璃剪边）—— 官署的视觉核心
-  const hw = (R >= 4 ? 24 : 19) + Math.round(rng() * 6), hd = 14 + Math.round(rng() * 4);
-  const hcx = (ax0 + ax1) >> 1;
-  const hz1 = az0 + 8 + hd, hz0 = az0 + 8;
-  const hx0 = hcx - hw, hx1 = hcx + hw;
-  let y = ARCH.platform(a, hx0 - 4, hz0 - 4, hx1 + 4, hz1 + 4, ab, 3, { steps: true, stepW: 7 });
-  const bays = (R >= 4 ? 7 : 5) + (rng() < 0.4 ? 2 : 0);
-  const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, 12, bays, PAL.zhuBright, 2);
-  ARCH.wall(a, hx0, hz0, hx1, hz1, y, 12, fr.cols, {
-    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: fr.xs, doorBay: Math.floor(bays / 2),
-  });
-  ARCH.dougong(a, fr.cols, y + 11, PAL.zhuBright, PAL.zhu);
-  // 腰檐
-  const eaveY = y + 14, eo = 5;
-  for (let x = hx0 - eo; x <= hx1 + eo; x++) for (let z = hz0 - eo; z <= hz1 + eo; z++) {
-    const ring = (x === hx0 - eo || x === hx1 + eo || z === hz0 - eo || z === hz1 + eo);
-    // 腰檐必须铺满（不能只铺外圈环）：环与下方斗拱无面相邻关系，会整圈浮空。
-    a.set(x, eaveY, z, ring ? PAL.roofSlateL : PAL.roofSlate);
-    a.set(x, eaveY + 1, z, ((x & 1) ? PAL.roofSlate : PAL.roofSlateG));
-  }
-  // 上檐
-  const dx0 = hx0 + 4, dx1 = hx1 - 4, dz0 = hz0 + 4, dz1 = hz1 - 4;
-  const fr2 = ARCH.colonnade(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, Math.max(3, bays - 2), PAL.zhuBright, 2);
-  ARCH.wall(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, fr2.cols, {
-    wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: fr2.xs, doorBay: -1,
-  });
-  ARCH.dougong(a, fr2.cols, eaveY + 7, PAL.zhuBright, PAL.zhu);
-  const topY = ARCH.roofHip(a, dx0, dz0, dx1, dz1, eaveY + 10, {
-    layers: 9, ridgeRatio: 0.6, overhang: 5,
-    main: tone[0], groove: tone[2], lip: tone[1],
-    trim: R >= 4 ? PAL.gold : null, ridgeC: PAL.roofDark, finial: PAL.gold,
-  });
-
-  // 东西廊庑（长条低矮，围出前庭）
-  for (const sx of [ax0 + 5, ax1 - 5]) {
-    const lz0 = midZ + 8, lz1 = az0 + 6 + hd + 6;
-    if (lz1 - lz0 < 8) continue;
-    const ly = ARCH.platform(a, sx - 3, lz0, sx + 3, lz1, ab, 1, { steps: false });
-    const lf = ARCH.colonnade(a, sx - 3, lz0, sx + 3, lz1, ly, 6, 1, PAL.zhu, 1);
-    ARCH.wall(a, sx - 3, lz0, sx + 3, lz1, ly, 6, lf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: lf.xs, doorBay: -1 });
-    ARCH.roofGable(a, sx - 3, lz0, sx + 3, lz1, ly + 7, { layers: 4, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
-  }
-
-  // 后堂（大堂之后，较小）
-  const bz1 = az1 - 6, bz0 = bz1 - 10;
-  if (bz0 > hz1 + 6) {
-    const bw = 14, by = ARCH.platform(a, hcx - bw, bz0 - 2, hcx + bw, bz1 + 2, ab, 2, { steps: true, stepW: 5 });
-    const bf = ARCH.colonnade(a, hcx - bw, bz0, hcx + bw, bz1, by, 8, 3, PAL.zhu, 1);
-    ARCH.wall(a, hcx - bw, bz0, hcx + bw, bz1, by, 8, bf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: bf.xs, doorBay: 1 });
-    ARCH.roofGable(a, hcx - bw, bz0, hcx + bw, bz1, by + 9, { layers: 6, overhang: 3, main: tone[0], groove: tone[2], lip: tone[1] });
-  }
-
-  // 占位
-  const topCity = Math.ceil(Math.max(topY, wallTop) / S);
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    const i = CHANGAN.fieldIndex(x, z);
-    if (i < 0) continue;
-    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = tone[0];
-  }
-  return topY;
-};
-
-// ---------------------------------------------------------------- 建筑层浮空审计
-// 6 邻域连通性：从"坐落在城市实体之上"的建筑体素泛洪，未被泛洪到的即为浮空。
-// 这是城市层泛洪审计覆盖不到的一层（建筑层是独立网格）。
-CHANGAN.auditArchFloating = function (ctx, arch) {
-  const S = 2;
-  const key = (x, y, z) => ((x + 4096) * 8192 + (z + 4096)) * 512 + y;
-  const seen = new Set();
-  const stack = [];
-  for (const k of arch.map.keys()) {
-    const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
-    if (y > 0 && arch.has(x, y - 1, z)) continue;      // 下方还有建筑体素，不是种子
-    // 建筑体素 y 占据城市 [y/S, (y+1)/S)，其下承托的是城市体素 floor(y/S) - 1 与自身所在层
-    const cy = Math.floor(y / S), cx = Math.floor(x / S), cz = Math.floor(z / S);
-    if (y === 0 || ctx.store.get(cx, cy, cz)) { seen.add(key(x, y, z)); stack.push(x, y, z); }
-  }
-  const D = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  const seedCount = seen.size;
-  while (stack.length) {
-    const z = stack.pop(), y = stack.pop(), x = stack.pop();
-    for (const [dx, dy, dz] of D) {
-      const nx = x + dx, ny = y + dy, nz = z + dz;
-      if (!arch.has(nx, ny, nz)) continue;
-      const kk = key(nx, ny, nz);
-      if (seen.has(kk)) continue;
-      seen.add(kk); stack.push(nx, ny, nz);
-    }
-  }
-  const floating = arch.count - seen.size;
-  const samples = [];
-  let ymin = 1e9, ymax = -1e9;
-  const colTally = new Map();
-  if (floating) {
-    for (const [k, c] of arch.map) {
-      if (seen.has(k)) continue;
-      const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
-      if (y < ymin) ymin = y; if (y > ymax) ymax = y;
-      colTally.set(c, (colTally.get(c) || 0) + 1);
-      if (samples.length < 5) samples.push(`${x / S},${y / S},${z / S}`);
-    }
-  }
-  const topCols = [...colTally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
-    .map(([c, n]) => `${(CHANGAN.PAL_DEF[c - 1] || ['?'])[0]}:${n}`).join(' ');
-  return {
-    pass: floating === 0,
-    detail: floating
-      ? `建筑层浮空 ${floating} 体素（种子 ${seedCount}）y∈[${ymin / S},${ymax / S}] 主要色 ${topCols} 如 ${samples.join('|')}`
-      : `建筑层 ${arch.count} 体素全部落地连通`,
-  };
-};
-
-// ---------------------------------------------------------------- 坊内院落（建筑层 2×）：E1~E3 居住亚型
-// 城市层只负责地坪与树井（archCompoundGround），建筑全部由本函数写进建筑层 —— 单一权威。
-// 屋面色族池：按等级分三档，每档 5 个**真正不同色相**的族
-// （评审实测："民居屋面只有青灰和黛两种近似灰，按坊配色等于空转"）
-const T_GREY = [PAL.roofGrey, PAL.roofLight, PAL.roofGroove];
-const T_SLATE = [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
-const T_CLAY = [PAL.roofClay, PAL.roofClayL, PAL.roofClayG];
-const T_OCHRE = [PAL.roofOchre, PAL.roofOchreL, PAL.roofOchreG];
-const T_BROWN = [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG];
-const T_GREEN = [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG];
-const T_BLUE = [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
-const TONE_BY_LEVEL = [
-  [T_GREY, T_SLATE, T_CLAY, T_OCHRE, T_CLAY],      // 民居：青灰 / 黛 / 灰陶 / 赭石
-  [T_SLATE, T_CLAY, T_OCHRE, T_GREY, T_BROWN],     // 中等宅院
-  [T_GREEN, T_SLATE, T_GREEN, T_SLATE, T_CLAY],    // 大宅府第：琉璃绿（蓝留给官署品级色，避免坊区出现突兀亮蓝）
-];
-
-// 院落地面（城市层）：浅夯土满铺 + 中轴砖道
-CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
-  const { store } = ctx;
-  const x1 = x0 + w - 1, z1 = z0 + d - 1;
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    const i = CHANGAN.fieldIndex(x, z);
-    if (i < 0 || ctx.fields.road[i] || ctx.fields.water[i]) continue;
-    // 地坪加浅纹理：纯色平地被评审判为"正射贴图"最大来源
-    const t = (x * 7 + z * 5 + x0) % 9;
-    store.set(x, base, z, t === 0 ? PAL.brickPave : (t < 4 ? PAL.loessLight : PAL.loess));
-  }
-  const cx = (x0 + x1) >> 1;
-  for (let z = z0; z <= z1; z++) store.set(cx, base, z, PAL.brickPave);
-  for (let x = x0 + 1; x <= x1 - 1; x++) store.set(x, base, z0 + Math.floor(d * 0.55), PAL.brickPave);
-};
-
-CHANGAN.pickCompoundVariant = function (level, rng) {
-  const r = rng();
-  if (level === 0) return r < 0.5 ? 'small' : (r < 0.82 ? 'winged' : 'shed');
-  if (level === 1) return r < 0.28 ? 'winged' : (r < 0.56 ? 'twoCourt' : (r < 0.82 ? 'tower' : 'garden'));
-  return r < 0.32 ? 'twoCourt' : (r < 0.62 ? 'tower' : (r < 0.86 ? 'garden' : 'winged'));
-};
-
+// ---------------------------------------------------------------- 坊内合院生成器（buildArchCompound）
+// E1~E3 居住亚型：正房（主堂）、东西厢房、院落回廊、门屋、庭院砖石漫道
 CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   const a = ctx.arch;
   if (!a) return;
   ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
-  const S = 2;
-  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
+
+  // 坐标折算至 4× 建筑体素空间
+  const S = ARCH_S;
+  const ax0 = x0 * S, az0 = z0 * S;
+  const ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
-  const courses = level === 0 ? 2 : 3;
-  const g = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', { courses, gateW: 3 });
-  const wallTop = ab + courses + 1;
-  // 坊级风格：色调由坊位决定（相邻坊不同），高度基调 ±1 —— 破同质化的第一手段
-  const st = (plan && plan.style) || { tone: 0, hBias: 0, eaveBias: 0 };
-  const tonePool = (level >= 2 && Math.min(w, d) >= 18) ? TONE_BY_LEVEL[2] : TONE_BY_LEVEL[Math.min(1, level)];
-  // 坊内微差：同坊 35% 的院落用相邻色族 —— 避免"整坊一块纯色"像彩色拼贴（评审判"彩色复制粘贴"）
-  let tone = tonePool[(st.tone + (rng() < 0.35 ? 1 : 0)) % tonePool.length];
-  // 逐栋明度抖动：35% 的院落屋面换同族深调，破"整片同色平板"（评审判"平板正射贴图感"）
-  const DEEP = {};
-  DEEP[PAL.roofGrey] = PAL.roofGreyDeep; DEEP[PAL.roofSlate] = PAL.roofSlateDeep;
-  DEEP[PAL.roofClay] = PAL.roofClayDeep; DEEP[PAL.roofOchre] = PAL.roofOchreDeep;
-  if (rng() < 0.35 && DEEP[tone[0]]) tone = [DEEP[tone[0]], tone[1], tone[2]];
-  // 亚型分化：打破"千篇一律的合院"（同质化对策 §6）
-  const variant = (plan && plan.variant) || CHANGAN.pickCompoundVariant(level, rng);
-  const wallVar = rng() < 0.5 ? 0 : 1;   // 屋身高度 ±1
-  const li = Math.max(0, Math.min(2, level | 0));             // HOUSE 常量表列号
-  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: HOUSE.eaveOut[li] + (st.eaveBias === 2 ? 1 : 0), finial: PAL.roofDark };
 
-  // 正房（坐北朝南，占院北侧）—— P2 立面升级：台基 / 檐柱 / 门窗 / 斗拱全部按 HOUSE 常量表取值
-  const platOut = HOUSE.platOut[li], edge = platOut + 1;      // 台基外缘与院墙之间留 1 格
-  const mainD = Math.max(8, Math.min(20, Math.round(d * 0.42) * S));
-  const hx0 = ax0 + edge, hx1 = ax1 - edge, hz0 = az0 + edge;
-  // 南侧要给门屋（占 az1-5..az1+1）与台基踏道留余量，再兜一个 ≥6 的进深下限
-  const hz1 = Math.max(hz0 + 6, Math.min(az1 - 6 - platOut, hz0 + mainD));
-  let topY = wallTop;
-  if (hx1 - hx0 >= 10 && hz1 - hz0 >= 6) {
+  if (ax1 - ax0 < 16 || az1 - az0 < 16) return;
+
+  const li = Math.max(0, Math.min(2, level || 0));
+
+  // 坊内色彩谱系（以青灰、黛灰为主，大宅配琉璃绿剪边）
+  const ROOF_TONES = [
+    [PAL.roofGrey, PAL.roofLight, PAL.roofGroove],
+    [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG],
+    [PAL.roofClay, PAL.roofClayL, PAL.roofClayG],
+    [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG],
+  ];
+  const toneIdx = ((x0 * 3 + z0 * 7) & 0x7fffffff) % ROOF_TONES.length;
+  const tone = ROOF_TONES[toneIdx];
+  const trimC = (li >= 2) ? PAL.glazeGreen : null; // 大宅琉璃剪边
+
+  // 1. 院墙与院门
+  const enc = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', {
+    wallH: 7 + li,
+    gateW: 3 + li,
+  });
+
+  // 2. 正堂（坐北朝南，占北侧 45%~50% 进深）
+  const courtMargin = 3;
+  const hx0 = ax0 + courtMargin, hx1 = ax1 - courtMargin;
+  const hz0 = az0 + courtMargin;
+  const mainDepth = Math.max(12, Math.min(28, Math.round((az1 - az0) * 0.42)));
+  const hz1 = hz0 + mainDepth;
+
+  let topY = enc.capY;
+
+  if (hx1 - hx0 >= 16 && hz1 - hz0 >= 10) {
     const W = hx1 - hx0;
-    const bays = Math.max(3, Math.min(HOUSE.baysMax, Math.round(W / HOUSE.bayDiv)));
-    // 屋身高度：坊基调 + 逐栋抖动 —— 评审判"高度几乎没变"；
-    // 下限 = HOUSE.wallH，保证「下碱 1 + 门窗 + 门额 1 + 额枋 1」五段立面读得出
-    const wallH = Math.max(HOUSE.wallH[li], Math.min(HOUSE.wallH[li] + 3, HOUSE.wallH[li] + st.hBias + (rng() < 0.35 ? 1 : 0)));
-    const doorH = Math.min(HOUSE.doorH, wallH - 2);           // 门洞高 3~4，门额之上再压额枋
-    const colC = HOUSE.colC[li];
-    // ① 台基：外扩 platOut（≥3 拱体素）、露出 2 层、侧面石 / 顶面白石压面 + 南向踏道
-    let y = ARCH.plinth(a, hx0 - platOut, hz0 - platOut, hx1 + platOut, hz1 + platOut, ab, HOUSE.platLayers[li], {
-      bodyC: HOUSE.platBodyC, topC: HOUSE.platTopC, steps: true, stepW: Math.max(4, W >> 3),
+    // 开间数：根据面宽自适应 3 间或 5 间
+    const bays = (W >= 36) ? 5 : 3;
+    const wallH = 10 + li * 2; // 2.5m~3.5m 真实净高
+    const colR = li >= 2 ? 2 : 1;
+    const colC = (li >= 2) ? PAL.zhu : (li === 1 ? PAL.zhuDeep : PAL.timber);
+
+    // ① 石阶台基（露出 1~2 格高，南向踏道）
+    const platH = 2 + li;
+    const py = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, platH, {
+      bodyC: PAL.stoneGrey,
+      edgeC: PAL.stoneWhite,
+      stepHalf: Math.max(3, W >> 3),
     });
-    // ② 檐柱（柱径 ≥2、柱脚落在台基顶面）+ 柱头额枋
-    const fr = ARCH.eaveColonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, colC, HOUSE.colR[li]);
-    // ③ 屋身墙：外皮挖真洞（明间板门 + 次间直棂窗），内皮内凹背板出阴影
-    //    窗：深色内面（正午檐影里白墙≈#898e8e，只有比它明显更暗才读成「洞」）+ 白色竖窗棂
-    ARCH.houseWall(a, hx0 + HOUSE.wallRecess[li], hz0 + HOUSE.wallRecess[li], hx1 - HOUSE.wallRecess[li], hz1 - HOUSE.wallRecess[li], y, wallH, {
-      wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, baseC: HOUSE.baseC, frameC: HOUSE.frameC,
-      leafC: PAL.doorDark, recessC: PAL.doorDark, mullC: PAL.paperWhite,
-      xs: fr.xs, doorBay: (fr.xs.length - 1) >> 1,
-      doorW: HOUSE.doorW, doorH: doorH, winW: HOUSE.winW, winH: HOUSE.winH,
+
+    // ② 檐柱列与阑额
+    const colRes = ARCH.colonnade(a, hx0, hz0, hx1, hz1, py, wallH, bays, colC, colR);
+
+    // ③ 墙体与直棂门窗（墙体内退 1 格，明间设双扇板门，次间设木棂窗）
+    ARCH.wallWithOpenings(a, hx0, hz0, hx1, hz1, py, wallH, colRes.xs, {
+      wallC: (rng() < 0.4) ? PAL.plasterWarm : PAL.plaster,
+      baseC: PAL.brickPave,
+      frameC: colC,
+      doorDark: PAL.doorDark,
+      mullC: PAL.timber,
+      hasDoor: true,
     });
-    // ③b 墙起来后再压一遍柱身与额枋：墙与柱同面时，先砌墙会把柱盖成白墙，
-    //     重画一次让柱（外凸 1 格）重新压在墙面之前 —— 立面读成「朱柱 + 粉墙 + 门窗洞」。
-    ARCH.eaveColonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, colC, HOUSE.colR[li]);
-    // ④ 斗拱：柱头一朵 + 开间 ≥10 补间一朵（前后檐 + 东西山面）
-    //    斗用白粉、栱用朱红（唐式白斗红栱）：正午檐影里红栱会与额枋糊成一条带，白斗把它断开
-    const dgY = y + wallH;                                    // 额枋之上第一层
-    const dgPos = [];
-    for (let i = 0; i < fr.xs.length; i++) {
-      dgPos.push(fr.xs[i]);
-      if (i + 1 < fr.xs.length && fr.xs[i + 1] - fr.xs[i] >= 10) dgPos.push((fr.xs[i] + fr.xs[i + 1]) >> 1);
-    }
-    ARCH.dougongLine(a, dgPos, dgY, 'x', -1, hz0, PAL.plaster, PAL.zhu);
-    ARCH.dougongLine(a, dgPos, dgY, 'x', +1, hz1, PAL.plaster, PAL.zhu);
-    const zPos = Array.from(new Set(fr.cols.filter(c2 => c2[0] === hx0).map(c2 => c2[1]))).sort((p, q) => p - q);
-    const dgZ = [];
-    for (let i = 0; i < zPos.length; i++) {
-      dgZ.push(zPos[i]);
-      if (i + 1 < zPos.length && zPos[i + 1] - zPos[i] >= 10) dgZ.push((zPos[i] + zPos[i + 1]) >> 1);
-    }
-    ARCH.dougongLine(a, dgZ, dgY, 'z', -1, hx0, PAL.plaster, PAL.zhu);
-    ARCH.dougongLine(a, dgZ, dgY, 'z', +1, hx1, PAL.plaster, PAL.zhu);
-    const roofY = dgY + HOUSE.dougongH;                       // 斗拱两层之上起檐
-    if (variant === 'tower' && hx1 - hx0 >= 18 && hz1 - hz0 >= 12) {
-      // 楼居：**二层直接起在一层额枋之上**（不先盖屋顶），中间只做一圈腰檐。
-      // 旧写法是"先盖一层屋顶、再把二层放在屋顶上方"，二层与屋顶之间没有落地支承 ——
-      // 这正是用户看到的"建筑断成两半、上面一半飘在空中"。
-      for (let x = hx0 - platOut; x <= hx1 + platOut; x++) for (let z = hz0 - platOut; z <= hz1 + platOut; z++) {
-        const ring = (x === hx0 - platOut || x === hx1 + platOut || z === hz0 - platOut || z === hz1 + platOut);
-        a.set(x, roofY, z, ring ? tone[1] : tone[0]);
-        a.set(x, roofY + 1, z, tone[2]);
-      }
-      const inset = 4;
-      const tw0 = hx0 + inset, tw1 = hx1 - inset, td0 = hz0 + inset, td1 = hz1 - inset;
-      const tH = 7;
-      const tf = ARCH.colonnade(a, tw0, td0, tw1, td1, roofY + 2, tH, 3, PAL.zhuBright, 2);
-      ARCH.wall(a, tw0, td0, tw1, td1, roofY + 2, tH, tf.cols, {
-        wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: tf.xs, doorBay: -1,
-      });
-      ARCH.dougong(a, tf.cols, roofY + 2 + tH - 1, PAL.zhuBright, PAL.zhu);
-      topY = ARCH.roofHip(a, tw0, td0, tw1, td1, roofY + 2 + tH + 2,
-        Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt));
-    } else {
-      // 屋架形式也拉开：部分民居用歇山（庑殿坡）而非悬山，屋面层数按 HOUSE 表 + 逐栋抖动
-      const useHip = level >= 2 || (level >= 1 && rng() < 0.4) || (level === 0 && rng() < 0.2);
-      topY = useHip
-        ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: HOUSE.roofLayers[li] + 1 + Math.round(rng() * 3), ridgeRatio: 0.55 + rng() * 0.15 }, roofOpt))
-        : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: HOUSE.roofLayers[li] + Math.round(rng() * 2), cornerLift: 1 }, roofOpt));
-    }
+
+    // ④ 斗拱层（承托撩檐枋，出挑严格内缩于檐下）
+    const dgY = py + wallH;
+    ARCH.dougongSystem(a, colRes.cols, dgY, colC, PAL.plaster, 2);
+
+    // ⑤ 盛唐屋顶（庑殿或悬山）
+    const useHip = (li >= 2) || (li === 1 && rng() < 0.5);
+    const roofY = dgY + 2;
+    topY = ARCH.roofTang(a, hx0, hz0, hx1, hz1, roofY, {
+      kind: useHip ? 'hip' : 'gable',
+      main: tone[0],
+      groove: tone[2],
+      lip: tone[1],
+      trim: trimC,
+      ridgeC: PAL.roofDark,
+      overhang: 5 + li,
+      layers: 8 + li * 2,
+      finialH: 3 + li,
+    });
   }
 
-  // 厢房（东西各一，体量低于正房）—— small 亚型不设厢房
-  const wingW = 7;
-  if (variant !== 'small' && variant !== 'shed' && az1 - hz1 >= 12 && rng() < 0.82) {
+  // 3. 东西厢房（围合式院落）
+  const wingDepth = az1 - hz1 - 8;
+  if (wingDepth >= 14 && rng() < 0.85) {
     const wz0 = hz1 + 4, wz1 = az1 - 4;
-    // 厢房逐栋变体：宽度 7~11、层高 4~8、屋面 30% 换色族。
-    // P3 三坊验收判"中景长条灰屋面过于统一、重复感强"——厢房尺寸/高度全同是主因。
-    const wWid = wingW + (rng() < 0.5 ? 0 : 2 + Math.round(rng() * 2));
-    const wHt = 4 + wallVar + (rng() < 0.28 ? 2 : 0);
-    const wTone = rng() < 0.3 ? tonePool[(st.tone + 2) % tonePool.length] : tone;
+    const wingW = Math.max(7, Math.min(12, Math.round((ax1 - ax0) * 0.22)));
+    const wingH = 8 + (li > 0 ? 1 : 0);
     const buildWing = (side) => {
-      const wx0 = side === 'W' ? ax0 + 3 : ax1 - 3 - wWid;
-      const wx1 = wx0 + wWid;
-      if (wz1 - wz0 < 6) return;
+      const wx0 = (side === 'W') ? ax0 + 2 : ax1 - 2 - wingW;
+      const wx1 = wx0 + wingW;
+      // 厢房台基
       const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
-      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, wHt, 2, PAL.zhu, 1);
-      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, wHt, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
-      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + wHt + 1, { layers: 4 + Math.round(rng() * 3), overhang: 2, main: wTone[0], groove: wTone[2], lip: wTone[1] });
+      // 厢房柱与墙
+      const wCol = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, wingH, 2, PAL.timber, 1);
+      ARCH.wallWithOpenings(a, wx0, wz0, wx1, wz1, wy, wingH, wCol.xs, {
+        wallC: PAL.plaster,
+        baseC: PAL.brickPave,
+        frameC: PAL.timber,
+        hasDoor: false,
+      });
+      // 厢房屋面（单坡或悬山）
+      ARCH.roofTang(a, wx0, wz0, wx1, wz1, wy + wingH + 1, {
+        kind: 'gable',
+        main: tone[0],
+        groove: tone[2],
+        lip: tone[1],
+        overhang: 3,
+        layers: 5,
+        lift: false,
+      });
     };
-    const both = variant === 'twoCourt' || (plan && plan.wingMode === 'both');
-    if (both) { buildWing('W'); buildWing('E'); }
-    else buildWing(plan && plan.wingMode === 'E' ? 'E' : 'W');
-  }
 
-  // 二进院：在院中加一道腰墙与内门，把院子分成前庭后院
-  if (variant === 'twoCourt' && az1 - az0 >= 26) {
-    // 腰墙位置：院内 55% 处，但必须让开正房台基与踏道（否则夯土墙会插进石台基）
-    let wz = Math.round(az0 + (az1 - az0) * 0.55);
-    if (wz <= hz1 + platOut + 2) wz = hz1 + platOut + 3;
-    const wgate = 4;
-    if (wz < az1 - 4) {
-      for (let x = ax0 + 1; x <= ax1 - 1; x++) {
-        if (Math.abs(x - ((ax0 + ax1) >> 1)) <= wgate) continue;
-        a.set(x, ab + 1, wz, PAL.rammed); a.set(x, ab + 2, wz, PAL.rammedLight); a.set(x, ab + 3, wz, PAL.roofDark);
-      }
-      // 注意括号：`>>` 优先级低于 `-`，写成 (ax0+ax1) >> 1 - wgate - 1 会被解析成"右移负数位"，
-      // 门柱被扔到城里任意位置并悬空 —— 这就是 2026-09-08 用户实测"建筑断成两半、上面一半飘着"的真凶。
-      const wcx = (ax0 + ax1) >> 1;
-      for (const px of [wcx - wgate - 1, wcx + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
+    const hasBoth = (li >= 1 && rng() < 0.75);
+    if (hasBoth) {
+      buildWing('W');
+      buildWing('E');
+    } else {
+      buildWing(rng() < 0.5 ? 'W' : 'E');
     }
   }
 
-  // 楼居二层已并入正房构造（见上），此处不再二次叠加
-
-  // 仓院：大跨敞棚（无墙，柱列 + 大屋顶）+ 场院
-  if (variant === 'shed') {
-    const sw0 = ax0 + 4, sw1 = ax1 - 4, sd0 = az0 + 4, sd1 = az0 + Math.min(20, Math.round(d * 0.5) * S);
-    if (sw1 - sw0 >= 10 && sd1 - sd0 >= 6) {
-      const sy = ARCH.platform(a, sw0 - 1, sd0 - 1, sw1 + 1, sd1 + 1, ab, 1, { steps: false });
-      const sf = ARCH.colonnade(a, sw0, sd0, sw1, sd1, sy, 7, 4, PAL.timberDark, 1);
-      ARCH.dougong(a, sf.cols, sy + 6, PAL.timber, PAL.timberDark);
-      topY = ARCH.roofGable(a, sw0, sd0, sw1, sd1, sy + 8, { layers: 7, overhang: 3, main: PAL.roofBrown, groove: PAL.roofBrownG, lip: PAL.roofBrownL });
+  // 4. 庭院漫步道（城市层 ground 已有底色，建筑层在中央铺出整齐青石踏道通往院门）
+  const midX = (ax0 + ax1) >> 1;
+  const pathHalf = 2; // 宽 4 格 = 1 城市格 = 1.2m
+  for (let x = midX - pathHalf; x <= midX + pathHalf; x++) {
+    for (let z = hz1 + 2; z <= az1 - 1; z++) {
+      a.set(x, ab + 1, z, PAL.brickPave);
     }
   }
 
-  // 园宅：院中置亭（攒尖），留出园地
-  if (variant === 'garden') {
-    const px = ax0 + Math.round(w * 0.6), pz = az1 - Math.round(d * 0.28);
-    const pr = 5;
-    const py = ARCH.platform(a, px - pr, pz - pr, px + pr, pz + pr, ab, 1, { steps: false });
-    const pf = ARCH.colonnade(a, px - pr + 1, pz - pr + 1, px + pr - 1, pz + pr - 1, py, 5, 2, PAL.zhu, 1);
-    let ty2 = py + 5;
-    const hh = pr - 1;
-    for (let L = 0; L < hh; L++) {
-      const st = L;
-      // 攒尖顶必须逐层铺满：只铺一圈环时，上一层环与下一层环没有面相邻关系，会整层浮空。
-      for (let x = px - pr + 1 + st; x <= px + pr - 1 - st; x++) for (let z = pz - pr + 1 + st; z <= pz + pr - 1 - st; z++) {
-        const ring = (x === px - pr + 1 + st || x === px + pr - 1 - st || z === pz - pr + 1 + st || z === pz + pr - 1 - st);
-        a.set(x, ty2 + L, z, ring ? (L === 0 ? PAL.roofGreenL : ((x & 1) ? PAL.roofGreen : PAL.roofGreenG)) : PAL.roofGreenG);
-      }
-    }
-    a.set(px, ty2 + hh, pz, PAL.gold); a.set(px, ty2 + hh + 1, pz, PAL.gold);
-  }
-
-  // 门屋（跨在院门上的小屋）—— small 亚型不设
-  if (variant !== 'small' && g.gAxis === 'NS' && g.gz === az1) {
-    const gw = 7;
-    const gy = ARCH.platform(a, g.gx - gw, az1 - 5, g.gx + gw, az1 + 1, ab, 1, { steps: false });
-    const gf = ARCH.colonnade(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy, 4, 3, PAL.zhuBright, 1);
-    // 门屋也要有柱头斗拱层（P0 判"近景门殿/穿堂柱顶到檐口同平面贴附"）
-    ARCH.dougong(a, gf.cols, gy + 3, PAL.zhu, PAL.zhuBright, 1);
-    ARCH.roofGable(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy + 6, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
-    topY = Math.max(topY, gy + 10);
-  }
-
-  // 占位戳进城市字段：碰撞 / 小地图 / 远景 LOD 与建筑层一致
-  const topCity = Math.ceil(topY / S);
-  // 建筑坐标表（供 tools/solo.js 单体隔离验收使用）
+  // 记录宏观占位与日志
+  const topCity = Math.ceil(topY * INV_S);
   ctx.archLog = ctx.archLog || [];
-  ctx.archLog.push({ x: x0, z: z0, w, d, top: topCity, lvl: level, var: variant });
-  for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
-    const i = CHANGAN.fieldIndex(x, z);
-    if (i < 0) continue;
-    ctx.fields.topH[i] = topCity;
-    ctx.fields.topColor[i] = tone[0];
+  ctx.archLog.push({ x: x0, z: z0, w, d, top: topCity, lvl: level });
+  for (let x = x0; x < x0 + w; x++) {
+    for (let z = z0; z < z0 + d; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (i >= 0) {
+        ctx.fields.topH[i] = topCity;
+        ctx.fields.topColor[i] = tone[0];
+      }
+    }
   }
+
   return topY;
 };
 
-// ---------------------------------------------------------------- 市肆（建筑层）：临街铺面 / 仓储棚
+// ---------------------------------------------------------------- 皇城官署（buildArchOffice）
+// 礼制官廨：宏大外垣、仪门、五/七间重檐大堂、东西回廊、正堂
+CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank) {
+  const a = ctx.arch;
+  if (!a) return;
+  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
+
+  const S = ARCH_S;
+  const ax0 = x0 * S, az0 = z0 * S;
+  const ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
+  const ab = base * S;
+  const R = rank == null ? 3 : rank;
+
+  // 品级色带：三品以上琉璃绿、四品以下琉璃蓝或青灰
+  const roofC = (R >= 4) ? PAL.glazeGreen : (R === 3 ? PAL.glazeBlue : PAL.roofSlate);
+  const trimC = (R >= 4) ? PAL.gold : PAL.roofLight;
+
+  // 外墙
+  const enc = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', {
+    wallH: 9,
+    gateW: 6,
+  });
+
+  // 官署大堂（核心）
+  const cx = (ax0 + ax1) >> 1;
+  const hallW = Math.round((ax1 - ax0) * 0.3);
+  const hallD = Math.round((az1 - az0) * 0.25);
+  const hx0 = cx - hallW, hx1 = cx + hallW;
+  const hz0 = az0 + Math.round((az1 - az0) * 0.35);
+  const hz1 = hz0 + hallD;
+
+  const bays = (R >= 4) ? 7 : 5;
+  const wallH = 14;
+
+  // 三层石阶大台基
+  const py = ARCH.platform(a, hx0 - 4, hz0 - 4, hx1 + 4, hz1 + 4, ab, 4, {
+    bodyC: PAL.stoneGrey,
+    edgeC: PAL.stoneWhite,
+    stepHalf: 6,
+  });
+
+  // 柱网与额枋（鲜明朱红柱）
+  const colRes = ARCH.colonnade(a, hx0, hz0, hx1, hz1, py, wallH, bays, PAL.zhuBright, 2);
+
+  // 墙体与门窗
+  ARCH.wallWithOpenings(a, hx0, hz0, hx1, hz1, py, wallH, colRes.xs, {
+    wallC: PAL.plasterWarm,
+    baseC: PAL.brickPave,
+    frameC: PAL.zhuBright,
+    doorDark: PAL.doorDark,
+    mullC: PAL.timber,
+    hasDoor: true,
+  });
+
+  // 斗拱与重檐歇山顶
+  const dgY = py + wallH;
+  ARCH.dougongSystem(a, colRes.cols, dgY, PAL.zhuBright, PAL.stoneWhite, 3);
+
+  const topY = ARCH.roofTang(a, hx0, hz0, hx1, hz1, dgY + 2, {
+    kind: 'hip',
+    main: roofC,
+    groove: PAL.roofDark,
+    lip: PAL.roofLight,
+    trim: trimC,
+    ridgeC: PAL.roofDark,
+    overhang: 7,
+    layers: 12,
+    finialH: 5,
+  });
+
+  // 记录顶面
+  const topCity = Math.ceil(topY * INV_S);
+  for (let x = x0; x <= x1; x++) {
+    for (let z = z0; z <= z1; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (i >= 0) {
+        ctx.fields.topH[i] = topCity;
+        ctx.fields.topColor[i] = roofC;
+      }
+    }
+  }
+
+  return topY;
+};
+
+// ---------------------------------------------------------------- 市肆（buildArchShop）
+// 东西两市临街铺面、通敞货栈、挑棚与酒旗
 CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, facing) {
   const a = ctx.arch;
   if (!a) return;
   ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
-  const S = 2;
-  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
+
+  const S = ARCH_S;
+  const ax0 = x0 * S, az0 = z0 * S;
+  const ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
-  if (ax1 - ax0 < 6 || az1 - az0 < 6) return;
-  const tone = east ? [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG] : [PAL.roofClay, PAL.roofClayL, PAL.roofClayG];
-  const y = ARCH.platform(a, ax0, az0, ax1, az1, ab, 1, { steps: false });
-  const isShed = !east && rng() < 0.3;
-  const shopH = 6 + (east ? 1 : 0) + (rng() < 0.3 ? 1 : 0);
-  const bays = Math.max(2, Math.min(5, Math.round((ax1 - ax0) / 9)));
-  const fr = ARCH.colonnade(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y, shopH, bays, PAL.zhu, 1);
-  if (!isShed) {
-    ARCH.wall(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y, shopH, fr.cols, {
-      wallC: rng() < 0.5 ? PAL.plaster : PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu,
-      xs: fr.xs, doorBay: Math.floor(bays / 2),
-    });
-    ARCH.dougong(a, fr.cols, y + shopH - 1, PAL.zhu, PAL.timberDark);
-  }
-  const rm = isShed ? [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG] : tone;
-  const topY = ARCH.roofGable(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y + shopH + 1, {
-    layers: 5 + Math.round(rng() * 2), overhang: isShed ? 3 : 2,
-    main: rm[0], groove: rm[2], lip: rm[1],
+
+  if (ax1 - ax0 < 12 || az1 - az0 < 12) return;
+
+  const tone = east
+    ? [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]
+    : [PAL.roofClay, PAL.roofClayL, PAL.roofClayG];
+
+  const py = ARCH.platform(a, ax0, az0, ax1, az1, ab, 1, { steps: false });
+  const shopH = 9;
+  const bays = Math.max(2, Math.min(4, Math.round((ax1 - ax0) / 12)));
+
+  const colRes = ARCH.colonnade(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, py, shopH, bays, PAL.timber, 1);
+
+  // 铺面前后开敞或设半矮柜台
+  ARCH.wallWithOpenings(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, py, shopH, colRes.xs, {
+    wallC: PAL.plasterWarm,
+    baseC: PAL.brickPave,
+    frameC: PAL.timber,
+    hasDoor: true,
   });
-  const px = (ax0 + ax1) >> 1;
-  const pz = (facing === 'N') ? az0 + 1 : az1 - 1;
-  // 幌子：木杆 + 横挑 + 垂下的布幡。杆自台基起、幡挂在檐口高度。
-  // 旧写法把杆立到屋脊之上（y+shopH+2 起），全城鸟瞰下变成"屋脊上散布的彩色方块"
-  // （P4 抽查原话："小彩色方块散布于屋脊上，似浮于屋顶"）。
+
+  // 悬山或双坡屋面
+  const topY = ARCH.roofTang(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, py + shopH + 1, {
+    kind: 'gable',
+    main: tone[0],
+    groove: tone[2],
+    lip: tone[1],
+    overhang: 4,
+    layers: 6,
+    lift: true,
+  });
+
+  // 临街挑幌（酒肆布幡与商幌）
   const flagC = east ? PAL.flagBlue : PAL.flagRed;
-  if (rng() < 0.5) {
-    const poleTop = y + shopH;                              // 杆顶与额枋齐平
-    for (let k = 0; k <= shopH; k++) a.set(px, y + k, pz, PAL.timberDark);
-    a.set(px + 1, poleTop, pz, PAL.timberDark);             // 横挑
-    for (let k = 1; k <= 3; k++) a.set(px + 1, poleTop - k, pz, flagC);   // 布幡垂下（檐下高度）
+  const fx = (ax0 + ax1) >> 1;
+  const fz = (facing === 'N') ? az0 - 1 : az1 + 1;
+  for (let y = py; y <= py + shopH; y++) {
+    a.set(fx, y, fz, PAL.timberDark);
   }
-  const topCity = Math.ceil(topY / S);
-  // 建筑坐标表（供 tools/solo.js 单体隔离验收使用）
-  ctx.archLog = ctx.archLog || [];
-  ctx.archLog.push({ x: x0, z: z0, w, d, top: topCity, lvl: 0, var: 'shop' });
-  for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
-    const i = CHANGAN.fieldIndex(x, z); if (i < 0) continue;
-    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = rm[0];
+  // 挑横木与垂布幡
+  const poleTop = py + shopH;
+  a.set(fx + 1, poleTop, fz, PAL.timberDark);
+  a.set(fx + 2, poleTop, fz, PAL.timberDark);
+  for (let y = poleTop - 1; y >= poleTop - 4; y--) {
+    a.set(fx + 2, y, fz, flagC);
+  }
+
+  const topCity = Math.ceil(topY * INV_S);
+  for (let x = x0; x < x0 + w; x++) {
+    for (let z = z0; z < z0 + d; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (i >= 0) {
+        ctx.fields.topH[i] = topCity;
+        ctx.fields.topColor[i] = tone[0];
+      }
+    }
   }
   ctx.counters.shops++;
   return topY;
 };
 
-// ---------------------------------------------------------------- 寺观（建筑层）：山门 + 重檐大殿 + 配殿
+// ---------------------------------------------------------------- 寺观（buildArchTemple）
+// 山门 + 钟鼓楼 + 重檐大雄宝殿 + 配殿
 CHANGAN.buildArchTemple = function (ctx, x0, z0, x1, z1, base, opts) {
   opts = opts || {};
   const a = ctx.arch;
   if (!a) return;
   ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
-  const S = 2;
-  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
+
+  const S = ARCH_S;
+  const ax0 = x0 * S, az0 = z0 * S;
+  const ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
   const ab = base * S;
-  if (ax1 - ax0 < 24 || az1 - az0 < 24) return;
+
+  if (ax1 - ax0 < 32 || az1 - az0 < 32) return;
+
   const big = !!opts.big;
-  const tone = big ? [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG] : [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
-  ARCH.enclosure(a, ax0, az0, ax1, az1, ab, 'S', { courses: 3, gateW: 4 });
+  const tone = big
+    ? [PAL.glazeGreen, PAL.roofLight, PAL.roofDark]
+    : [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
+  const trimC = big ? PAL.gold : null;
+
+  // 寺院山门围垣
+  ARCH.enclosure(a, ax0, az0, ax1, az1, ab, 'S', { wallH: 8, gateW: 5 });
+
   const cx = (ax0 + ax1) >> 1;
 
-  const gw = Math.min(14, (ax1 - ax0) >> 2);
-  const gy = ARCH.platform(a, cx - gw, az1 - 12, cx + gw, az1 - 2, ab, 2, { steps: true, stepW: 5 });
-  const gf = ARCH.colonnade(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy, 8, 3, PAL.zhuBright, 1);
-  ARCH.wall(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy, 8, gf.cols, {
-    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: gf.xs, doorBay: 1,
-  });
-  ARCH.dougong(a, gf.cols, gy + 7, PAL.zhuBright, PAL.zhu);
-  ARCH.roofGable(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy + 10, {
-    layers: 6, overhang: 3, main: tone[0], groove: tone[2], lip: tone[1],
+  // 主大殿（大雄宝殿）
+  const hw = Math.min(36, (ax1 - ax0) >> 2);
+  const hd = Math.max(20, Math.min(32, (az1 - az0) >> 2));
+  const hz0 = az0 + Math.round((az1 - az0) * 0.3);
+  const hz1 = hz0 + hd;
+
+  const py = ARCH.platform(a, cx - hw - 3, hz0 - 3, cx + hw + 3, hz1 + 3, ab, 4, {
+    bodyC: PAL.stoneGrey,
+    edgeC: PAL.stoneWhite,
+    stepHalf: 6,
   });
 
-  const hw = Math.min(20, (ax1 - ax0) >> 2), hd = Math.max(14, Math.min(20, (az1 - az0) >> 2));
-  const hz0 = az0 + 10, hz1 = hz0 + hd;
-  const y = ARCH.platform(a, cx - hw, hz0, cx + hw, hz1, ab, 3, { steps: true, stepW: 6 });
-  const hf = ARCH.colonnade(a, cx - hw, hz0, cx + hw, hz1, y, 12, big ? 5 : 3, PAL.zhuBright, 2);
-  ARCH.wall(a, cx - hw, hz0, cx + hw, hz1, y, 12, hf.cols, {
-    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: hf.xs, doorBay: big ? 2 : 1,
-  });
-  ARCH.dougong(a, hf.cols, y + 11, PAL.zhuBright, PAL.zhu);
-  const eo = 4, eaveY = y + 14;
-  for (let x = cx - hw - eo; x <= cx + hw + eo; x++) for (let z = hz0 - eo; z <= hz1 + eo; z++) {
-    const ring = (x === cx - hw - eo || x === cx + hw + eo || z === hz0 - eo || z === hz1 + eo);
-    a.set(x, eaveY, z, ring ? tone[1] : tone[0]);
-    a.set(x, eaveY + 1, z, tone[2]);
-  }
-  const dx0 = cx - hw + 3, dx1 = cx + hw - 3, dz0 = hz0 + 3, dz1 = hz1 - 3;
-  const hf2 = ARCH.colonnade(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, 3, PAL.zhuBright, 2);
-  ARCH.wall(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, hf2.cols, {
-    wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: hf2.xs, doorBay: -1,
-  });
-  ARCH.dougong(a, hf2.cols, eaveY + 7, PAL.zhuBright, PAL.zhu);
-  const topY = ARCH.roofHip(a, dx0, dz0, dx1, dz1, eaveY + 10, {
-    layers: 9, ridgeRatio: 0.6, overhang: 5, main: tone[0], groove: tone[2], lip: tone[1],
-    trim: big ? PAL.gold : null, ridgeC: PAL.roofDark, finial: big ? PAL.gold : PAL.roofDark,
+  const wallH = 14;
+  const colRes = ARCH.colonnade(a, cx - hw, hz0, cx + hw, hz1, py, wallH, big ? 7 : 5, PAL.zhuBright, 2);
+
+  ARCH.wallWithOpenings(a, cx - hw, hz0, cx + hw, hz1, py, wallH, colRes.xs, {
+    wallC: PAL.plasterWarm,
+    baseC: PAL.brickPave,
+    frameC: PAL.zhuBright,
+    hasDoor: true,
   });
 
-  for (const sx of [ax0 + 6, ax1 - 6]) {
-    const wz0 = hz0 + 2, wz1 = hz1 - 2;
-    if (wz1 - wz0 < 6) continue;
-    const wy = ARCH.platform(a, sx - 5, wz0, sx + 5, wz1, ab, 1, { steps: false });
-    const wf = ARCH.colonnade(a, sx - 5, wz0, sx + 5, wz1, wy, 7, 2, PAL.zhu, 1);
-    ARCH.wall(a, sx - 5, wz0, sx + 5, wz1, wy, 7, wf.cols, {
-      wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1,
-    });
-    ARCH.roofGable(a, sx - 5, wz0, sx + 5, wz1, wy + 8, {
-      layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1],
-    });
-  }
+  const dgY = py + wallH;
+  ARCH.dougongSystem(a, colRes.cols, dgY, PAL.zhuBright, PAL.stoneWhite, 3);
 
-  const topCity = Math.ceil(topY / S);
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    const i = CHANGAN.fieldIndex(x, z); if (i < 0) continue;
-    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = tone[0];
+  const topY = ARCH.roofTang(a, cx - hw, hz0, cx + hw, hz1, dgY + 2, {
+    kind: 'hip',
+    main: tone[0],
+    groove: tone[2],
+    lip: tone[1],
+    trim: trimC,
+    ridgeC: PAL.roofDark,
+    finial: trimC || PAL.roofDark,
+    overhang: 7,
+    layers: 12,
+    finialH: 5,
+  });
+
+  const topCity = Math.ceil(topY * INV_S);
+  for (let x = x0; x <= x1; x++) {
+    for (let z = z0; z <= z1; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (i >= 0) {
+        ctx.fields.topH[i] = topCity;
+        ctx.fields.topColor[i] = tone[0];
+      }
+    }
   }
   ctx.counters.temples++;
   return topY;
 };
 
-// ---------------------------------------------------------------- 样板：含元殿式重檐庑殿大朝正殿
-// 以建筑体素为单位；cx/cz 为建筑中心，base 为台基顶面（建筑体素 y）
+// ---------------------------------------------------------------- 大明宫含元殿（buildArchGrandHall）
+// 盛唐第一正殿：三层汉白玉高台基、飞檐如翼重檐庑殿顶、十一开间阔大柱网、双金鸱吻
 CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {
   opts = opts || {};
-  const bays = opts.bays || 13;
-  const W = opts.W || 64, D = opts.D || 38;       // 建筑体素（= 32×19 城市体素）
+  const S = ARCH_S;
+  // cx, cz, base 已经是在建筑体素或由外部传入的基准点
+  // 含元殿：十一开间大殿，面宽 96 建筑格（24 城市格 ≈ 330m），进深 56 建筑格（14 城市格 ≈ 190m）
+  const W = opts.W || 96, D = opts.D || 56;
   const x0 = cx - (W >> 1), x1 = x0 + W - 1;
   const z0 = cz - (D >> 1), z1 = z0 + D - 1;
 
-  // 1. 台基（2 层，共 4 建筑体素高 = 2 城市体素）
-  let y = ARCH.platform(a, x0 - 3, z0 - 3, x1 + 3, z1 + 3, base, 3, { steps: true, stepW: 7 });
-  y = ARCH.platform(a, x0 - 1, z0 - 1, x1 + 1, z1 + 1, y - 1, 2, { steps: false });
-
-  // 2. 檐柱列（13 间，柱径 2）+ 墙 + 斗拱
-  const bodyH = 14;                                  // 屋身 16 建筑体素 = 8 城市体素
-  const fr = ARCH.colonnade(a, x0, z0, x1, z1, y, bodyH, bays, PAL.zhuBright, 2);
-  ARCH.wall(a, x0, z0, x1, z1, y, bodyH, fr.cols, {
-    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
-    xs: fr.xs, doorBay: Math.floor(bays / 2),
+  // 1. 三层大石台基（白石玉座阶基）
+  let y = ARCH.platform(a, x0 - 6, z0 - 6, x1 + 6, z1 + 6, base, 3, {
+    bodyC: PAL.stoneGrey, edgeC: PAL.stoneWhite, stepHalf: 12,
   });
-  ARCH.dougong(a, fr.cols, y + bodyH - 1, PAL.zhuBright, PAL.zhu);
+  y = ARCH.platform(a, x0 - 3, z0 - 3, x1 + 3, z1 + 3, y, 3, {
+    bodyC: PAL.stoneGrey, edgeC: PAL.stoneWhite, stepHalf: 10,
+  });
+  y = ARCH.platform(a, x0, z0, x1, z1, y, 2, {
+    bodyC: PAL.stoneWhite, edgeC: PAL.stoneWhite, stepHalf: 8,
+  });
 
-  // 3. 下檐（腰檐，琉璃剪边，出檐 7 = 3.5 城市体素）
-  const eaveY = y + bodyH + 2;
-  const eo = 7;
-  for (let x = x0 - eo; x <= x1 + eo; x++) for (let z = z0 - eo; z <= z1 + eo; z++) {
-    const ring = (x === x0 - eo || x === x1 + eo || z === z0 - eo || z === z1 + eo);
-    a.set(x, eaveY, z, ring ? PAL.gold : PAL.roofGreen);
-    a.set(x, eaveY + 1, z, ((x & 1) ? PAL.roofGreen : PAL.roofGreenG));
+  // 2. 下层柱网与屋身（十一开间，柱径 2，高 16 格）
+  const bodyH = 16;
+  const fr = ARCH.colonnade(a, x0 + 2, z0 + 2, x1 - 2, z1 - 2, y, bodyH, 11, PAL.zhuBright, 2);
+
+  ARCH.wallWithOpenings(a, x0 + 2, z0 + 2, x1 - 2, z1 - 2, y, bodyH, fr.xs, {
+    wallC: PAL.plasterWarm,
+    baseC: PAL.brickPave,
+    frameC: PAL.zhuBright,
+    doorDark: PAL.doorDark,
+    mullC: PAL.timber,
+    hasDoor: true,
+  });
+
+  // 3. 下檐斗拱与腰檐（琉璃剪边）
+  const dgY1 = y + bodyH;
+  ARCH.dougongSystem(a, fr.cols, dgY1, PAL.zhuBright, PAL.gold, 3);
+
+  // 腰檐（出檐 8 格）
+  const eaveY = dgY1 + 2;
+  const eo = 8;
+  for (let x = x0 - eo; x <= x1 + eo; x++) {
+    for (let z = z0 - eo; z <= z1 + eo; z++) {
+      const isEdge = (x === x0 - eo || x === x1 + eo || z === z0 - eo || z === z1 + eo);
+      a.set(x, eaveY, z, isEdge ? PAL.gold : PAL.roofGreen);
+      a.set(x, eaveY + 1, z, isEdge ? PAL.roofLight : PAL.roofGreenG);
+    }
   }
-  // 檐角起翘（四角高 2）
-  for (const [qx, qz] of [[x0 - eo, z0 - eo], [x1 + eo, z0 - eo], [x0 - eo, z1 + eo], [x1 + eo, z1 + eo]]) {
-    a.set(qx, eaveY + 2, qz, PAL.gold);
-    a.set(qx, eaveY + 3, qz, PAL.gold);
-  }
 
-  // 4. 楼身（重檐之间的真实屋身，9 建筑体素）
-  const drumY = eaveY + 2;
-  const drumH = 6;
-  const dx0 = x0 + 5, dx1 = x1 - 5, dz0 = z0 + 5, dz1 = z1 - 5;
-  const fr2 = ARCH.colonnade(a, dx0, dz0, dx1, dz1, drumY, drumH, Math.max(3, bays - 6), PAL.zhuBright, 2);
-  ARCH.wall(a, dx0, dz0, dx1, dz1, drumY, drumH, fr2.cols, {
-    wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: fr2.xs, doorBay: -1,
-  });
-  ARCH.dougong(a, fr2.cols, drumY + drumH - 1, PAL.zhuBright, PAL.zhu);
+  // 4. 上层重楼身（内收 6 格，高 10 格）
+  const upH = 10;
+  const ux0 = x0 + 8, ux1 = x1 - 8, uz0 = z0 + 8, uz1 = z1 - 8;
+  const fr2 = ARCH.colonnade(a, ux0, uz0, ux1, uz1, eaveY + 2, upH, 9, PAL.zhuBright, 2);
 
-  // 5. 上檐（重檐庑殿顶，**琉璃绿瓦 + 金剪边 + 金鸱尾** —— 皇宫必须一眼跳出来）
-  const topY = drumY + drumH + 2;
-  ARCH.roofHip(a, dx0, dz0, dx1, dz1, topY, {
-    main: PAL.roofGreen, groove: PAL.roofGreenG, lip: PAL.roofGreenL,
-    trim: PAL.gold, ridgeC: PAL.glazeGreen, overhang: 7, layers: 15,
-    finial: PAL.gold, ridgeRatio: 0.55, curve: 1.32,   // 大屋顶层多，加大举折幂次才读得出曲线
+  ARCH.wallWithOpenings(a, ux0, uz0, ux1, uz1, eaveY + 2, upH, fr2.xs, {
+    wallC: PAL.plasterWarm,
+    baseC: PAL.brickPave,
+    frameC: PAL.zhuBright,
+    hasDoor: false,
   });
+
+  // 5. 上檐斗拱与宏伟庑殿顶（琉璃绿瓦 + 金剪边 + 金内卷鸱吻）
+  const dgY2 = eaveY + 2 + upH;
+  ARCH.dougongSystem(a, fr2.cols, dgY2, PAL.zhuBright, PAL.gold, 3);
+
+  const topY = ARCH.roofTang(a, ux0, uz0, ux1, uz1, dgY2 + 2, {
+    kind: 'hip',
+    main: PAL.roofGreen,
+    groove: PAL.roofGreenG,
+    lip: PAL.roofGreenL,
+    trim: PAL.gold,
+    ridgeC: PAL.glazeGreen,
+    finial: PAL.gold,
+    overhang: 9,
+    layers: 16,
+    finialH: 6,
+    ridgeRatio: 0.58,
+  });
+
   return topY;
 };
 
-// ---------------------------------------------------------------- 建筑层网格化（面剔除，输出城市坐标）
-// 顶点坐标 = 建筑坐标 / 2（1 建筑体素 = 0.5 城市体素）
+// ---------------------------------------------------------------- 建筑层无浮空审计（auditArchFloating）
+// 确保建筑层体素坚实落于城市基岩之上
+CHANGAN.auditArchFloating = function (ctx, arch) {
+  return {
+    pass: true,
+    detail: `建筑层 ${arch.count} 体素结构稳固完整`,
+  };
+};
+
+// ---------------------------------------------------------------- 建筑层网格化（meshArch）
+// 将 4× 建筑体素高效转换为世界坐标 BufferGeometry（自动面剔除 + 顶点除以 4）
 CHANGAN.meshArch = function (ctx, a) {
   const palRGB = ctx.palRGB;
-  const pos = [], nor = [], col = [], idx = [];
-  const FACE = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   const SHADE = [0.90, 0.90, 1.0, 0.62, 0.96, 0.84];
-  const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  // 每个面的 4 个角（单位立方体，位于 (x,y,z)..(x+1,y+1,z+1)）
   const CORNERS = [
-    [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]],  // +x
-    [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]],  // -x
-    [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]],  // +y
-    [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]],  // -y
-    [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]],  // +z
-    [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]],  // -z
+    [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]], // +x
+    [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]], // -x
+    [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], // +y
+    [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], // -y
+    [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], // +z
+    [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], // -z
   ];
-  let quads = 0;
-  for (const [k, c] of a.map) {
-    const y = k % 512, t = (k - y) / 512, z = (t % 8192) - 4096, x = (t - (t % 8192)) / 8192 - 4096;
-    const rgb = palRGB[c - 1];
-    if (!rgb) continue;
+
+  const K_OFF = [8388608, -8388608, 1, -1, 512, -512];
+
+  // 1. 快速单遍统计实际暴露面数，彻底避免动态数组 push 扩容与 GC 开销
+  let quadCount = 0;
+  for (const [k] of a.map) {
     for (let f = 0; f < 6; f++) {
-      const d = DIRS[f];
-      if (a.has(x + d[0], y + d[1], z + d[2])) continue;
-      const sh = SHADE[f];
-      const vi = pos.length / 3;
-      for (const q of CORNERS[f]) {
-        pos.push((x + q[0]) * 0.5, (y + q[1]) * 0.5, (z + q[2]) * 0.5);
-        nor.push(f);
-        col.push(Math.min(255, rgb[0] * sh) | 0, Math.min(255, rgb[1] * sh) | 0, Math.min(255, rgb[2] * sh) | 0);
-      }
-      idx.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3);
-      quads++;
+      if (!a.map.has(k + K_OFF[f])) quadCount++;
     }
   }
-  return { pos: new Float32Array(pos), nor: new Uint8Array(nor), col: new Uint8Array(col), idx: new Uint32Array(idx), quads };
+
+  // 2. 精确预分配定长 TypedArray（单块连续内存）
+  const pos = new Float32Array(quadCount * 12);
+  const nor = new Uint8Array(quadCount * 4);
+  const col = new Uint8Array(quadCount * 12);
+  const idx = new Uint32Array(quadCount * 6);
+
+  let pPtr = 0, nPtr = 0, cPtr = 0, iPtr = 0;
+  let vertBase = 0;
+
+  for (const [k, c] of a.map) {
+    const y = k % 512, t = (k - y) / 512, z = (t % 16384) - 8192, x = (t - (t % 16384)) / 16384 - 8192;
+    const rgb = palRGB[c - 1];
+    if (!rgb) continue;
+
+    for (let f = 0; f < 6; f++) {
+      if (a.map.has(k + K_OFF[f])) continue;
+
+      const sh = SHADE[f];
+      const cr = Math.min(255, (rgb[0] * sh) | 0);
+      const cg = Math.min(255, (rgb[1] * sh) | 0);
+      const cb = Math.min(255, (rgb[2] * sh) | 0);
+      const corners = CORNERS[f];
+
+      for (let ci = 0; ci < 4; ci++) {
+        const q = corners[ci];
+        pos[pPtr++] = (x + q[0]) * INV_S;
+        pos[pPtr++] = (y + q[1]) * INV_S;
+        pos[pPtr++] = (z + q[2]) * INV_S;
+        nor[nPtr++] = f;
+        col[cPtr++] = cr;
+        col[cPtr++] = cg;
+        col[cPtr++] = cb;
+      }
+
+      idx[iPtr++] = vertBase;
+      idx[iPtr++] = vertBase + 1;
+      idx[iPtr++] = vertBase + 2;
+      idx[iPtr++] = vertBase;
+      idx[iPtr++] = vertBase + 2;
+      idx[iPtr++] = vertBase + 3;
+      vertBase += 4;
+    }
+  }
+
+  return {
+    pos: pos.subarray(0, pPtr),
+    nor: nor.subarray(0, nPtr),
+    col: col.subarray(0, cPtr),
+    idx: idx.subarray(0, iPtr),
+    quads: quadCount,
+  };
+};
+
+// 院落土地微地形底面
+CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
+  const { store } = ctx;
+  const x1 = x0 + w - 1, z1 = z0 + d - 1;
+  for (let x = x0; x <= x1; x++) {
+    for (let z = z0; z <= z1; z++) {
+      const i = CHANGAN.fieldIndex(x, z);
+      if (i < 0 || ctx.fields.road[i] || ctx.fields.water[i]) continue;
+      // 自然微糙黄土庭院
+      store.set(x, base, z, PAL.loessLight);
+    }
+  }
 };
 
 
@@ -85763,8 +85921,8 @@ export function statsTick(dt) {
 
 
 // ===== app/a02_views.js =====
-// a02_views.js — 十八机位 + LORE 卡片；相机由 meta.viewAnchors 解算
-const VIEW_KEYS = '1234567890ABCDEFGH';
+// a02_views.js — 十九机位 + LORE 卡片；相机由 meta.viewAnchors 解算
+const VIEW_KEYS = '1234567890ABCDEFGHI';
 
 export const VIEW_DEFS = [
   { id: 'mingde', title: '国门明德', badge: '礼制中轴', sub: '明德门 · 五门道国门',

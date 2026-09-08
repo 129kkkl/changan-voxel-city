@@ -144,9 +144,21 @@ CHANGAN.stageStreets = function (ctx) {
       const lv = fields.road[i];
       if (!lv) continue;
       const y = fields.groundH[i];
-      let c = PAL.loessLight; // 夯筑路面
-      if (lv <= 2) c = (x + z) % 2 ? PAL.loessLight : PAL.rammedLight; // 御道/横街双色微差
-      if (lv === 3) c = PAL.loessLight;
+      let c = PAL.loess;
+      if (lv === 1) {
+        // 御道（朱雀大街）：中央 4 格天子御道平整浅夯土，两侧官道黄土夯筑
+        const isCenterAxis = (x >= -2 && x <= 1);
+        c = isCenterAxis ? PAL.rammedLight : (Math.abs(x) >= 4 ? PAL.loessDeep : PAL.loess);
+      } else if (lv === 2) {
+        // 横街（大朝广场横街）：大尺度整体夯土
+        c = (z >= CFG.HENGJIE.z0 + 4 && z <= CFG.HENGJIE.z1 - 4) ? PAL.rammedLight : PAL.loess;
+      } else if (lv === 3) {
+        // 门前街衢
+        c = PAL.loessLight;
+      } else {
+        // 六街与顺城街
+        c = PAL.loess;
+      }
       store.set(x, y, z, c);
       fields.topColor[i] = c;
     }

@@ -329,23 +329,25 @@ function platform(ctx, x0, z0, x1, z1, base, h, c, door) {
 CHANGAN.platform = platform;
 CHANGAN._wallRing = null; CHANGAN._dougong = null; CHANGAN._chiwei = null;
 
-// 2. 盛唐弯月鸱吻：基座稳固、背部隆起、尾梢内卷，饰以鎏金或琉璃
+// 2. 盛唐弯月鸱吻：基座平稳骑脊、背部隆起出鳍、尾梢向内月牙回卷，严禁冲天兔耳
 function chiwei(ctx, x, y, z, axis, palace, dir) {
   const { store } = ctx;
   const c = palace ? PAL.glazeGreen : PAL.roofDark;
-  const trimC = palace ? PAL.gold : (palace ? PAL.glazeGreen : PAL.roofLight);
+  const tipC = palace ? PAL.glazeGreen : PAL.roofLight;
   const d = dir || 1; // 1: 向正向内卷, -1: 向负向内卷
 
   if (axis === 'x') {
-    store.set(x, y + 1, z, c); store.set(x + d, y + 1, z, c);
-    store.set(x, y + 2, z, c); store.set(x + d, y + 2, z, c);
-    store.set(x, y + 3, z, c); store.set(x + d, y + 3, z, trimC);
-    store.set(x + d, y + 4, z, trimC);
+    // 基座骑脊 (高 1 格)
+    store.set(x, y + 1, z, c);
+    store.set(x + d, y + 1, z, c);
+    // 月牙回卷鳍形 (高 2 格，稳重古朴，向内勾卷)
+    store.set(x, y + 2, z, c);
+    store.set(x + d, y + 2, z, tipC);
   } else {
-    store.set(x, y + 1, z, c); store.set(x, y + 1, z + d, c);
-    store.set(x, y + 2, z, c); store.set(x, y + 2, z + d, c);
-    store.set(x, y + 3, z, c); store.set(x, y + 3, z + d, trimC);
-    store.set(x, y + 4, z + d, trimC);
+    store.set(x, y + 1, z, c);
+    store.set(x, y + 1, z + d, c);
+    store.set(x, y + 2, z, c);
+    store.set(x, y + 2, z + d, tipC);
   }
 }
 
@@ -1555,28 +1557,91 @@ proto.tree = function (ctx, x, z, base, kind, rng) {
   }[kind] || { trunk: PAL.timber, leaf: [PAL.huaiGreen], h: 3, r: 1 };
 
   const putIfFree = (px, py, pz, c) => { if (!store.get(px, py, pz)) store.set(px, py, pz, c); };
-  const trunk = T.trunk;
-  for (let y = 1; y <= T.h; y++) putIfFree(x, gy + y, z, trunk);
+  
+  // 盛唐有机树木生长器：按坐标微扰高度与冠幅，告别等距方块树
+  const varH = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+  const trunkH = kind === 'pine' ? 4 : (kind === 'bamboo' ? 3 : (3 + (varH > 0.6 ? 1 : 0)));
+  const trunkC = (kind === 'bamboo') ? PAL.bambooGreen : (kind === 'willow' ? PAL.timber : PAL.timberDark);
+
+  // 主干挺拔向上
+  for (let y = 1; y <= trunkH; y++) putIfFree(x, gy + y, z, trunkC);
 
   if (kind === 'bamboo') {
-    for (let b = 0; b < 3; b++) {
-      const bx = x + (b % 2), bz = z + (b >> 1);
-      for (let y = 1; y <= 3 + (b % 2); y++) putIfFree(bx, gy + y, bz, PAL.bambooGreen);
-      putIfFree(bx, gy + 4 + (b % 2), bz, PAL.huaiLight);
+    // 丛生修竹
+    for (let b = 0; b < 4; b++) {
+      const bx = x + ((b % 2) ? 1 : 0) * (b < 2 ? 1 : -1);
+      const bz = z + ((b > 1) ? 1 : 0);
+      const bh = 3 + (b % 2);
+      for (let y = 1; y <= bh; y++) putIfFree(bx, gy + y, bz, PAL.bambooGreen);
+      putIfFree(bx, gy + bh + 1, bz, PAL.huaiLight);
     }
+    fields.topH[i] = Math.max(fields.topH[i], gy + 5);
+  } else if (kind === 'willow') {
+    // 隋堤垂柳：伞状主冠 + 四周柔和垂枝
+    const cy = gy + trunkH + 1;
+    // 枝干侧伸
+    putIfFree(x - 1, gy + trunkH, z, trunkC);
+    putIfFree(x + 1, gy + trunkH, z, trunkC);
+    // 主冠（切角多边形）
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角
+        putIfFree(x + dx, cy, z + dz, PAL.willowGreen);
+        putIfFree(x + dx, cy + 1, z + dz, (dx === 0 && dz === 0) ? PAL.huaiLight : PAL.willowGreen);
+        // 边缘下垂柳丝
+        if (Math.abs(dx) === 2 || Math.abs(dz) === 2) {
+          putIfFree(x + dx, cy - 1, z + dz, PAL.willowGreen);
+          if ((dx + dz) % 2 === 0) putIfFree(x + dx, cy - 2, z + dz, PAL.willowGreen);
+        }
+      }
+    }
+    fields.topH[i] = Math.max(fields.topH[i], cy + 2);
+  } else if (kind === 'pine') {
+    // 终南苍松：分层伞盖（下平上聚）
+    const cy1 = gy + trunkH - 1;
+    const cy2 = gy + trunkH + 1;
+    // 下层平展松云
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      if (Math.abs(dx) + Math.abs(dz) <= 3) putIfFree(x + dx, cy1, z + dz, PAL.pineGreen);
+    }
+    // 上层松顶
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      putIfFree(x + dx, cy2, z + dz, PAL.pineGreen);
+    }
+    putIfFree(x, cy2 + 1, z, PAL.huaiLight);
+    fields.topH[i] = Math.max(fields.topH[i], cy2 + 2);
   } else {
-    const r = T.r, cy = gy + T.h + 1;
-    for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) for (let dy = 0; dy <= (kind === 'pine' ? 2 : 1); dy++) {
-      if (dx * dx + dz * dz + dy * dy > r * r + 1.5) continue;
-      if (kind === 'pine' && dy === 0 && (dx * dx + dz * dz) > 2) continue;
-      const leafC = T.leaf[(dx + dz + dy + 99) % T.leaf.length];
-      putIfFree(x + dx, cy + dy, z + dz, leafC);
+    // 盛唐国槐（huai / elm / wutong / apricot）
+    const cy = gy + trunkH;
+    // 枝丫分叉（向侧面延伸 1 格木色枝干）
+    putIfFree(x + 1, cy, z, trunkC);
+    putIfFree(x, cy, z - 1, trunkC);
+
+    const leafPalette = (kind === 'apricot')
+      ? [PAL.apricotPink, PAL.plasterWarm, PAL.apricotPink]
+      : [PAL.huaiGreen, PAL.huaiLight, PAL.moss];
+
+    // 饱满多边形双层树冠（削去八个死角，形成饱满卵形与自然凹凸）
+    // 下层（宽展 5x5 切角）
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角，形成圆润多边形
+        const lc = leafPalette[(dx * 3 + dz * 5 + 99) % leafPalette.length];
+        putIfFree(x + dx, cy + 1, z + dz, lc);
+      }
     }
-    if (T.droop) {
-      for (const [dx, dz] of [[-r, 0], [r, 0], [0, -r], [0, r]]) putIfFree(x + dx, cy - 1, z + dz, T.leaf[0]);
+    // 上层（聚拢 3x3）
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const lc = (dx === 0 && dz === 0) ? PAL.huaiLight : leafPalette[(dx + dz + 10) % leafPalette.length];
+        putIfFree(x + dx, cy + 2, z + dz, lc);
+      }
     }
+    // 树梢小冠
+    putIfFree(x, cy + 3, z, PAL.huaiLight);
+
+    fields.topH[i] = Math.max(fields.topH[i], cy + 3);
   }
-  fields.topH[i] = Math.max(fields.topH[i], gy + T.h + 2);
   ctx.counters.trees++;
 };
 

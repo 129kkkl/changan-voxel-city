@@ -203,11 +203,11 @@ CHANGAN.buildHanyuanComplex = function (ctx, cx, base) {
   // 城市层（1 体素 ≈ 13.8m）无法表达柱列/斗拱/瓦垄/棂条；建筑层（1 体素 = 0.5 城市体素）
   // 才做得出"单拉出来够看"的宫殿。见 10_建筑大升级计划_v4.md §3。
   ctx.arch = ctx.arch || new CHANGAN.ArchStore();
-  CHANGAN.buildArchGrandHall(ctx.arch, 2 * cx, 2 * -279, 2 * (ty + 1), { bays: 13, W: 64, D: 38 });
+  CHANGAN.buildArchGrandHall(ctx.arch, 4 * cx, 4 * -279, 4 * (ty + 1), { bays: 11, W: 96, D: 56 });
   // 把建筑层占位戳进城市字段，保证碰撞、小地图与远景 LOD 与建筑层一致
   for (let x = cx - 17; x <= cx + 16; x++) for (let z = -290; z <= -268; z++) {
     const i = CHANGAN.fieldIndex(x, z);
-    if (i >= 0) { ctx.fields.topH[i] = ty + 21; ctx.fields.topColor[i] = PAL.roofGrey; }
+    if (i >= 0) { ctx.fields.topH[i] = ty + 21; ctx.fields.topColor[i] = PAL.roofGreen; }
   }
   CHANGAN.exitLandmark(ctx);
   CHANGAN.enterLandmark(ctx, 'hanyuan-ge');

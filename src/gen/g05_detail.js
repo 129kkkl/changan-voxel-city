@@ -466,13 +466,22 @@ CHANGAN.stageDetail = function (ctx) {
       const g = fields.groundH[i];
       let c;
       if (fields.road[i]) {
-        const seam = (x & 3) === 0 || (z & 3) === 0;
-        const tone = (((x >> 2) + (z >> 2)) & 1) === 0;
-        c = seam ? PAL.stoneGrey : (tone ? PAL.brickPave : PAL.loessLight);
+        const lv = fields.road[i];
+        if (lv === 1) {
+          // 御道：中央天子白灰道，两旁平实夯土
+          const isCenter = (x >= -2 && x <= 1);
+          c = isCenter ? PAL.rammedLight : PAL.loess;
+        } else if (lv <= 3) {
+          // 主要干道与横街：整体连续夯土，柔和低对比微差
+          c = (((x >> 4) + (z >> 4)) & 1) ? PAL.loessLight : PAL.loess;
+        } else {
+          // 坊内十字街与巷曲：质朴素土
+          c = PAL.loess;
+        }
       } else {
-        // 广场/空地：低对比夯土斑（8×8 区块 + 稀疏深斑），不喧宾夺主
-        const blk = (((x >> 3) + (z >> 3)) & 1) === 0;
-        c = ((x * 5 + z * 3) % 17 === 0) ? PAL.loessDeep : (blk ? PAL.loessLight : PAL.loess);
+        // 广场与坊内地坪：统一沉稳底色，殿庭广场用平整青砖，普通坊内用浅夯土
+        const inPlaza = (z >= CFG.HENGJIE.z0 && z <= CFG.HENGJIE.z1) || (z <= -260 && z >= -290 && Math.abs(x - 208) <= 40);
+        c = inPlaza ? PAL.brickPave : PAL.loess;
       }
       store.set(x, g, z, c);
       fields.topColor[i] = c;

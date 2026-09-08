@@ -1,5 +1,5 @@
-// a02_views.js — 十八机位 + LORE 卡片；相机由 meta.viewAnchors 解算
-const VIEW_KEYS = '1234567890ABCDEFGH';
+// a02_views.js — 十九机位 + LORE 卡片；相机由 meta.viewAnchors 解算
+const VIEW_KEYS = '1234567890ABCDEFGHI';
 
 export const VIEW_DEFS = [
   { id: 'mingde', title: '国门明德', badge: '礼制中轴', sub: '明德门 · 五门道国门',
