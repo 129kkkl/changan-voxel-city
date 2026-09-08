@@ -2,28 +2,28 @@
   "shots": [
     {
       "view": "cam@18.5,18.6,152.1,18.5,10.3,129.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_18.6_152.1_18.5_10.3_129.5_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small7\\cam@18.5_18.6_152.1_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "—",
       "drawCalls": "—",
       "voxels": "102 万"
     },
     {
       "view": "cam@39.9,24.9,150.9,18.5,10.3,129.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@39.9_24.9_150.9_18.5_10.3_129.5_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small7\\cam@39.9_24.9_150.9_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "25",
       "drawCalls": "41",
       "voxels": "102 万"
     },
     {
       "view": "cam@18.5,29.1,146,18.5,10.3,129.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_29.1_146_18.5_10.3_129.5_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small7\\cam@18.5_29.1_146_18.5_10.3_129.5_noon_5a17c4a9.png",
       "fps": "20",
       "drawCalls": "19",
       "voxels": "102 万"
     },
     {
       "view": "cam@18.5,14.5,145.7,18.5,12.6,129.5",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small5\\cam@18.5_14.5_145.7_18.5_12.6_129.5_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_small7\\cam@18.5_14.5_145.7_18.5_12.6_129.5_noon_5a17c4a9.png",
       "fps": "20",
       "drawCalls": "42",
       "voxels": "102 万"
@@ -34,8 +34,8 @@
   "meta": {
     "stats": {
       "voxels": 1016267,
-      "archVoxels": 1945259,
-      "archQuads": 2946680,
+      "archVoxels": 1984487,
+      "archQuads": 2971836,
       "wardCount": 104,
       "marketPlots": 4,
       "gateCount": 12,
@@ -76,7 +76,7 @@
         {
           "name": "建筑层无浮空",
           "pass": true,
-          "detail": "建筑层 1945259 体素全部落地连通"
+          "detail": "建筑层 1984487 体素全部落地连通"
         },
         {
           "name": "体素预算",
@@ -110,25 +110,25 @@
         }
       ],
       "stageMs": {
-        "terrain": 305,
-        "walls": 13,
-        "streets": 14,
-        "wards": 642,
-        "markets": 47,
-        "custom": 32,
-        "palaces": 165,
-        "water": 13,
-        "detail": 70,
-        "seal": 38,
-        "wardId": 12,
+        "terrain": 318,
+        "walls": 16,
+        "streets": 17,
+        "wards": 744,
+        "markets": 57,
+        "custom": 40,
+        "palaces": 171,
+        "water": 10,
+        "detail": 107,
+        "seal": 56,
+        "wardId": 6,
         "audit": 2046,
-        "mesh": 3301
+        "mesh": 3350
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 6712
+      "genMs": 6953
     },
     "voxels": 1016267,
     "views": [

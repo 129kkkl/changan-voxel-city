@@ -84041,7 +84041,7 @@ const HOUSE = {
   // lvl0 取 0（总出 2）—— 斗拱出挑 3 必须**伸出檐口线之外**，否则 20° 仰角下
   // 斗拱整排被自己的檐口遮死（四轮机位实测「檐下只剩一条横带」，P2 视觉验收结论）。
   eaveOut:    [0,        1,        1],
-  dougongOut: 3,                              // 斗拱出挑（= 既有 ARCH.dougong 的 3，不放大）
+  dougongOut: 4,                              // 斗拱出挑（多出 1 跳，让白斗伸到檐口线之外；否则整排被自家檐口遮死）
   dougongH:   2,                              // 斗拱层高
 };
 
@@ -84210,7 +84210,7 @@ const ARCH = {
     const rLong = opts.ridgeRatio == null ? 0.55 : opts.ridgeRatio;
     let lx0 = ex0, lx1 = ex1, lz0 = ez0, lz1 = ez1;
     for (let L = 0; L < layers; L++) {
-      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);
+      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);   // 举折：下缓上陡（1.15 近线性，评审判"方正木盒感"）
       const ix = Math.round(hx * t * (alongX ? rLong : 1));
       const iz = Math.round(hz * t * (alongX ? 1 : rLong));
       const xa = ex0 + ix, xb = ex1 - ix, za = ez0 + iz, zb = ez1 - iz;
@@ -84227,28 +84227,28 @@ const ARCH = {
     }
     // 正脊（沿长轴，两层）+ 鸱尾（三段收分 + 外卷尖）
     const ry = y0 + layers;
-    const fin = opts.finial || PAL.gold;
+    const fin = opts.finial || PAL.roofDark;      // 民居脊端用暗瓦收头（金色只给宫殿，否则小屋顶上顶一摞金块）
     const ridgeC = opts.ridgeC || PAL.roofDark;
     if (alongX) {
       const cz = (lz0 + lz1) >> 1;
       for (let x = lx0; x <= lx1; x++) { a.set(x, ry, cz, ridgeC); a.set(x, ry + 1, cz, ridgeC); }
-      // 脊端收头：按屋顶规模缩放。普通民居只起 1 格（原先一律 5 格高的"叉状大块"，
-      // 被重建方案点名"屋脊及脊端形成大量巨大的灰色叉状块"）。
-      const fh = opts.finialH == null ? (shortHalf >= 8 ? 3 : 1) : opts.finialH;
+      // 脊端收头：按屋顶规模缩放 + 向上收分（每加高一层就收窄一格，读成翘起的脊头而不是"一摞砖"）。
+      // 普通民居只起 1 格（原先一律 5 格高的"叉状大块"，被重建方案点名）。
+      const fh = opts.finialH == null ? (shortHalf >= 12 ? 3 : (shortHalf >= 9 ? 2 : 1)) : opts.finialH;
       for (const [sx, dir] of [[lx0, -1], [lx1, 1]]) {
         if (fh <= 1) { a.set(sx, ry + 2, cz, fin); continue; }
         a.set(sx, ry + 2, cz, fin); a.set(sx + dir, ry + 2, cz, fin);
-        a.set(sx, ry + 3, cz, fin); a.set(sx + dir, ry + 3, cz, ridgeC);
-        if (fh >= 3) { a.set(sx, ry + 4, cz, fin); a.set(sx + dir, ry + 4, cz, fin); }
+        a.set(sx, ry + 3, cz, fin);                                  // 收分：只留内侧一格
+        if (fh >= 3) { a.set(sx, ry + 4, cz, fin); a.set(sx + dir, ry + 4, cz, ridgeC); }
       }
     } else {
       const cx = (lx0 + lx1) >> 1;
       for (let z = lz0; z <= lz1; z++) { a.set(cx, ry, z, ridgeC); a.set(cx, ry + 1, z, ridgeC); }
-      const fh2 = opts.finialH == null ? (shortHalf >= 8 ? 3 : 1) : opts.finialH;
+      const fh2 = opts.finialH == null ? (shortHalf >= 12 ? 3 : (shortHalf >= 9 ? 2 : 1)) : opts.finialH;
       for (const [sz, dir] of [[lz0, -1], [lz1, 1]]) {
         if (fh2 <= 1) { a.set(cx, ry + 2, sz, fin); continue; }
         a.set(cx, ry + 2, sz, fin); a.set(cx, ry + 2, sz + dir, fin);
-        a.set(cx, ry + 3, sz, fin); a.set(cx, ry + 3, sz + dir, ridgeC);
+        a.set(cx, ry + 3, sz, fin);
         if (fh2 >= 3) { a.set(cx, ry + 4, sz + dir, fin); }
       }
     }
@@ -84265,7 +84265,7 @@ const ARCH = {
     const hz = (ez1 - ez0) >> 1;
     const layers = Math.max(3, Math.min(opts.layers || 6, hz));
     for (let L = 0; L < layers; L++) {
-      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);
+      const t = Math.pow(L / Math.max(1, layers - 1), 1.15);   // 悬山同样走举折曲线
       const iz = Math.round(hz * t);
       const za = ez0 + iz, zb = ez1 - iz;
       if (za > zb) break;
@@ -84475,6 +84475,7 @@ const ARCH = {
       S(0, 1, 1, colC);                       // 跳头散斗
       if (reach >= 2) { S(0, 0, 2, outC); S(0, 1, 2, colC); }  // 二跳 + 斗
       if (reach >= 3) { S(0, 0, 3, outC); S(0, 1, 3, colC); }  // 三跳 + 撩檐枋座
+      if (reach >= 4) { S(0, 0, 4, outC); S(0, 1, 4, colC); }  // 四跳（民居用：白斗伸出檐口线外才读得出）
     }
   },
 };
