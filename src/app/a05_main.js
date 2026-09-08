@@ -45,6 +45,7 @@ function readURL() {
   App.urlView = q.view || 'mingde';
   App.urlTime = q.t != null && q.t !== '' ? q.t : null;
   App.urlQ = q.q || null;
+  App.plan = q.plan || null;                       // P1 规划方案：?plan=0|A|B|C
   try { if (!App.urlQ) App.urlQ = localStorage.getItem('changan.q'); } catch {}
 }
 
@@ -174,7 +175,7 @@ function boot() {
     else if (msg.type === 'remesh') onRemesh(msg);
   };
   setProgress(0.02, '正在唤起营造线程…');
-  worker.postMessage({ cmd: 'generate', seed: App.seed });
+  worker.postMessage({ cmd: 'generate', seed: App.seed, plan: App.plan });
 }
 
 boot();

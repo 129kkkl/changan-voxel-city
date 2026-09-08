@@ -259,28 +259,31 @@ function buildWardLanes(ctx, w) {
     return;
   }
 
-  // 大坊：十字街（2 宽）
-  for (let x = w.x0 + 1; x <= w.x1 - 1; x++) { pave(x, cz, 6); pave(x, cz + 1, 6); }
-  for (let z = w.z0 + 1; z <= w.z1 - 1; z++) { pave(cx, z, 6); pave(cx + 1, z, 6); }
+  // 大坊：十字街（宽度由 P1 方案决定；级差 主街:十字街:巷 ≈ 5:2:1 必须一眼看出）
+  const cross = Math.max(1, (CHANGAN.PLAN && CHANGAN.PLAN.cross) || 2);
+  const xs0 = cx - ((cross - 1) >> 1), xs1 = xs0 + cross - 1;
+  const zs0 = cz - ((cross - 1) >> 1), zs1 = zs0 + cross - 1;
+  for (let x = w.x0 + 1; x <= w.x1 - 1; x++) for (let z = zs0; z <= zs1; z++) pave(x, z, 6);
+  for (let z = w.z0 + 1; z <= w.z1 - 1; z++) for (let x = xs0; x <= xs1; x++) pave(x, z, 6);
 
   const quads = [
-    { x0: w.x0 + 1, z0: w.z0 + 1, x1: cx - 1, z1: cz - 1, cn: 'NW' }, // 北象限门朝南（临横街）
-    { x0: cx + 2, z0: w.z0 + 1, x1: w.x1 - 1, z1: cz - 1, cn: 'NE' },
-    { x0: w.x0 + 1, z0: cz + 2, x1: cx - 1, z1: w.z1 - 1, cn: 'SW' }, // 南象限门朝北
-    { x0: cx + 2, z0: cz + 2, x1: w.x1 - 1, z1: w.z1 - 1, cn: 'SE' },
+    { x0: w.x0 + 1, z0: w.z0 + 1, x1: xs0 - 1, z1: zs0 - 1, cn: 'NW' }, // 北象限门朝南（临横街）
+    { x0: xs1 + 1, z0: w.z0 + 1, x1: w.x1 - 1, z1: zs0 - 1, cn: 'NE' },
+    { x0: w.x0 + 1, z0: zs1 + 1, x1: xs0 - 1, z1: w.z1 - 1, cn: 'SW' }, // 南象限门朝北
+    { x0: xs1 + 1, z0: zs1 + 1, x1: w.x1 - 1, z1: w.z1 - 1, cn: 'SE' },
   ];
 
   // 寺观/衙署家族：西半坊整体为寺院/衙署用地（占坊之半，史实常见）。
   // 此类坊十字街改为"丁字街"：纵街贯通、横街只铺东半（西半让位给院落群），西坊门经西墙便门入院。
   if ((family === 'temple' || family === 'official')) {
     // 抹掉西半横街（已在上面铺过，逐格还原为坊内黄土）
-    for (let x = w.x0 + 1; x <= cx - 1; x++) for (const z of [cz, cz + 1]) {
+    for (let x = w.x0 + 1; x <= xs0 - 1; x++) for (let z = zs0; z <= zs1; z++) {
       const i = CHANGAN.fieldIndex(x, z);
       if (fields.road[i] === 6) { fields.road[i] = 0; }
       store.set(x, w.base, z, PAL.loess);
       fields.topColor[i] = PAL.loess;
     }
-    const site = { x0: w.x0 + 1, z0: w.z0 + 1, x1: cx - 1, z1: w.z1 - 1 };
+    const site = { x0: w.x0 + 1, z0: w.z0 + 1, x1: xs0 - 1, z1: w.z1 - 1 };
     w.plots.push({ ...site, face: family === 'official' ? 'E' : 'S', kind: family === 'official' ? 'office' : 'temple' });
     splitQuad(ctx, w, quads[1], family);
     splitQuad(ctx, w, quads[3], family);
@@ -321,6 +324,20 @@ function splitQuad(ctx, w, q, family) {
     } else {
       w.plots.push({ ...q, face: faceStreet, kind });
     }
+    return;
+  }
+
+  // P1 方案 B：象限内加一条东西向支巷，把象限切成长边不变的上下两排宅地。
+  // 坊深只有 ~37 城体素，象限 ~16 深——切成 2×2 会碎成豆腐块，
+  // 所以只切进深方向（16 → 2×8），宽度方向保持整象限，让宅地有纵深。
+  const PL = CHANGAN.PLAN || {};
+  if (PL.branch && qd >= (PL.plotMin || 14)) {
+    const mz = q.z0 + (qd >> 1);
+    for (let x = q.x0; x <= q.x1; x++) w.paveLane(x, mz, 7);
+    for (const s of [
+      { x0: q.x0, z0: q.z0, x1: q.x1, z1: mz - 1, cn: q.cn + 'n' },
+      { x0: q.x0, z0: mz + 1, x1: q.x1, z1: q.z1, cn: q.cn + 's' },
+    ]) splitQuad(ctx, w, s, family);
     return;
   }
 

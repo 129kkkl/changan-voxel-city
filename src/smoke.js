@@ -31,7 +31,7 @@ function runSeed(seed) {
   const { CHANGAN, logs } = makeHarness(seed);
   const messages = [];
   const t0 = Date.now();
-  const result = CHANGAN.generate(seed, (msg) => messages.push(msg));
+  const result = CHANGAN.generate(seed, (msg) => messages.push(msg), { plan: process.env.PLAN || '0' });
   const ms = Date.now() - t0;
   return { result, messages, logs, ms };
 }

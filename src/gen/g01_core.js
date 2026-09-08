@@ -134,6 +134,16 @@ const CFG = {
   },
   // 街道宽度（体素；保持相对层级：御道>横街>六街>顺城>坊内>巷曲）
   STREET: { ZHUQUE: 10, HENGJIE: 16, GATE8: 8, MAIN: 5, SHUN: 3, WARD_CROSS: 2, LANE: 1 },
+  // P1 规划参数（?plan=0|A|B|C 切换，见 design/P1_空间与尺度_方案对照.md）
+  //   cross  坊内十字街宽（体素，级差要能一眼看出）
+  //   branch 象限内支巷（0=无，1=1 格宽，把象限再切成 2×2 组团）
+  //   plotMin 支巷/切分的最小象限尺寸门槛
+  PLAN_TABLE: {
+    '0': { cross: 2, branch: 0, plotMin: 0 },   // 现状对照
+    'A': { cross: 3, branch: 0, plotMin: 0 },   // 尺度校正
+    'B': { cross: 4, branch: 1, plotMin: 25 },  // 增加院落纵深与道路层级（推荐；支巷需象限深≥25，现坊深仅 16 → 待加深坊格）
+    'C': { cross: 5, branch: 0, plotMin: 0 },   // 扩大组团：只加宽街道、不再切象限 → 地块最大最连续
+  },
   // 预算（M1 冻结，事后不得上调）
   BUDGET: {
     voxSoft: 2400000, voxHard: 2800000,
@@ -398,6 +408,7 @@ CHANGAN.fbm = fbm;
 CHANGAN.packV = packV; CHANGAN.unpackX = unpackX; CHANGAN.unpackY = unpackY; CHANGAN.unpackZ = unpackZ;
 CHANGAN.VoxStore = VoxStore;
 CHANGAN.CFG = CFG;
+CHANGAN.PLAN = CFG.PLAN_TABLE['0'];          // 运行时由 generate(seed, cb, {plan}) 覆盖
 CHANGAN.CITY_SCALE = CITY_SCALE; CHANGAN.ARCH_SCALE = ARCH_SCALE; CHANGAN.LANDMARK_SCALE = LANDMARK_SCALE;
 CHANGAN.LocalVoxelGrid = LocalVoxelGrid; CHANGAN.LocalTransform = LocalTransform;
 CHANGAN.RANK_SPEC = RANK_SPEC; CHANGAN.rankSpec = rankSpec; CHANGAN.PROTO_POLICY = PROTO_POLICY;

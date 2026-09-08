@@ -11,9 +11,12 @@ CHANGAN.stageCustomWards = function (ctx) {
   }
 };
 
-CHANGAN.generate = function (seed, onProgress) {
+CHANGAN.generate = function (seed, onProgress, opts) {
   const t0 = Date.now();
   seed = seed >>> 0;
+  // P1：规划方案由 ?plan=0|A|B|C 选择（默认 0 = 现状），只影响坊内街巷与地块切分
+  const planKey = (opts && opts.plan != null) ? String(opts.plan) : '0';
+  CHANGAN.PLAN = CHANGAN.CFG.PLAN_TABLE[planKey] || CHANGAN.CFG.PLAN_TABLE['0'];
   const store = new CHANGAN.VoxStore();
   const fields = CHANGAN.makeFields();
   const palRGB = CHANGAN.PAL_DEF.map(d => {
@@ -188,7 +191,7 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
   self.onmessage = function (e) {
     const msg = e.data || {};
     if (msg.cmd === 'generate') {
-      const result = CHANGAN.generate(msg.seed >>> 0, p => self.postMessage(p));
+      const result = CHANGAN.generate(msg.seed >>> 0, p => self.postMessage(p), { plan: msg.plan });
       if (!result.ok) { self.postMessage({ type: 'fatal', error: result.error, audits: result.audits || null }); return; }
       liveCtx = result._ctx;
       delete result._ctx;
