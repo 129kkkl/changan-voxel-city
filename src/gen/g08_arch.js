@@ -772,16 +772,21 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
 
   // 厢房（东西各一，体量低于正房）—— small 亚型不设厢房
   const wingW = 7;
-  if (variant !== 'small' && variant !== 'shed' && az1 - hz1 >= 12) {
+  if (variant !== 'small' && variant !== 'shed' && az1 - hz1 >= 12 && rng() < 0.82) {
     const wz0 = hz1 + 4, wz1 = az1 - 4;
+    // 厢房逐栋变体：宽度 7~11、层高 4~8、屋面 30% 换色族。
+    // P3 三坊验收判"中景长条灰屋面过于统一、重复感强"——厢房尺寸/高度全同是主因。
+    const wWid = wingW + (rng() < 0.5 ? 0 : 2 + Math.round(rng() * 2));
+    const wHt = 4 + wallVar + (rng() < 0.28 ? 2 : 0);
+    const wTone = rng() < 0.3 ? tonePool[(st.tone + 2) % tonePool.length] : tone;
     const buildWing = (side) => {
-      const wx0 = side === 'W' ? ax0 + 3 : ax1 - 3 - wingW;
-      const wx1 = wx0 + wingW;
+      const wx0 = side === 'W' ? ax0 + 3 : ax1 - 3 - wWid;
+      const wx1 = wx0 + wWid;
       if (wz1 - wz0 < 6) return;
       const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
-      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, 4 + wallVar, 2, PAL.zhu, 1);
-      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, 4 + wallVar, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
-      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + 5 + wallVar, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+      const wf = ARCH.colonnade(a, wx0, wz0, wx1, wz1, wy, wHt, 2, PAL.zhu, 1);
+      ARCH.wall(a, wx0, wz0, wx1, wz1, wy, wHt, wf.cols, { wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1 });
+      ARCH.roofGable(a, wx0, wz0, wx1, wz1, wy + wHt + 1, { layers: 4 + Math.round(rng() * 3), overhang: 2, main: wTone[0], groove: wTone[2], lip: wTone[1] });
     };
     const both = variant === 'twoCourt' || (plan && plan.wingMode === 'both');
     if (both) { buildWing('W'); buildWing('E'); }
