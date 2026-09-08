@@ -578,7 +578,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const gw = 7;
     const gy = ARCH.platform(a, g.gx - gw, az1 - 5, g.gx + gw, az1 + 1, ab, 1, { steps: false });
     const gf = ARCH.colonnade(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy, 4, 3, PAL.zhuBright, 1);
-    ARCH.roofGable(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy + 5, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
+    // 门屋也要有柱头斗拱层（P0 判"近景门殿/穿堂柱顶到檐口同平面贴附"）
+    ARCH.dougong(a, gf.cols, gy + 3, PAL.zhuBright, PAL.zhu);
+    ARCH.roofGable(a, g.gx - gw, az1 - 5, g.gx + gw, az1, gy + 6, { layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1] });
     topY = Math.max(topY, gy + 10);
   }
 
