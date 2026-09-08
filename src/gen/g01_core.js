@@ -294,6 +294,11 @@ const PALETTE_DEF = [
   ['roofOchre',   '#7a6242', 'opaque'], // 赭石瓦（暖黄褐）
   ['roofOchreL',  '#94794f', 'opaque'],
   ['roofOchreG',  '#5e4b32', 'opaque'],
+  // 深调变体：逐栋明度抖动，破"整片同色平板"（评审："平板正射贴图感"）
+  ['roofGreyDeep',  '#49535b', 'opaque'],
+  ['roofSlateDeep', '#3c4650', 'opaque'],
+  ['roofClayDeep',  '#584a40', 'opaque'],
+  ['roofOchreDeep', '#655135', 'opaque'],
 ];
 const PAL = {}; PALETTE_DEF.forEach((d, i) => { PAL[d[0]] = i + 1; }); // 体素值 1..N，0=空
 const PAL_GROUP = PALETTE_DEF.map(d => d[2]);

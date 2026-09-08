@@ -2,28 +2,21 @@
   "shots": [
     {
       "view": "hanyuanTop",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5c\\hanyuanTop_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5e\\hanyuanTop_noon_5a17c4a9.png",
       "fps": "—",
       "drawCalls": "—",
       "voxels": "104 万"
     },
     {
-      "view": "axis",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5c\\axis_noon_5a17c4a9.png",
-      "fps": "25",
-      "drawCalls": "55",
-      "voxels": "104 万"
-    },
-    {
       "view": "cam@a:wardGate,0,22,26,0,0,-14",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5c\\cam@a_wardGate_0_22_26_0_0_-14_noon_5a17c4a9.png",
-      "fps": "20",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5e\\cam@a_wardGate_0_22_26_0_0_-14_noon_5a17c4a9.png",
+      "fps": "25",
       "drawCalls": "36",
       "voxels": "104 万"
     },
     {
       "view": "cam@a:lane,0,12,16,0,3,-2",
-      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5c\\cam@a_lane_0_12_16_0_3_-2_noon_5a17c4a9.png",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\v5e\\cam@a_lane_0_12_16_0_3_-2_noon_5a17c4a9.png",
       "fps": "20",
       "drawCalls": "32",
       "voxels": "104 万"
@@ -33,20 +26,20 @@
   "errors": [],
   "meta": {
     "stats": {
-      "voxels": 1044141,
-      "archVoxels": 1858672,
-      "archQuads": 2606212,
+      "voxels": 1044137,
+      "archVoxels": 1895680,
+      "archQuads": 2641674,
       "wardCount": 104,
       "marketPlots": 4,
       "gateCount": 12,
       "buildings": 419,
       "shops": 271,
-      "trees": 859,
+      "trees": 858,
       "towers": 35,
       "wells": 43,
       "bridges": 0,
       "lamps": 469,
-      "checksum": "f8ac69c0",
+      "checksum": "dbaeffeb",
       "audits": [
         {
           "name": "坊墙闭合",
@@ -76,12 +69,12 @@
         {
           "name": "建筑层无浮空",
           "pass": true,
-          "detail": "建筑层 1858672 体素全部落地连通"
+          "detail": "建筑层 1895680 体素全部落地连通"
         },
         {
           "name": "体素预算",
           "pass": true,
-          "detail": "1044141 / 硬上限 2800000"
+          "detail": "1044137 / 硬上限 2800000"
         },
         {
           "name": "地标去模板化",
@@ -96,12 +89,12 @@
         {
           "name": "多样性",
           "pass": true,
-          "detail": "重复签名14/院落189种/最大重复3"
+          "detail": "重复签名14/院落188种/最大重复2"
         },
         {
           "name": "十坊抽检",
           "pass": true,
-          "detail": "院落布局种类189，最大重复3"
+          "detail": "院落布局种类188，最大重复2"
         },
         {
           "name": "地标唯一性",
@@ -110,27 +103,27 @@
         }
       ],
       "stageMs": {
-        "terrain": 297,
-        "walls": 13,
+        "terrain": 292,
+        "walls": 11,
         "streets": 12,
-        "wards": 635,
+        "wards": 663,
         "markets": 15,
-        "custom": 17,
-        "palaces": 149,
+        "custom": 19,
+        "palaces": 154,
         "water": 10,
-        "detail": 3,
-        "seal": 32,
-        "wardId": 3,
-        "audit": 1857,
-        "mesh": 2768
+        "detail": 6,
+        "seal": 29,
+        "wardId": 5,
+        "audit": 1975,
+        "mesh": 3172
       },
       "budget": {
         "soft": 2400000,
         "hard": 2800000
       },
-      "genMs": 5823
+      "genMs": 6374
     },
-    "voxels": 1044141,
+    "voxels": 1044137,
     "views": [
       "mingde",
       "axis",
