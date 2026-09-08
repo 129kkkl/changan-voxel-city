@@ -84927,11 +84927,17 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
   });
   const px = (ax0 + ax1) >> 1;
   const pz = (facing === 'N') ? az0 + 1 : az1 - 1;
+  // 幌子：木杆 + 横挑 + 垂下的布幡。旧写法是杆顶叠 3 个色块（L 形），
+  // 视觉验收判"前景大片素灰屋面叠加蓝、褐两方块，突兀无意义"——改成真幌子形状，
+  // 且只有部分店铺挂（全街都挂反而更假）。
   const flagC = east ? PAL.flagBlue : PAL.flagRed;
-  for (let k = 0; k < 5; k++) a.set(px, y + shopH + 2 + k, pz, PAL.timberDark);
-  a.set(px, y + shopH + 6, pz, flagC);
-  a.set(px + 1, y + shopH + 6, pz, flagC);
-  a.set(px + 1, y + shopH + 5, pz, flagC);
+  if (rng() < 0.5) {
+    const poleH = 4;
+    for (let k = 0; k < poleH; k++) a.set(px, y + shopH + 2 + k, pz, PAL.timberDark);
+    const fy = y + shopH + 1 + poleH;                       // 杆顶
+    a.set(px + 1, fy, pz, PAL.timberDark);                  // 横挑
+    for (let k = 1; k <= 3; k++) a.set(px + 1, fy - k, pz, flagC);   // 布幡垂下
+  }
   const topCity = Math.ceil(topY / S);
   // 建筑坐标表（供 tools/solo.js 单体隔离验收使用）
   ctx.archLog = ctx.archLog || [];
