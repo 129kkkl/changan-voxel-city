@@ -117,18 +117,27 @@ const ARCH = {
       // 找到所属开间
       let bay = -1;
       for (let i = 0; i + 1 < xs.length; i++) if (x >= xs[i] && x <= xs[i + 1]) { bay = i; break; }
-      const south = (z === z1);
+      // 四面都开门窗洞（P0 判"墙面只有等距细黑孔，像货架隔板"）：
+      // 按开间取中、洞宽 3 或 1、竖向占窗带（下碱与额枋之间），门洞留空
+      const south = (z === z1), north = (z === z0);
+      const onMain = south || north;
+      const mcz = (z0 + z1) >> 1;
+      let bay2 = -1, bayMid = 0, bayW = 0;
+      if (onMain && bay >= 0 && bay + 1 < xs.length) {
+        bay2 = bay; bayMid = (xs[bay] + xs[bay + 1]) >> 1; bayW = xs[bay + 1] - xs[bay];
+      } else if (!onMain) {
+        bay2 = 0; bayMid = mcz; bayW = z1 - z0 + 1;
+      }
+      const half = bayW >= 6 ? 1 : 0;
+      const isDoorBay = south && bay2 === doorBay;
       for (let y = y0; y < y0 + h; y++) {
-        const top = (y === y0 + h - 1);
-        if (top) { a.set(x, y, z, opts.frameC || PAL.zhu); continue; }
-        // 南立面：门洞（指定开间）/ 直棂窗（其余开间的中部）
-        if (south && bay >= 0 && bay < xs.length - 1) {
-          const bw = xs[bay + 1] - xs[bay];
-          const mid = (xs[bay] + xs[bay + 1]) >> 1;
-          if (bay === doorBay && Math.abs(x - mid) <= 1) continue;          // 门洞留空
-          if (bay !== doorBay && bw >= 4 && Math.abs(x - mid) <= 0 && y > y0 && y < y0 + h - 2) {
-            a.set(x, y, z, winC); continue;                                  // 直棂窗（深色棂条）
-          }
+        if (y === y0 + h - 1) { a.set(x, y, z, opts.frameC || PAL.zhu); continue; }   // 额枋
+        if (y === y0) { a.set(x, y, z, wallC); continue; }                            // 下碱
+        const inWin = bay2 >= 0 && y <= y0 + h - 2
+          && (onMain ? Math.abs(x - bayMid) <= half : Math.abs(z - bayMid) <= half);
+        if (inWin) {
+          if (isDoorBay) continue;                    // 门洞留空
+          a.set(x, y, z, winC); continue;             // 直棂窗
         }
         a.set(x, y, z, wallC);
       }
@@ -586,6 +595,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
 
   // 占位戳进城市字段：碰撞 / 小地图 / 远景 LOD 与建筑层一致
   const topCity = Math.ceil(topY / S);
+  // 建筑坐标表（供 tools/solo.js 单体隔离验收使用）
+  ctx.archLog = ctx.archLog || [];
+  ctx.archLog.push({ x: x0, z: z0, w, d, top: topCity, lvl: level, var: variant });
   for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
     const i = CHANGAN.fieldIndex(x, z);
     if (i < 0) continue;
@@ -630,6 +642,9 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
   a.set(px + 1, y + shopH + 6, pz, flagC);
   a.set(px + 1, y + shopH + 5, pz, flagC);
   const topCity = Math.ceil(topY / S);
+  // 建筑坐标表（供 tools/solo.js 单体隔离验收使用）
+  ctx.archLog = ctx.archLog || [];
+  ctx.archLog.push({ x: x0, z: z0, w, d, top: topCity, lvl: 0, var: 'shop' });
   for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
     const i = CHANGAN.fieldIndex(x, z); if (i < 0) continue;
     ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = rm[0];

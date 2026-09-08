@@ -122,6 +122,7 @@ CHANGAN.generate = function (seed, onProgress) {
       doors: ctx.doors,
       paths: CHANGAN.buildPaths(ctx),
       viewAnchors: CHANGAN.buildViewAnchors(ctx),
+      archLog: ctx.archLog || [],
       city: CFG.CITY, axis: CFG.AXIS_X, world: CFG.WORLD,
       wallH: CFG.Y.WALL_H,
     },
