@@ -84008,6 +84008,43 @@ CHANGAN.buildViewAnchors = function (ctx) {
 //   ③ 每栋建筑只有一个权威来源 —— 本文件构造的建筑不再由城市层重复生成（守则铁律一）。
 'use strict';
 
+// ================================================================
+// 建筑比例常量表（P2 立面升级，2026-09）
+// 单位一律「拱体素」ArchVoxel：1 拱体素 = 0.5 城体素 ≈ 6.9 m。
+// 竖向基准：地坪城市体素顶面 = 拱 y = ab + 2（ab、ab+1 两层埋在地坪体素内），
+// 因此「露出地面 N 层」= 台基总层数 N + 2。表里所有层数都按这个基准写死。
+// 关键比值（以民居 lvl0 为例，开间按 37/3 ≈ 12 拱体素）：
+//   柱径 / 开间 = 2 / 12  ≈ 0.17      檐出 / 进深 = (2+2) / 12 ≈ 0.33
+//   屋顶高 / 屋身高 = 6 / 6 = 1.00     台基高 / 柱高 = 2 / 6 ≈ 0.33
+// 复用：后续样板（二进宅 / 跨院大宅 / 官署 / 寺院 / 宫殿主院）只换 lvl 列，
+// 禁止在构造器里就地写魔法数字，也禁止用「2× = 斗拱」这类缩放推导。
+// ================================================================
+const HOUSE = {
+  //            民居 lvl0  中宅 lvl1  大宅 lvl2
+  platLayers: [4,        4,        5],        // 台基总层数（含埋入地坪的 2 层）→ 露出 2 / 2 / 3
+  platOut:    [3,        3,        4],        // 台基自檐柱轴线外扩（拱体素）
+  platBodyC:  PAL.stoneGrey,                  // 台基侧面：石
+  platTopC:   PAL.stoneWhite,                 // 台基顶面：白石压面（与侧面分层 → 水平投影线）
+  wallH:      [6,        7,        9],        // 屋身高：下碱 1 + 墙身 + 额枋 1（窗高 = 屋身 - 3）
+  colR:       [2,        2,        2],        // 柱径（拱体素，≥1；柱心对齐轴线）
+  colC:       [PAL.zhu,  PAL.zhu,  PAL.zhuBright],
+  wallRecess: [3,        3,        3],        // 墙面自檐柱轴线内退（含 1 格檐廊 → 柱身前出可读）
+  wallT:      2,                              // 墙厚：外皮开洞 + 内皮内凹背板（阴影）
+  baseC:      PAL.brickPave,                  // 墙下碱：砖
+  frameC:     PAL.zhu,                        // 额枋 / 门框 / 窗棂
+  baysMax:    7,
+  bayDiv:     12,                             // 开间数 = clamp(round(屋身宽 / 12), 3, 7) → 小宅三开间
+  doorW:      3,  doorH: 4,                   // 板门洞（宽 2~3 / 高 3~4）
+  winW:       9,  winH: 3,                    // 直棂窗洞（9 格宽 → 3 根窗棂，两根各 3 格通洞）
+  roofLayers: [6,        7,        9],        // 屋面层数（屋顶高 / 屋身高 ≈ 1.0）
+  // 屋顶 overhang：檐口再挑出 2 → 总出檐 = 值 + 2。
+  // lvl0 取 0（总出 2）—— 斗拱出挑 3 必须**伸出檐口线之外**，否则 20° 仰角下
+  // 斗拱整排被自己的檐口遮死（四轮机位实测「檐下只剩一条横带」，P2 视觉验收结论）。
+  eaveOut:    [0,        1,        1],
+  dougongOut: 3,                              // 斗拱出挑（= 既有 ARCH.dougong 的 3，不放大）
+  dougongH:   2,                              // 斗拱层高
+};
+
 // ---------------------------------------------------------------- 建筑体素存储（arch 坐标，稀疏 Map）
 CHANGAN.ArchStore = class ArchStore {
   constructor() { this.map = new Map(); }
@@ -84247,6 +84284,12 @@ const ARCH = {
     const cz = (ez0 + ez1) >> 1;
     for (let x = ex0; x <= ex1; x++) a.set(x, ry, cz, PAL.roofDark);
     a.set(ex0, ry + 1, cz, PAL.roofDark); a.set(ex1, ry + 1, cz, PAL.roofDark);
+    // 檐角起翘（反翘）：四角各抬 1~2 格，直接压在檐口最外层体素上（6 邻接，不悬空）
+    if (opts.cornerLift) {
+      for (const [qx, qz] of [[ex0 - 2, ez0 - 2], [ex1 + 2, ez0 - 2], [ex0 - 2, ez1 + 2], [ex1 + 2, ez1 + 2]]) {
+        for (let k = 1; k <= opts.cornerLift; k++) a.set(qx, y0 + k, qz, lip);
+      }
+    }
     return ry + 2;
   },
 
@@ -84278,6 +84321,158 @@ const ARCH = {
     for (const [px, pz] of posts) for (let y = 1; y <= courses + 1; y++) a.set(px, base + y, pz, PAL.zhu);
     for (let s = -gateW; s <= gateW; s++) a.set(gAxis === 'NS' ? gx + s : gx, cap, gAxis === 'NS' ? gz : gz + s, PAL.roofDark);
     return { gx, gz, gAxis };
+  },
+
+  // ---------------------------------------------------------------- P2 民居立面构件（小宅升级用，全部按 HOUSE 常量表取值）
+  // 台基：总层数 layers（含埋入地坪的 2 层），侧面石 / 顶面白石压面 —— 顶侧分层出水平投影线；
+  // 南向踏道逐级退台、实心砌筑（禁止悬空）。返回台基顶面之上第一层 y。
+  plinth(a, x0, z0, x1, z1, y0, layers, opts) {
+    opts = opts || {};
+    const bodyC = opts.bodyC || HOUSE.platBodyC, topC = opts.topC || HOUSE.platTopC;
+    const y1 = y0 + layers - 1;
+    a.shellBox(x0, y0, z0, x1, y1, z1, bodyC);
+    a.slab(x0, y1, z0, x1, z1, topC);                 // 顶面整层白石（侧面上沿也随之为白石压边）
+    if (opts.steps !== false) {
+      const cx = (x0 + x1) >> 1, w = opts.stepW || 5;
+      const n = Math.max(1, layers - 2);              // 露出的层数就是踏道级数
+      for (let s = 0; s < n; s++) {
+        a.fill(cx - w, y0, z1 + 1 + s, cx + w, y1 - 1 - s, z1 + 1 + s, opts.stepC || topC);
+      }
+    }
+    return y1 + 1;
+  },
+
+  // 檐柱列：柱径 R 的方柱，柱心对齐轴线，柱脚落在台基顶面（y0 就是台基返回的层，绝不悬空）；
+  // 柱头一圈额枋（1 格宽）把柱头连成整体。返回 { xs, yTop, cols } 供墙 / 斗拱 / 屋顶复用。
+  eaveColonnade(a, x0, z0, x1, z1, y0, h, bays, colC, R, opts) {
+    opts = opts || {};
+    const xs = [];
+    for (let b = 0; b <= bays; b++) xs.push(Math.round(x0 + (x1 - x0) * b / bays));
+    const uniq = Array.from(new Set(xs)).sort((p, q) => p - q);
+    const half = (R - 1) >> 1;
+    const zRows = [z0, z1];
+    if (z1 - z0 >= 14 && opts.midRow !== false) zRows.push((z0 + z1) >> 1);
+    const cols = [];
+    for (const x of uniq) for (const z of zRows) cols.push([x, z]);
+    for (const [x, z] of cols) for (let y = y0; y < y0 + h; y++) {
+      for (let dx = -half; dx < R - half; dx++) for (let dz = -half; dz < R - half; dz++) a.set(x + dx, y, z + dz, colC);
+    }
+    const ry = y0 + h - 1;                            // 额枋层（与柱顶同层）
+    for (let x = x0; x <= x1; x++) { a.set(x, ry, z0, colC); a.set(x, ry, z1, colC); }
+    for (let z = z0; z <= z1; z++) { a.set(x0, ry, z, colC); a.set(x1, ry, z, colC); }
+    return { xs: uniq, yTop: ry, cols };
+  },
+
+  // 屋身墙：外皮按开间真实挖洞，内皮作内凹背板 —— 板门（门扇内凹 1 格）/ 直棂窗（窗棂隔一格留一根）。
+  // 洞口是真空腔，不是贴色；背板向上下各多铺 1 行，与墙身 6 邻接（防浮空）。
+  houseWall(a, x0, z0, x1, z1, y0, h, opts) {
+    opts = opts || {};
+    const wallC = opts.wallC || PAL.plaster, baseC = opts.baseC || HOUSE.baseC;
+    const frameC = opts.frameC || HOUSE.frameC, leafC = opts.leafC || PAL.doorDark;
+    const recessC = opts.recessC || PAL.timberDark, mullC = opts.mullC || PAL.zhu;
+    const xs = opts.xs || [];
+    const doorBay = opts.doorBay == null ? -1 : opts.doorBay;
+    const doorW = opts.doorW || HOUSE.doorW, doorH = opts.doorH || HOUSE.doorH;
+    const winW = opts.winW || HOUSE.winW, winH = opts.winH || HOUSE.winH;
+    const yTop = y0 + h - 1, ySill = y0 + 1;
+    const holes = [];
+    const push = (axis, line, inward, c0, w, ya, yb, kind) => {
+      if (w < 1) return;
+      const from = c0 - ((w - 1) >> 1), to = from + w - 1;
+      holes.push({ axis, line, inward, from, to, ya, yb, kind });
+    };
+    const bays = Math.max(0, xs.length - 1);
+    const mcz = (z0 + z1) >> 1;
+    const wy0 = y0 + 2, wy1 = yTop - 1;                       // 窗带：窗台 1 层 + 窗 4 层（竖棂够长才读得出）
+    for (let i = 0; i < bays; i++) {
+      const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
+      if (i === doorBay) {
+        push('x', z1, -1, c, Math.min(doorW, bw - 2), ySill, ySill + doorH - 1, 'door');   // 正面明间板门
+        if (bw >= 10) {                                                                     // 明间够宽再补两窗
+          const off = Math.round(bw * 0.32);
+          push('x', z1, -1, c - off, 3, wy0, wy1, 'win');
+          push('x', z1, -1, c + off, 3, wy0, wy1, 'win');
+        }
+      } else {
+        push('x', z1, -1, c, Math.max(3, Math.min(winW, bw - 2)), wy0, wy1, 'win');         // 次间直棂窗
+      }
+    }
+    for (let i = 0; i < bays; i++) {                                                       // 背面只开小窗
+      const c = (xs[i] + xs[i + 1]) >> 1, bw = xs[i + 1] - xs[i];
+      push('x', z0, +1, c, Math.max(3, Math.min(3, bw - 2)), wy0, wy1, 'win');
+    }
+    const dwz = z1 - z0 - 2;
+    if (dwz >= 3) {                                                                        // 东西山墙中段一窗
+      const ww = Math.min(3, dwz);
+      push('z', x0, +1, mcz, ww, wy0, wy1, 'win');
+      push('z', x1, -1, mcz, ww, wy0, wy1, 'win');
+    }
+    const holeAt = (x, z) => {
+      for (const o of holes) {
+        if (o.axis === 'x' ? (z === o.line && x >= o.from && x <= o.to) : (x === o.line && z >= o.from && z <= o.to)) return o;
+      }
+      return null;
+    };
+    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+      if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
+      const o = holeAt(x, z);
+      for (let y = y0; y <= yTop; y++) {
+        if (o && y >= o.ya && y <= o.yb) {
+          if (o.kind === 'win') {                            // 窗棂：两端各一根，够宽再加中间一根（2~3 根）
+            const c = o.axis === 'x' ? x : z;
+            if (c === o.from || c === o.to || (o.to - o.from >= 4 && c === ((o.from + o.to) >> 1))) a.set(x, y, z, mullC);
+          }
+          continue;                                          // 其余留空 —— 真洞
+        }
+        a.set(x, y, z, y === y0 ? baseC : (y === yTop ? frameC : wallC));
+      }
+    }
+    for (const o of holes) {                                 // 内皮内凹背板（上下各多 1 行接墙身）
+      const line2 = o.line + o.inward;
+      const c = o.kind === 'door' ? leafC : recessC;
+      for (let s = o.from; s <= o.to; s++) for (let y = o.ya - 1; y <= o.yb + 1; y++) {
+        if (o.axis === 'x') a.set(s, y, line2, c); else a.set(line2, y, s, c);
+      }
+    }
+    for (const o of holes) {                                 // 板门两侧门框 + 直棂窗上下左右窗框（只改色，不新增体素）
+      if (o.kind === 'door') {
+        for (const jx of [o.from - 1, o.to + 1]) for (let y = o.ya; y <= o.yb; y++) {
+          if (o.axis === 'x') { if (a.has(jx, y, o.line)) a.set(jx, y, o.line, frameC); }
+          else { if (a.has(o.line, y, jx)) a.set(o.line, y, jx, frameC); }
+        }
+      } else {
+        // 窗框：窗台（下一行）+ 两侧竖框，让窗洞在远处也能从墙面上跳出来
+        for (let s = o.from - 1; s <= o.to + 1; s++) {
+          if (o.axis === 'x') { if (a.has(s, o.ya - 1, o.line)) a.set(s, o.ya - 1, o.line, frameC); }
+          else { if (a.has(o.line, o.ya - 1, s)) a.set(o.line, o.ya - 1, s, frameC); }
+        }
+        for (const jx of [o.from - 1, o.to + 1]) for (let y = o.ya; y <= o.yb; y++) {
+          if (o.axis === 'x') { if (a.has(jx, y, o.line)) a.set(jx, y, o.line, frameC); }
+          else { if (a.has(o.line, y, jx)) a.set(o.line, y, jx, frameC); }
+        }
+      }
+    }
+  },
+
+  // 斗拱：简化一斗三升 —— 坐斗 + 华栱横臂 3 格 + 三升，柱头一朵；开间 ≥10 再加补间一朵
+  // （开间不足 10 时补间会与柱头连成一条横带，正是本次要修的缺陷，故不补）。
+  // 出挑 2 层（≤ 既有 ARCH.dougong 的 3，不放大）。axis='x'：沿 x 排布、向 ±z 出挑。
+  dougongLine(a, pos, y, axis, dir, line, colC, outC, opts) {
+    opts = opts || {};
+    const reach = opts.reach == null ? HOUSE.dougongOut : opts.reach;
+    for (const c of pos) {
+      const S = (dx, dy, dz, col) => {
+        const x = axis === 'x' ? c + dx : line + dz * dir;
+        const z = axis === 'x' ? line + dz * dir : c + dx;
+        a.set(x, y + dy, z, col);
+      };
+      S(0, 0, 0, colC);                       // 坐斗
+      S(0, 0, 1, outC);                       // 一跳
+      S(-1, 1, 0, outC); S(0, 1, 0, colC); S(1, 1, 0, outC);   // 华栱横臂 + 一斗三升
+      S(0, 1, 1, colC);                       // 跳头散斗
+      if (reach >= 2) { S(0, 0, 2, outC); S(0, 1, 2, colC); }  // 二跳 + 斗
+      if (reach >= 3) { S(0, 0, 3, outC); S(0, 1, 3, colC); }  // 三跳 + 撩檐枋座
+    }
   },
 };
 
@@ -84485,30 +84680,63 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   // 亚型分化：打破"千篇一律的合院"（同质化对策 §6）
   const variant = (plan && plan.variant) || CHANGAN.pickCompoundVariant(level, rng);
   const wallVar = rng() < 0.5 ? 0 : 1;   // 屋身高度 ±1
-  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: (level === 0 ? 2 : 3) + (st.eaveBias === 2 ? 1 : 0), finial: PAL.roofDark };
+  const li = Math.max(0, Math.min(2, level | 0));             // HOUSE 常量表列号
+  const roofOpt = { main: tone[0], groove: tone[2], lip: tone[1], overhang: HOUSE.eaveOut[li] + (st.eaveBias === 2 ? 1 : 0), finial: PAL.roofDark };
 
-  // 正房（坐北朝南，占院北侧）
+  // 正房（坐北朝南，占院北侧）—— P2 立面升级：台基 / 檐柱 / 门窗 / 斗拱全部按 HOUSE 常量表取值
+  const platOut = HOUSE.platOut[li], edge = platOut + 1;      // 台基外缘与院墙之间留 1 格
   const mainD = Math.max(8, Math.min(20, Math.round(d * 0.42) * S));
-  const hx0 = ax0 + 3, hx1 = ax1 - 3, hz0 = az0 + 3, hz1 = Math.min(az1 - 6, az0 + 3 + mainD);
+  const hx0 = ax0 + edge, hx1 = ax1 - edge, hz0 = az0 + edge;
+  // 南侧要给门屋（占 az1-5..az1+1）与台基踏道留余量，再兜一个 ≥6 的进深下限
+  const hz1 = Math.max(hz0 + 6, Math.min(az1 - 6 - platOut, hz0 + mainD));
   let topY = wallTop;
   if (hx1 - hx0 >= 10 && hz1 - hz0 >= 6) {
-    const bays = Math.max(3, Math.min(9, Math.round((hx1 - hx0) / 8)));
-    // 屋身高度：坊基调 + 逐栋抖动 —— 评审判"高度几乎没变"
-    const wallH = Math.max(3, (level === 0 ? 4 : 6) + st.hBias + (rng() < 0.35 ? 1 : 0));
-    let y = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, level === 0 ? 2 : 3, { steps: true, stepW: 4 });
-    const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 2 ? 2 : 1);
-    ARCH.wall(a, hx0 + 1, hz0 + 1, hx1 - 1, hz1 - 1, y, wallH, fr.cols, {
-      wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
-      xs: fr.xs, doorBay: Math.floor(bays / 2),
+    const W = hx1 - hx0;
+    const bays = Math.max(3, Math.min(HOUSE.baysMax, Math.round(W / HOUSE.bayDiv)));
+    // 屋身高度：坊基调 + 逐栋抖动 —— 评审判"高度几乎没变"；
+    // 下限 = HOUSE.wallH，保证「下碱 1 + 门窗 + 门额 1 + 额枋 1」五段立面读得出
+    const wallH = Math.max(HOUSE.wallH[li], Math.min(HOUSE.wallH[li] + 3, HOUSE.wallH[li] + st.hBias + (rng() < 0.35 ? 1 : 0)));
+    const doorH = Math.min(HOUSE.doorH, wallH - 2);           // 门洞高 3~4，门额之上再压额枋
+    const colC = HOUSE.colC[li];
+    // ① 台基：外扩 platOut（≥3 拱体素）、露出 2 层、侧面石 / 顶面白石压面 + 南向踏道
+    let y = ARCH.plinth(a, hx0 - platOut, hz0 - platOut, hx1 + platOut, hz1 + platOut, ab, HOUSE.platLayers[li], {
+      bodyC: HOUSE.platBodyC, topC: HOUSE.platTopC, steps: true, stepW: Math.max(4, W >> 3),
     });
-    ARCH.dougong(a, fr.cols, y + wallH - 1, PAL.zhu, PAL.zhuBright, level >= 2 ? 2 : 1);
-    const roofY = y + wallH + 2;
+    // ② 檐柱（柱径 ≥2、柱脚落在台基顶面）+ 柱头额枋
+    const fr = ARCH.eaveColonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, colC, HOUSE.colR[li]);
+    // ③ 屋身墙：外皮挖真洞（明间板门 + 次间直棂窗），内皮内凹背板出阴影
+    //    窗：深色内面（正午檐影里白墙≈#898e8e，只有比它明显更暗才读成「洞」）+ 白色竖窗棂
+    ARCH.houseWall(a, hx0 + HOUSE.wallRecess[li], hz0 + HOUSE.wallRecess[li], hx1 - HOUSE.wallRecess[li], hz1 - HOUSE.wallRecess[li], y, wallH, {
+      wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, baseC: HOUSE.baseC, frameC: HOUSE.frameC,
+      leafC: PAL.doorDark, recessC: PAL.doorDark, mullC: PAL.paperWhite,
+      xs: fr.xs, doorBay: (fr.xs.length - 1) >> 1,
+      doorW: HOUSE.doorW, doorH: doorH, winW: HOUSE.winW, winH: HOUSE.winH,
+    });
+    // ④ 斗拱：柱头一朵 + 开间 ≥10 补间一朵（前后檐 + 东西山面）
+    //    斗用白粉、栱用朱红（唐式白斗红栱）：正午檐影里红栱会与额枋糊成一条带，白斗把它断开
+    const dgY = y + wallH;                                    // 额枋之上第一层
+    const dgPos = [];
+    for (let i = 0; i < fr.xs.length; i++) {
+      dgPos.push(fr.xs[i]);
+      if (i + 1 < fr.xs.length && fr.xs[i + 1] - fr.xs[i] >= 10) dgPos.push((fr.xs[i] + fr.xs[i + 1]) >> 1);
+    }
+    ARCH.dougongLine(a, dgPos, dgY, 'x', -1, hz0, PAL.plaster, PAL.zhu);
+    ARCH.dougongLine(a, dgPos, dgY, 'x', +1, hz1, PAL.plaster, PAL.zhu);
+    const zPos = Array.from(new Set(fr.cols.filter(c2 => c2[0] === hx0).map(c2 => c2[1]))).sort((p, q) => p - q);
+    const dgZ = [];
+    for (let i = 0; i < zPos.length; i++) {
+      dgZ.push(zPos[i]);
+      if (i + 1 < zPos.length && zPos[i + 1] - zPos[i] >= 10) dgZ.push((zPos[i] + zPos[i + 1]) >> 1);
+    }
+    ARCH.dougongLine(a, dgZ, dgY, 'z', -1, hx0, PAL.plaster, PAL.zhu);
+    ARCH.dougongLine(a, dgZ, dgY, 'z', +1, hx1, PAL.plaster, PAL.zhu);
+    const roofY = dgY + HOUSE.dougongH;                       // 斗拱两层之上起檐
     if (variant === 'tower' && hx1 - hx0 >= 18 && hz1 - hz0 >= 12) {
       // 楼居：**二层直接起在一层额枋之上**（不先盖屋顶），中间只做一圈腰檐。
       // 旧写法是"先盖一层屋顶、再把二层放在屋顶上方"，二层与屋顶之间没有落地支承 ——
       // 这正是用户看到的"建筑断成两半、上面一半飘在空中"。
-      for (let x = hx0 - 3; x <= hx1 + 3; x++) for (let z = hz0 - 3; z <= hz1 + 3; z++) {
-        const ring = (x === hx0 - 3 || x === hx1 + 3 || z === hz0 - 3 || z === hz1 + 3);
+      for (let x = hx0 - platOut; x <= hx1 + platOut; x++) for (let z = hz0 - platOut; z <= hz1 + platOut; z++) {
+        const ring = (x === hx0 - platOut || x === hx1 + platOut || z === hz0 - platOut || z === hz1 + platOut);
         a.set(x, roofY, z, ring ? tone[1] : tone[0]);
         a.set(x, roofY + 1, z, tone[2]);
       }
@@ -84523,11 +84751,11 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
       topY = ARCH.roofHip(a, tw0, td0, tw1, td1, roofY + 2 + tH + 2,
         Object.assign({ layers: 8, ridgeRatio: 0.6 }, roofOpt));
     } else {
-      // 屋架形式也拉开：部分民居用歇山（庑殿坡）而非悬山，屋面层数逐栋随机
+      // 屋架形式也拉开：部分民居用歇山（庑殿坡）而非悬山，屋面层数按 HOUSE 表 + 逐栋抖动
       const useHip = level >= 2 || (level >= 1 && rng() < 0.4) || (level === 0 && rng() < 0.2);
       topY = useHip
-        ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 7 + Math.round(rng() * 3), ridgeRatio: 0.55 + rng() * 0.15 }, roofOpt))
-        : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: 5 + Math.round(rng() * 2) }, roofOpt));
+        ? ARCH.roofHip(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: HOUSE.roofLayers[li] + 1 + Math.round(rng() * 3), ridgeRatio: 0.55 + rng() * 0.15 }, roofOpt))
+        : ARCH.roofGable(a, hx0, hz0, hx1, hz1, roofY, Object.assign({ layers: HOUSE.roofLayers[li] + Math.round(rng() * 2), cornerLift: 1 }, roofOpt));
     }
   }
 
@@ -84551,16 +84779,20 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
 
   // 二进院：在院中加一道腰墙与内门，把院子分成前庭后院
   if (variant === 'twoCourt' && az1 - az0 >= 26) {
-    const wz = Math.round(az0 + (az1 - az0) * 0.55);
+    // 腰墙位置：院内 55% 处，但必须让开正房台基与踏道（否则夯土墙会插进石台基）
+    let wz = Math.round(az0 + (az1 - az0) * 0.55);
+    if (wz <= hz1 + platOut + 2) wz = hz1 + platOut + 3;
     const wgate = 4;
-    for (let x = ax0 + 1; x <= ax1 - 1; x++) {
-      if (Math.abs(x - ((ax0 + ax1) >> 1)) <= wgate) continue;
-      a.set(x, ab + 1, wz, PAL.rammed); a.set(x, ab + 2, wz, PAL.rammedLight); a.set(x, ab + 3, wz, PAL.roofDark);
+    if (wz < az1 - 4) {
+      for (let x = ax0 + 1; x <= ax1 - 1; x++) {
+        if (Math.abs(x - ((ax0 + ax1) >> 1)) <= wgate) continue;
+        a.set(x, ab + 1, wz, PAL.rammed); a.set(x, ab + 2, wz, PAL.rammedLight); a.set(x, ab + 3, wz, PAL.roofDark);
+      }
+      // 注意括号：`>>` 优先级低于 `-`，写成 (ax0+ax1) >> 1 - wgate - 1 会被解析成"右移负数位"，
+      // 门柱被扔到城里任意位置并悬空 —— 这就是 2026-09-08 用户实测"建筑断成两半、上面一半飘着"的真凶。
+      const wcx = (ax0 + ax1) >> 1;
+      for (const px of [wcx - wgate - 1, wcx + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
     }
-    // 注意括号：`>>` 优先级低于 `-`，写成 (ax0+ax1) >> 1 - wgate - 1 会被解析成"右移负数位"，
-    // 门柱被扔到城里任意位置并悬空 —— 这就是 2026-09-08 用户实测"建筑断成两半、上面一半飘着"的真凶。
-    const wcx = (ax0 + ax1) >> 1;
-    for (const px of [wcx - wgate - 1, wcx + wgate + 1]) for (let y = 1; y <= 4; y++) a.set(px, ab + y, wz, PAL.zhu);
   }
 
   // 楼居二层已并入正房构造（见上），此处不再二次叠加

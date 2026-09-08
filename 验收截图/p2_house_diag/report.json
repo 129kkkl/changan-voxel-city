@@ -1,0 +1,147 @@
+{
+  "shots": [
+    {
+      "view": "cam@84.25,8.6,-32.5,84.25,8.2,-39.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house_diag\\cam@84.25_8.6_-32.5_84.25_8.2_-39.5_noon_5a17c4a9.png",
+      "fps": "—",
+      "drawCalls": "—",
+      "voxels": "102 万"
+    },
+    {
+      "view": "cam@92,9.5,-33,84,8,-39.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house_diag\\cam@92_9.5_-33_84_8_-39.5_noon_5a17c4a9.png",
+      "fps": "25",
+      "drawCalls": "28",
+      "voxels": "102 万"
+    },
+    {
+      "view": "cam@84.25,7.6,-33.5,84.25,7.6,-39.5",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p2_house_diag\\cam@84.25_7.6_-33.5_84.25_7.6_-39.5_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "23",
+      "voxels": "102 万"
+    }
+  ],
+  "console": [],
+  "errors": [],
+  "meta": {
+    "stats": {
+      "voxels": 1016267,
+      "archVoxels": 2054928,
+      "archQuads": 3038918,
+      "wardCount": 104,
+      "marketPlots": 4,
+      "gateCount": 12,
+      "buildings": 417,
+      "shops": 178,
+      "trees": 848,
+      "towers": 35,
+      "wells": 43,
+      "bridges": 0,
+      "lamps": 359,
+      "checksum": "3bd1b57e",
+      "audits": [
+        {
+          "name": "坊墙闭合",
+          "pass": true,
+          "detail": "108 坊环墙连续、门位合规"
+        },
+        {
+          "name": "中轴对齐",
+          "pass": true,
+          "detail": "三门 x=-1,-1,-1"
+        },
+        {
+          "name": "108坊计数",
+          "pass": true,
+          "detail": "坊位=108 其中市=4"
+        },
+        {
+          "name": "临街开店",
+          "pass": true,
+          "detail": "店肆均在两市之内"
+        },
+        {
+          "name": "无浮空",
+          "pass": true,
+          "detail": "全域与基岩连通"
+        },
+        {
+          "name": "建筑层无浮空",
+          "pass": true,
+          "detail": "建筑层 2054928 体素全部落地连通"
+        },
+        {
+          "name": "体素预算",
+          "pass": true,
+          "detail": "1016267 / 硬上限 2800000"
+        },
+        {
+          "name": "地标去模板化",
+          "pass": true,
+          "detail": "P0/P1主体均走独立builder，仅用primitive"
+        },
+        {
+          "name": "地标LOD",
+          "pass": true,
+          "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+        },
+        {
+          "name": "多样性",
+          "pass": true,
+          "detail": "重复签名14/院落188种/最大重复2"
+        },
+        {
+          "name": "十坊抽检",
+          "pass": true,
+          "detail": "院落布局种类188，最大重复2"
+        },
+        {
+          "name": "地标唯一性",
+          "pass": true,
+          "detail": "六大地标轮廓各异"
+        }
+      ],
+      "stageMs": {
+        "terrain": 306,
+        "walls": 15,
+        "streets": 16,
+        "wards": 737,
+        "markets": 52,
+        "custom": 37,
+        "palaces": 173,
+        "water": 11,
+        "detail": 74,
+        "seal": 51,
+        "wardId": 4,
+        "audit": 2134,
+        "mesh": 3431
+      },
+      "budget": {
+        "soft": 2400000,
+        "hard": 2800000
+      },
+      "genMs": 7052
+    },
+    "voxels": 1016267,
+    "views": [
+      "mingde",
+      "axis",
+      "hengjie",
+      "hanyuan",
+      "taiye",
+      "xingqing",
+      "westMarket",
+      "eastMarket",
+      "dayanta",
+      "xiaoyanta",
+      "qinglong",
+      "jingshan",
+      "wardGate",
+      "lane",
+      "qujiang",
+      "jinguang",
+      "kaiyuan"
+    ]
+  }
+}
