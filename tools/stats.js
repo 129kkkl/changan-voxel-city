@@ -35,7 +35,11 @@ console.log('计数: ' + keys.map(k => `${k}=${c[k]}`).join(' '));
 const fields = res.fields;
 const PAL = CHANGAN.PAL;
 if (fields && fields.wardId) {
-  const builtSet = new Set([PAL.roofGrey, PAL.roofLight, PAL.roofDark, PAL.timber, PAL.timberDark, PAL.zhu, PAL.zhuDeep, PAL.zhuBright, PAL.plaster, PAL.plasterWarm, PAL.doorDark, PAL.brickPave, PAL.stoneGrey, PAL.stoneWhite, PAL.glazeGreen, PAL.glazeBlue, PAL.gold]);
+  const builtSet = new Set([PAL.roofGrey, PAL.roofLight, PAL.roofDark, PAL.roofGroove,
+    PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG, PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG,
+    PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG, PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG,
+    PAL.timber, PAL.timberDark, PAL.zhu, PAL.zhuDeep, PAL.zhuBright, PAL.plaster, PAL.plasterWarm,
+    PAL.doorDark, PAL.brickPave, PAL.stoneGrey, PAL.stoneWhite, PAL.glazeGreen, PAL.glazeBlue, PAL.gold]);
   let built = 0, bare = 0, road = 0, water = 0, tot = 0;
   for (let i = 0; i < fields.topH.length; i++) {
     if (!fields.wardId[i]) continue;
