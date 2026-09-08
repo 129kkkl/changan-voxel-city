@@ -84089,7 +84089,14 @@ const ARCH = {
 
   // 斗拱：柱头一垛（向外挑 2、向上 1），补间一朵
   dougong(a, cols, y, colC, outC) {
+    // 柱头斗拱向外挑 2 格（华拱两层）+ 挑檐枋环：
+    // P0 判"柱顶到檐口之间仍是同一平面贴附，结构性进深只完成一半"。
     for (const [x, z] of cols) {
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        a.set(x + dx, y + 1, z + dz, outC);
+        a.set(x + 2 * dx, y + 1, z + 2 * dz, outC);
+        a.set(x + 2 * dx, y + 2, z + 2 * dz, outC);
+      }
       // 柱头斗拱：三层叠出
       a.set(x, y + 1, z, colC);
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) a.set(x + dx, y + 1, z + dz, outC);
@@ -84471,7 +84478,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const wallH = Math.max(3, (level === 0 ? 4 : 6) + st.hBias + (rng() < 0.35 ? 1 : 0));
     let y = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, level === 0 ? 2 : 3, { steps: true, stepW: 4 });
     const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 2 ? 2 : 1);
-    ARCH.wall(a, hx0, hz0, hx1, hz1, y, wallH, fr.cols, {
+    ARCH.wall(a, hx0 + 1, hz0 + 1, hx1 - 1, hz1 - 1, y, wallH, fr.cols, {
       wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
       xs: fr.xs, doorBay: Math.floor(bays / 2),
     });
