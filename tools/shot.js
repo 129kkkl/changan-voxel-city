@@ -190,6 +190,12 @@ async function main() {
       : (a.views.includes(';') ? a.views.split(';') : a.views.split(',')).map(s => s.trim()).filter(Boolean);
 
     for (const v of views) {
+      // 每个机位前把光照复位到 --t 指定的档位。
+      // 否则带 light:'dawn'/'dusk' 的机位（小雁晨钟/暮鼓夜禁）会把光照状态泄漏给后续机位，
+      // 让后续截图在错误的时辰下拍摄（曾导致 lane/wardGate 被误判为"整体偏暗"）。
+      if (['dawn', 'noon', 'dusk', 'lantern'].includes(String(a.t))) {
+        await cdp.eval(`(function(){try{window.__CHANGAN__.setLightMode(${JSON.stringify(a.t)})}catch(e){}return 1})()`);
+      }
       if (v.startsWith('cam@')) {
         const body = v.slice(4);
         if (body.startsWith('a:')) {

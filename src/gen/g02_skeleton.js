@@ -240,6 +240,31 @@ CHANGAN.stageWalls = function (ctx) {
       fields.topColor[i] = P.rammed;
     }
   }
+  // ---- 马面（墙台）：沿外郭城墙每 24 格外凸 2 格、高出 2 格。
+  // 无马面的长墙在鸟瞰诊断里被判为"一堵无门窗无马面的灰色板墙"；马面给夯土长墙节奏与天际线锚点。
+  const addButtress = (bx, bz, ox, oz) => {
+    const base = store.get(bx, fields.groundH[CHANGAN.fieldIndex(bx, bz)] + H, bz);
+    if (!base) return; // 该处无墙（宫城/大明宫让位段）
+    for (let d = 0; d <= 2; d++) {
+      for (let s = -1; s <= 1; s++) {
+        const px = bx + ox * d + (ox === 0 ? s : 0);
+        const pz = bz + oz * d + (oz === 0 ? s : 0);
+        const i = CHANGAN.fieldIndex(px, pz);
+        if (i < 0 || i >= fields.groundH.length) continue;
+        const g = fields.groundH[i];
+        for (let y = 1; y <= H + 2; y++) store.set(px, g + y, pz, y % 3 === 0 ? P.rammedDark : P.rammed);
+        fields.topH[i] = g + H + 2; fields.topColor[i] = P.rammedDark;
+      }
+    }
+  };
+  for (let x = CFG.CITY.x0; x <= CFG.CITY.x1; x += 24) {
+    addButtress(x, CFG.CITY.z1 + T, 0, 1);   // 南墙外凸
+    addButtress(x, CFG.CITY.z0 - T, 0, -1);  // 北墙外凸
+  }
+  for (let z = CFG.CITY.z0; z <= CFG.CITY.z1; z += 24) {
+    addButtress(CFG.CITY.x1 + T, z, 1, 0);   // 东墙外凸
+    addButtress(CFG.CITY.x0 - T, z, -1, 0);  // 西墙外凸
+  }
   // ---- 宫城/皇城/大明宫围墙：由 stagePalaces 整平后重建（避免整平破坏墙基）
   // ---- 城门：外郭十二门先建；皇城/宫城/大明宫门随宫墙在 S7 建
   ctx.gates = CHANGAN.gateTable(CFG);
