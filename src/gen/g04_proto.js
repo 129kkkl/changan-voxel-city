@@ -1695,11 +1695,14 @@ regWard('晋昌', 'E', (ctx, w) => {
   CHANGAN.buildDayanPagoda(ctx, cx - 8, w.z1 - 12, w.base);
 });
 regWard('新昌', 'E', (ctx, w) => {
-  // 青龙寺：皇家寺院高台+乐游原亭（与大慈恩不同平面：紧凑纵深+北亭）
+  // 青龙寺：乐游原皇家寺院。P5 验收原判"主体仍灰色阶梯平台，无塔、无重檐殿、无琉璃"——
+  // 高台 2 层 + 台体收窄导致台面压过寺院本体。改为：台只抬 1 层、寺院贴满台面、
+  // 中轴前立 7 层密檐塔（比大殿更高，是最强的地标识认线索）。
   const cx = (w.x0 + w.x1) >> 1;
-  platform(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 10, w.base, 2, PAL.stoneWhite, 'S');
-  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 14, w.base + 2, { pagoda: 5 });
-  proto.pavilion(ctx, cx, w.z1 - 6, w.base, 'big');
+  platform(ctx, w.x0 + 4, w.z0 + 4, w.x1 - 4, w.z1 - 8, w.base, 1, PAL.stoneWhite, 'S');
+  CHANGAN.TempleGrammar.Royal(ctx, w.x0 + 6, w.z0 + 6, w.x1 - 6, w.z1 - 14, w.base + 1, {});
+  proto.pagodaMiyan(ctx, cx, w.z1 - 12, w.base + 1, { layers: 7 });
+  proto.pavilion(ctx, cx, w.z1 - 5, w.base, 'big');
 });
 regWard('务本', 'E', (ctx, w) => {
   const Q = wardQuads(w);

@@ -1,0 +1,140 @@
+{
+  "shots": [
+    {
+      "view": "cam@256,22,162,256,20,144",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p5_ql5\\cam@256_22_162_256_20_144_noon_5a17c4a9.png",
+      "fps": "—",
+      "drawCalls": "—",
+      "voxels": "100 万"
+    },
+    {
+      "view": "cam@272,30,152,250,16,140",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\验收截图\\p5_ql5\\cam@272_30_152_250_16_140_noon_5a17c4a9.png",
+      "fps": "25",
+      "drawCalls": "59",
+      "voxels": "100 万"
+    }
+  ],
+  "console": [],
+  "errors": [],
+  "meta": {
+    "stats": {
+      "voxels": 995462,
+      "archVoxels": 1714214,
+      "archQuads": 2621380,
+      "wardCount": 104,
+      "marketPlots": 4,
+      "gateCount": 12,
+      "buildings": 374,
+      "shops": 170,
+      "trees": 949,
+      "towers": 37,
+      "wells": 21,
+      "bridges": 0,
+      "lamps": 367,
+      "checksum": "bf65d26a",
+      "audits": [
+        {
+          "name": "坊墙闭合",
+          "pass": true,
+          "detail": "108 坊环墙连续、门位合规"
+        },
+        {
+          "name": "中轴对齐",
+          "pass": true,
+          "detail": "三门 x=-1,-1,-1"
+        },
+        {
+          "name": "108坊计数",
+          "pass": true,
+          "detail": "坊位=108 其中市=4"
+        },
+        {
+          "name": "临街开店",
+          "pass": true,
+          "detail": "店肆均在两市之内"
+        },
+        {
+          "name": "无浮空",
+          "pass": true,
+          "detail": "全域与基岩连通"
+        },
+        {
+          "name": "建筑层无浮空",
+          "pass": true,
+          "detail": "建筑层 1714214 体素全部落地连通"
+        },
+        {
+          "name": "体素预算",
+          "pass": true,
+          "detail": "995462 / 硬上限 2800000"
+        },
+        {
+          "name": "地标去模板化",
+          "pass": true,
+          "detail": "P0/P1主体均走独立builder，仅用primitive"
+        },
+        {
+          "name": "地标LOD",
+          "pass": true,
+          "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+        },
+        {
+          "name": "多样性",
+          "pass": true,
+          "detail": "重复签名14/院落202种/最大重复3"
+        },
+        {
+          "name": "十坊抽检",
+          "pass": true,
+          "detail": "院落布局种类202，最大重复3"
+        },
+        {
+          "name": "地标唯一性",
+          "pass": true,
+          "detail": "六大地标轮廓各异"
+        }
+      ],
+      "stageMs": {
+        "terrain": 339,
+        "walls": 16,
+        "streets": 21,
+        "wards": 609,
+        "markets": 68,
+        "custom": 38,
+        "palaces": 170,
+        "water": 15,
+        "detail": 87,
+        "seal": 48,
+        "wardId": 6,
+        "audit": 1778,
+        "mesh": 3113
+      },
+      "budget": {
+        "soft": 2400000,
+        "hard": 2800000
+      },
+      "genMs": 6321
+    },
+    "voxels": 995462,
+    "views": [
+      "mingde",
+      "axis",
+      "hengjie",
+      "hanyuan",
+      "taiye",
+      "xingqing",
+      "westMarket",
+      "eastMarket",
+      "dayanta",
+      "xiaoyanta",
+      "qinglong",
+      "jingshan",
+      "wardGate",
+      "lane",
+      "qujiang",
+      "jinguang",
+      "kaiyuan"
+    ]
+  }
+}

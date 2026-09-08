@@ -38,7 +38,7 @@ export const VIEW_DEFS = [
     light: 'dawn' },
   { id: 'qinglong', title: '乐游青龙', badge: '乐游原', sub: '新昌坊 · 青龙寺',
     lore: '乐游原是城东南最高处，青龙寺踞其上。登高可俯瞰东南坊里与曲江一带，春日士女游原，诗里写过多少次。六坡之中，这里的隆起最像“原”：不是山，是黄土高地。寺院放在高台上，松柏压住坡线，瓦海在脚下展开。长安不是平的，这一眼把东南高、西北低的地势说完。',
-    cam: A => ({ pos: [A.qinglong.x + 18, A.qinglong.y + 18, A.qinglong.z + 24], target: [A.qinglong.x - 10, A.qinglong.y + 2, A.qinglong.z - 20] }) },
+    cam: A => ({ pos: [A.qinglong.x, A.qinglong.y + 10, A.qinglong.z + 48], target: [A.qinglong.x, A.qinglong.y + 2, A.qinglong.z + 8] }) },
   { id: 'jingshan', title: '靖善梵阁', badge: '九五高坡', sub: '大兴善寺 · 密宗祖庭',
     lore: '靖善坊被大兴善寺占尽一坊。九五坡最尊，不置民居，以大兴善寺与街西崇业坊玄都观对镇，应“飞龙在天”。中轴南段因此有了一处佛法的重音：廊院、大殿、高阁压住坡顶，松竹破开棋盘的均质。密宗的香火与朱雀街的空阔并置，盛唐的精神生活不是藏在巷子里，是被规划进城市骨架。',
     cam: A => ({ pos: [A.jingshan.x - 20, A.jingshan.y + 14, A.jingshan.z + 18], target: [A.jingshan.x + 4, A.jingshan.y + 6, A.jingshan.z - 8] }) },
