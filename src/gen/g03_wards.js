@@ -458,7 +458,7 @@ function splitBand(ctx, w, band, face, family, rng) {
     // 宅地之间铺巷：splitBand 原先地块背靠背（x += sw），整条带内没有巷，
     // P3 验收判"坊内巷级读不出"。按 PLAN.laneW 铺巷，但只铺 65% 的地界
     // （全铺会把建筑数压到 N0 375 以下：实测 laneW=2 → 364、laneW=1 → 373）。
-    const paveHere = rng() < 0.65;
+    const paveHere = rng() < 0.58;
     if (paveHere) {
       for (let lx = x + sw; lx < x + sw + laneW && lx <= band.x1; lx++) {
         for (let z = band.z0; z <= band.z1; z++) w.paveLane(lx, z, 7);
