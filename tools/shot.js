@@ -38,6 +38,7 @@ function parseArgs(argv) {
     else if (k === '--file') { a.file = v; i++; }
     else if (k === '--settle') { a.settle = +v; i++; }
     else if (k === '--timeout') { a.timeout = +v; i++; }
+    else if (k === '--extra') { a.extra = v; i++; }
   }
   return a;
 }
@@ -156,7 +157,7 @@ async function main() {
     });
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: a.w, height: a.h, deviceScaleFactor: 1, mobile: false });
 
-    const url = 'file:///' + filePath.replace(/\\/g, '/') + `?seed=${a.seed}&view=${a.views.split(',')[0]}&t=${a.t}&q=${a.q}`;
+    const url = 'file:///' + filePath.replace(/\\/g, '/') + `?seed=${a.seed}&view=${a.views.split(',')[0]}&t=${a.t}&q=${a.q}` + (a.extra ? '&' + a.extra : '');
     await cdp.send('Page.navigate', { url });
 
     // 等待生成完成

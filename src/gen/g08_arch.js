@@ -166,24 +166,27 @@ const ARCH = {
     if (alongX) {
       const cz = (lz0 + lz1) >> 1;
       for (let x = lx0; x <= lx1; x++) { a.set(x, ry, cz, ridgeC); a.set(x, ry + 1, cz, ridgeC); }
+      // 脊端收头：按屋顶规模缩放。普通民居只起 1 格（原先一律 5 格高的"叉状大块"，
+      // 被重建方案点名"屋脊及脊端形成大量巨大的灰色叉状块"）。
+      const fh = opts.finialH == null ? (shortHalf >= 8 ? 3 : 1) : opts.finialH;
       for (const [sx, dir] of [[lx0, -1], [lx1, 1]]) {
-        // 鸱尾：宽基座 + 逐级外卷的鱼尾（5 格高，正脊端头明确收头）
-        for (let k = 0; k < 3; k++) a.set(sx - dir * 0 + dir * k, ry + 2, cz, fin);
-        a.set(sx, ry + 3, cz, fin); a.set(sx + dir, ry + 3, cz, fin); a.set(sx + dir * 2, ry + 3, cz, fin);
-        a.set(sx, ry + 4, cz, fin); a.set(sx + dir, ry + 4, cz, fin); a.set(sx + dir * 2, ry + 4, cz, ridgeC);
-        a.set(sx, ry + 5, cz, fin); a.set(sx + dir, ry + 5, cz, fin);
-        a.set(sx + dir, ry + 6, cz, fin);
+        if (fh <= 1) { a.set(sx, ry + 2, cz, fin); continue; }
+        a.set(sx, ry + 2, cz, fin); a.set(sx + dir, ry + 2, cz, fin);
+        a.set(sx, ry + 3, cz, fin); a.set(sx + dir, ry + 3, cz, ridgeC);
+        if (fh >= 3) { a.set(sx, ry + 4, cz, fin); a.set(sx + dir, ry + 4, cz, fin); }
       }
     } else {
       const cx = (lx0 + lx1) >> 1;
       for (let z = lz0; z <= lz1; z++) { a.set(cx, ry, z, ridgeC); a.set(cx, ry + 1, z, ridgeC); }
+      const fh2 = opts.finialH == null ? (shortHalf >= 8 ? 3 : 1) : opts.finialH;
       for (const [sz, dir] of [[lz0, -1], [lz1, 1]]) {
-        a.set(cx, ry + 2, sz, fin); a.set(cx, ry + 2, sz + dir, ridgeC);
-        a.set(cx, ry + 3, sz, fin); a.set(cx, ry + 3, sz + dir * 2, fin);
-        a.set(cx, ry + 4, sz + dir, fin);
+        if (fh2 <= 1) { a.set(cx, ry + 2, sz, fin); continue; }
+        a.set(cx, ry + 2, sz, fin); a.set(cx, ry + 2, sz + dir, fin);
+        a.set(cx, ry + 3, sz, fin); a.set(cx, ry + 3, sz + dir, ridgeC);
+        if (fh2 >= 3) { a.set(cx, ry + 4, sz + dir, fin); }
       }
     }
-    return ry + 5;
+    return ry + (opts.finialH == null && shortHalf < 8 ? 3 : 5);
   },
 
   // 悬山两坡（民居/厢房）：沿长轴起坡，两端山面封板
@@ -252,6 +255,7 @@ const ARCH = {
 CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank) {
   const a = ctx.arch;
   if (!a) return;
+  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
   const S = 2;
   const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
   const ab = base * S;
@@ -430,6 +434,7 @@ CHANGAN.pickCompoundVariant = function (level, rng) {
 CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facing, plan) {
   const a = ctx.arch;
   if (!a) return;
+  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
   const S = 2;
   const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
@@ -460,7 +465,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     // 屋身高度：坊基调 + 逐栋抖动 —— 评审判"高度几乎没变"
     const wallH = Math.max(3, (level === 0 ? 4 : 6) + st.hBias + (rng() < 0.35 ? 1 : 0));
     let y = ARCH.platform(a, hx0 - 2, hz0 - 2, hx1 + 2, hz1 + 2, ab, level === 0 ? 2 : 3, { steps: true, stepW: 4 });
-    const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 1 ? 2 : 1);
+    const fr = ARCH.colonnade(a, hx0, hz0, hx1, hz1, y, wallH, bays, level >= 2 ? PAL.zhuBright : PAL.zhu, level >= 2 ? 2 : 1);
     ARCH.wall(a, hx0, hz0, hx1, hz1, y, wallH, fr.cols, {
       wallC: rng() < 0.4 ? PAL.plasterWarm : PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu,
       xs: fr.xs, doorBay: Math.floor(bays / 2),
@@ -583,6 +588,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
 CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, facing) {
   const a = ctx.arch;
   if (!a) return;
+  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
   const S = 2;
   const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
@@ -626,6 +632,7 @@ CHANGAN.buildArchTemple = function (ctx, x0, z0, x1, z1, base, opts) {
   opts = opts || {};
   const a = ctx.arch;
   if (!a) return;
+  ctx.counters.archBuildings = (ctx.counters.archBuildings || 0) + 1;
   const S = 2;
   const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
   const ab = base * S;
