@@ -91,7 +91,10 @@ CHANGAN.runAudits = function (ctx) {
     for (const [k] of ctx.store.map) {
       const x = CHANGAN.unpackX(k) - W.x0, y = CHANGAN.unpackY(k), z = CHANGAN.unpackZ(k) - W.z0;
       if (x < 0 || x >= Wd || z < 0 || z >= Dd) continue;
-      if (!visited[(x * Dd + z) * H + y]) { floating++; if (samples.length < 5) samples.push(`${x + W.x0},${y},${z + W.z0}`); }
+      if (!visited[(x * Dd + z) * H + y]) {
+        floating++;
+        if (samples.length < 8) samples.push(`${x + W.x0},${y},${z + W.z0}:${(CHANGAN.PAL_DEF[ctx.store.get(x + W.x0, y, z + W.z0) - 1] || ['?'])[0]}`);
+      }
     }
     ok('无浮空', floating === 0, floating ? `浮空体素 ${floating}（如 ${samples.join('|')}）` : '全域与基岩连通');
     ctx.denseGrid = grid; // 供网格化复用

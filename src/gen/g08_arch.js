@@ -579,6 +579,120 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   return topY;
 };
 
+// ---------------------------------------------------------------- 市肆（建筑层）：临街铺面 / 仓储棚
+CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, facing) {
+  const a = ctx.arch;
+  if (!a) return;
+  const S = 2;
+  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
+  const ab = base * S;
+  if (ax1 - ax0 < 6 || az1 - az0 < 6) return;
+  const tone = east ? [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG] : [PAL.roofClay, PAL.roofClayL, PAL.roofClayG];
+  const y = ARCH.platform(a, ax0, az0, ax1, az1, ab, 1, { steps: false });
+  const isShed = !east && rng() < 0.3;
+  const shopH = 6 + (east ? 1 : 0) + (rng() < 0.3 ? 1 : 0);
+  const bays = Math.max(2, Math.min(5, Math.round((ax1 - ax0) / 9)));
+  const fr = ARCH.colonnade(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y, shopH, bays, PAL.zhu, 1);
+  if (!isShed) {
+    ARCH.wall(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y, shopH, fr.cols, {
+      wallC: rng() < 0.5 ? PAL.plaster : PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu,
+      xs: fr.xs, doorBay: Math.floor(bays / 2),
+    });
+    ARCH.dougong(a, fr.cols, y + shopH - 1, PAL.zhu, PAL.timberDark);
+  }
+  const rm = isShed ? [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG] : tone;
+  const topY = ARCH.roofGable(a, ax0 + 1, az0 + 1, ax1 - 1, az1 - 1, y + shopH + 1, {
+    layers: 5 + Math.round(rng() * 2), overhang: isShed ? 3 : 2,
+    main: rm[0], groove: rm[2], lip: rm[1],
+  });
+  const px = (ax0 + ax1) >> 1;
+  const pz = (facing === 'N') ? az0 + 1 : az1 - 1;
+  const flagC = east ? PAL.flagBlue : PAL.flagRed;
+  for (let k = 0; k < 5; k++) a.set(px, y + shopH + 2 + k, pz, PAL.timberDark);
+  a.set(px, y + shopH + 6, pz, flagC);
+  a.set(px + 1, y + shopH + 6, pz, flagC);
+  a.set(px + 1, y + shopH + 5, pz, flagC);
+  const topCity = Math.ceil(topY / S);
+  for (let x = x0; x <= x0 + w - 1; x++) for (let z = z0; z <= z0 + d - 1; z++) {
+    const i = CHANGAN.fieldIndex(x, z); if (i < 0) continue;
+    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = rm[0];
+  }
+  ctx.counters.shops++;
+  return topY;
+};
+
+// ---------------------------------------------------------------- 寺观（建筑层）：山门 + 重檐大殿 + 配殿
+CHANGAN.buildArchTemple = function (ctx, x0, z0, x1, z1, base, opts) {
+  opts = opts || {};
+  const a = ctx.arch;
+  if (!a) return;
+  const S = 2;
+  const ax0 = x0 * S, az0 = z0 * S, ax1 = (x1 + 1) * S - 1, az1 = (z1 + 1) * S - 1;
+  const ab = base * S;
+  if (ax1 - ax0 < 24 || az1 - az0 < 24) return;
+  const big = !!opts.big;
+  const tone = big ? [PAL.roofGreen, PAL.roofGreenL, PAL.roofGreenG] : [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG];
+  ARCH.enclosure(a, ax0, az0, ax1, az1, ab, 'S', { courses: 3, gateW: 4 });
+  const cx = (ax0 + ax1) >> 1;
+
+  const gw = Math.min(14, (ax1 - ax0) >> 2);
+  const gy = ARCH.platform(a, cx - gw, az1 - 12, cx + gw, az1 - 2, ab, 2, { steps: true, stepW: 5 });
+  const gf = ARCH.colonnade(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy, 8, 3, PAL.zhuBright, 1);
+  ARCH.wall(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy, 8, gf.cols, {
+    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: gf.xs, doorBay: 1,
+  });
+  ARCH.dougong(a, gf.cols, gy + 7, PAL.zhuBright, PAL.zhu);
+  ARCH.roofGable(a, cx - gw, az1 - 12, cx + gw, az1 - 2, gy + 10, {
+    layers: 6, overhang: 3, main: tone[0], groove: tone[2], lip: tone[1],
+  });
+
+  const hw = Math.min(20, (ax1 - ax0) >> 2), hd = Math.max(14, Math.min(20, (az1 - az0) >> 2));
+  const hz0 = az0 + 10, hz1 = hz0 + hd;
+  const y = ARCH.platform(a, cx - hw, hz0, cx + hw, hz1, ab, 3, { steps: true, stepW: 6 });
+  const hf = ARCH.colonnade(a, cx - hw, hz0, cx + hw, hz1, y, 12, big ? 5 : 3, PAL.zhuBright, 2);
+  ARCH.wall(a, cx - hw, hz0, cx + hw, hz1, y, 12, hf.cols, {
+    wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: hf.xs, doorBay: big ? 2 : 1,
+  });
+  ARCH.dougong(a, hf.cols, y + 11, PAL.zhuBright, PAL.zhu);
+  const eo = 4, eaveY = y + 14;
+  for (let x = cx - hw - eo; x <= cx + hw + eo; x++) for (let z = hz0 - eo; z <= hz1 + eo; z++) {
+    const ring = (x === cx - hw - eo || x === cx + hw + eo || z === hz0 - eo || z === hz1 + eo);
+    a.set(x, eaveY, z, ring ? tone[1] : tone[0]);
+    a.set(x, eaveY + 1, z, tone[2]);
+  }
+  const dx0 = cx - hw + 3, dx1 = cx + hw - 3, dz0 = hz0 + 3, dz1 = hz1 - 3;
+  const hf2 = ARCH.colonnade(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, 3, PAL.zhuBright, 2);
+  ARCH.wall(a, dx0, dz0, dx1, dz1, eaveY + 2, 6, hf2.cols, {
+    wallC: PAL.plasterWarm, winC: PAL.timberDark, frameC: PAL.zhu, xs: hf2.xs, doorBay: -1,
+  });
+  ARCH.dougong(a, hf2.cols, eaveY + 7, PAL.zhuBright, PAL.zhu);
+  const topY = ARCH.roofHip(a, dx0, dz0, dx1, dz1, eaveY + 10, {
+    layers: 9, ridgeRatio: 0.6, overhang: 5, main: tone[0], groove: tone[2], lip: tone[1],
+    trim: big ? PAL.gold : null, ridgeC: PAL.roofDark, finial: big ? PAL.gold : PAL.roofDark,
+  });
+
+  for (const sx of [ax0 + 6, ax1 - 6]) {
+    const wz0 = hz0 + 2, wz1 = hz1 - 2;
+    if (wz1 - wz0 < 6) continue;
+    const wy = ARCH.platform(a, sx - 5, wz0, sx + 5, wz1, ab, 1, { steps: false });
+    const wf = ARCH.colonnade(a, sx - 5, wz0, sx + 5, wz1, wy, 7, 2, PAL.zhu, 1);
+    ARCH.wall(a, sx - 5, wz0, sx + 5, wz1, wy, 7, wf.cols, {
+      wallC: PAL.plaster, winC: PAL.timberDark, frameC: PAL.zhu, xs: wf.xs, doorBay: -1,
+    });
+    ARCH.roofGable(a, sx - 5, wz0, sx + 5, wz1, wy + 8, {
+      layers: 5, overhang: 2, main: tone[0], groove: tone[2], lip: tone[1],
+    });
+  }
+
+  const topCity = Math.ceil(topY / S);
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    const i = CHANGAN.fieldIndex(x, z); if (i < 0) continue;
+    ctx.fields.topH[i] = topCity; ctx.fields.topColor[i] = tone[0];
+  }
+  ctx.counters.temples++;
+  return topY;
+};
+
 // ---------------------------------------------------------------- 样板：含元殿式重檐庑殿大朝正殿
 // 以建筑体素为单位；cx/cz 为建筑中心，base 为台基顶面（建筑体素 y）
 CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {

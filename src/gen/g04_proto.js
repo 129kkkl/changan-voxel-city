@@ -1231,6 +1231,8 @@ proto.cornerTower = function (ctx, x, z, base) {
 
 // ================================================================ 寺院建筑群（旧统一模板，已拆分为五语法；此处仅供普通寺院，皇家寺院禁作主体）
 proto.temple = function (ctx, x0, z0, x1, z1, base, opts) {
+  // 建筑层（2×）接管：寺观全部走 buildArchTemple；旧 1× 实现保留作回退
+  if (ctx.arch && CHANGAN.buildArchTemple) { CHANGAN.buildArchTemple(ctx, x0, z0, x1, z1, base, opts); return; }
   CHANGAN._noteGeneric(ctx, 'proto.temple');
   const { store } = ctx;
   opts = opts || {};
@@ -1374,12 +1376,12 @@ CHANGAN.ShopType = {
       if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
       for (let y = 1; y <= 4; y++) ctx.store.set(x, base + y, z, y <= 3 ? PAL.rammed : PAL.rammedLight);
     }
-    ctx.store.fill(x0, base + 5, z0, x1, base + 5, z1, PAL.roofGrey);
+    // 店肆已由建筑层（2×）生成，此处不再写城市层装饰（否则失去支承会浮空）
     ctx.counters.shops++;
   },
   Inn(ctx, x0, z0, w, d, base, rng, facing) { // 邸店：二层楼+天井
     proto.shop(ctx, x0, z0, w, d, base, '邸店', false, rng, facing);
-    ctx.store.set(x0 + 1, base + 4, z0 + 1, PAL.lantern); ctx.counters.lamps++;
+    ctx.counters.lamps++;
   },
   ForeignCompound(ctx, x0, z0, w, d, base, rng, facing) { // 胡商邸店群：主店+偏仓+胡毯金器+尖帽旗（朝向随街）
     proto.shop(ctx, x0, z0, Math.min(w, 6), d, base, '胡商邸店', false, rng, facing || 'S');
@@ -1388,11 +1390,9 @@ CHANGAN.ShopType = {
   },
   Workshop(ctx, x0, z0, w, d, base, rng, facing) { // 作坊：敞口+烟囱（朝向随街）
     proto.shop(ctx, x0, z0, w, d, base, '作坊', false, rng, facing || 'S');
-    ctx.store.set(x0 + w - 1, base + 4, z0 + 1, PAL.iron);
   },
   LuxuryShop(ctx, x0, z0, w, d, base, trade, rng, facing) { // 高等级小店：粉壁+琉璃剪边+精致院
     proto.shop(ctx, x0, z0, w, d, base, trade, true, rng, facing);
-    ctx.store.set(x0, base + 4, z0, PAL.glazeGreen);
   },
   MarketOffice(ctx, x0, z0, w, d, base) { // 市署小衙：门屋+正堂
     proto.office(ctx, x0, z0, x0 + w - 1, z0 + d - 1, base, CHANGAN.rngOf(1, 'mo'), 'S');
@@ -1450,6 +1450,8 @@ proto.marketTower = function (ctx, cx, cz, y0) {
 // ================================================================ 店肆（面向市街开门 + 门前布棚 + 行业旗幌 + 店头暖灯）
 // facing: 'N'|'S'|'E'|'W'，店面朝向所临市街（棚、旗、门均在临街一侧）
 proto.shop = function (ctx, x0, z0, w, d, base, trade, east, rng, facing) {
+  // 建筑层（2×）接管：市肆全部走 buildArchShop；旧 1× 实现保留作回退
+  if (ctx.arch && CHANGAN.buildArchShop) { CHANGAN.buildArchShop(ctx, x0, z0, w, d, base, trade, east, rng, facing); return; }
   const { store } = ctx;
   const x1 = x0 + w - 1, z1 = z0 + d - 1;
   const doorSide = facing || 'S';
