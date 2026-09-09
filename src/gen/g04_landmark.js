@@ -51,42 +51,13 @@ CHANGAN.buildMingdeGate = function (ctx, g) {
   store.fill(wx0 - 1, gy + 1, wz0 - 1, wx1 + 1, gy + 1, wz1 + 1, PAL.stoneWhite);
   // 主门楼：七间重檐庑殿（专属大开间节奏 7，非通用门楼 4-5 间），腰檐+上层收分
   const x0 = g.x - 9, x1 = g.x + 9, z0 = g.z, z1 = g.z + 3;
-  const frame = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, gy + 2, 5, { bays: 7, colC: PAL.zhuBright, veranda: true });
-  // 一层墙（朱柱+直棂大窗带）
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    const isCol = frame.cols.some(p => p.x === x && p.z === z);
-    if (isCol) continue;
-    for (let y = gy + 2; y < gy + 6; y++) {
-      if (y === gy + 5) { store.set(x, y, z, PAL.zhu); continue; }
-      store.set(x, y, z, (z === z0 || z === z1) && ((x - x0) % 2 === 1) ? PAL.timberDark : PAL.plaster);
-    }
-  }
-  dougong(ctx, x0, z0, x1, z1, gy + 5, frame.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, gy + 6, { rank: 5, main: PAL.roofGrey, lip: PAL.roofLight, trim: PAL.glazeGreen, overhang: 3 });
-  // 二层重楼（收分 2，歇山小顶，形成三重檐口 silhouette）
-  const ix0 = x0 + 3, ix1 = x1 - 3, iz0 = z0, iz1 = z1;
-  const fr2 = Tang.TimberFrameBuilder.build(ctx, ix0, iz0, ix1, iz1, gy + 10, 5, { bays: 5, colC: PAL.zhuBright });
-  for (let x = ix0; x <= ix1; x++) for (let z = iz0; z <= iz1; z++) {
-    if (x !== ix0 && x !== ix1 && z !== iz0 && z !== iz1) continue;
-    const isCol = fr2.cols.some(p => p.x === x && p.z === z);
-    if (isCol) continue;
-    for (let y = gy + 10; y < gy + 13; y++) store.set(x, y, z, y === gy + 12 ? PAL.zhu : PAL.plaster);
-  }
-  dougong(ctx, ix0, iz0, ix1, iz1, gy + 12, fr2.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', ix0, iz0, ix1, iz1, gy + 13, { rank: 5, main: PAL.roofGrey, lip: PAL.roofLight, trim: PAL.glazeGreen, overhang: 2 });
-  // 双阙（实心墩自地面起砌至门台高，防浮空；攒尖顶拉开轮廓）
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,gy+2,7,2);
+  // 双阙（实心墩自地面起砌至门台高，防浮空；细木作双层阙楼）
   for (const s of [-1, 1]) {
     const qx = g.x + s * 15;
     const qg = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
     store.fill(qx - 2, qg + 1, g.z, qx + 2, gy + 2, g.z + 2, PAL.stoneGrey);
-    const qf = Tang.TimberFrameBuilder.build(ctx, qx - 1, g.z, qx + 1, g.z + 2, gy + 3, 4, { bays: 2 });
-    for (let x = qx - 1; x <= qx + 1; x++) for (let z = g.z; z <= g.z + 2; z++) {
-      if (x !== qx - 1 && x !== qx + 1 && z !== g.z && z !== g.z + 2) continue;
-      if (qf.cols.some(p => p.x === x && p.z === z)) continue;
-      for (let y = gy + 3; y < gy + 6; y++) store.set(x, y, z, PAL.plaster);
-    }
-    Tang.RoofBuilder.build(ctx, 'jian', qx - 1, g.z, qx + 1, g.z + 2, gy + 6, { rank: 4, finial: PAL.gold });
+    ARCH.pavilion(ctx.arch, qx - 1, g.z, qx + 1, g.z + 2, gy + 2, 2, 1);
   }
   // 城墙连接（阙与主楼间矮墙相连，朱帽）
   for (let x = x0 - 6; x <= x1 + 6; x++) {
@@ -134,26 +105,13 @@ CHANGAN.buildDanfengGate = function (ctx, g) {
   }
   // 巨型门楼：九间庑殿（开间 9 vs 明德 7），进深 5，三重檐（腰檐+重檐+顶）
   const x0 = g.x - 11, x1 = g.x + 11, z0 = g.z, z1 = g.z + 4;
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, y + 1, 5, { bays: 9, colC: PAL.zhuBright, veranda: true });
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    for (let yy = y + 1; yy < y + 6; yy++) store.set(x, yy, z, yy === y + 5 ? PAL.zhu : (((x - x0) % 3 === 1 && (z === z0 || z === z1)) ? PAL.timberDark : PAL.plaster));
-  }
-  dougong(ctx, x0, z0, x1, z1, y + 5, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, y + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
-  // 上层七间+掖门耳房（与明德双阙不同：品字三阙+掖门）
-  const ix0 = x0 + 2, ix1 = x1 - 2;
-  const fr2 = Tang.TimberFrameBuilder.build(ctx, ix0, z0, ix1, z1, y + 10, 5, { bays: 7 });
-  dougong(ctx, ix0, z0, ix1, z1, y + 13, fr2.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', ix0, z0, ix1, z1, y + 14, { rank: 5, trim: PAL.glazeGreen, overhang: 2 });
-  // 三阙实心墩自地面起砌（防浮空）
-  for (const [dx, wq] of [[-18, 3], [0, 3], [18, 3]]) {
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,y+1,9,2);
+  // 左右双阙实心墩自地面起砌（防浮空，细木作双层阙楼）
+  for (const dx of [-18, 18]) {
     const qx = g.x + dx;
     const qg = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
     store.fill(qx - 1, qg + 1, g.z - 1, qx + 1, y + 2, g.z + 1, PAL.stoneGrey);
-    Tang.TimberFrameBuilder.build(ctx, qx - 1, g.z - 1, qx + 1, g.z + 1, y + 3, 4, { bays: 2 });
-    Tang.RoofBuilder.build(ctx, 'jian', qx - 1, g.z - 1, qx + 1, g.z + 1, y + 6, { rank: 4, finial: PAL.bronze });
+    ARCH.pavilion(ctx.arch, qx - 1, g.z - 1, qx + 1, g.z + 1, y + 2, 2, 1);
   }
   // 宫墙连接（厚墙+女墙，直连大明宫宫墙）
   for (let x = wx0 - 8; x <= wx1 + 8; x++) {
@@ -385,14 +343,7 @@ CHANGAN.buildChengtianGate = function (ctx, g) {
   store.fill(wx0, gy, wz0, wx1, gy + 1, wz1, PAL.stoneWhite);
   // 门楼：十一间单层大庑殿+两端阙楼（横向延展最强，不做重楼高耸，与明德高耸/丹凤厚重形成三极）
   const x0 = g.x - 12, x1 = g.x + 11, z0 = g.z, z1 = g.z + 2;
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, gy + 2, 5, { bays: 11, colC: PAL.zhuBright });
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    for (let y = gy + 2; y < gy + 6; y++) store.set(x, y, z, y === gy + 5 ? PAL.zhu : (((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark));
-  }
-  dougong(ctx, x0, z0, x1, z1, gy + 5, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, gy + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,gy+2,11,1);
   for (const s of [-1, 1]) {
     const qx = g.x + s * 16;
     const qg2 = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
@@ -411,24 +362,7 @@ CHANGAN.buildTaijiHall = function (ctx, cx, z0, z1, base) {
   CHANGAN.enterLandmark(ctx, 'taiji');
   const x0 = cx - 12, x1 = cx + 11;
   const top = Tang.PlatformBuilder.build(ctx, x0 - 1, z0 - 1, x1 + 1, z1 + 1, base, 5, { door: 'S', tiers: 3, h: 1, name: 'taiji-base' });
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, top + 1, 5, { bays: 11, colC: PAL.zhuBright, veranda: true });
-  const { store } = ctx;
-  // 南向居中真实门洞（与台基踏道相接），其余柱间为粉壁。
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    const isDoor = (z === z1 && Math.abs(x - cx) <= 1);
-    if (isDoor) {
-      for (let y = top + 1; y < top + 5; y++) {
-        if (y === top + 4) store.set(x, y, z, PAL.zhu);
-      }
-      continue;
-    }
-    for (let y = top + 1; y < top + 5; y++) store.set(x, y, z, y === top + 4 ? PAL.zhu : (((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark));
-  }
-  dougong(ctx, x0, z0, x1, z1, top + 4, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0 - 1, z0 - 1, x1 + 1, z1 + 1, top + 3, { rank: 5, trim: PAL.glazeGreen, overhang: 2 });
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, top + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,top+1,11,1);
   CHANGAN.logBuild(ctx, { kind: 'palace', name: 'taiji', x0, z0, x1, z1, h: top + 10 - base, roof: 'hip-double11-wide', platform: 3, bays: '11x2', rank: 5, generic: false, symmetry: 'sym' });
   regLOD(ctx, 'taiji', x0, z0, x1, z1, top + 12, base);
   ctx.counters.halls++;

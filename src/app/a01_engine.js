@@ -60,7 +60,7 @@ export function initEngine(canvasHost) {
   scene.fog = new THREE.Fog(0xb7c4d0, 720, 2100);
   scene.background = new THREE.Color(0x8fb0c8);
 
-  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x6a5a48, 0.45);
+  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x8b7960, 0.65);
   const sun = new THREE.DirectionalLight(0xfff1dc, 1.85);
   sun.position.set(-260, 380, 160);
   sun.castShadow = true;
@@ -90,6 +90,7 @@ export function applyQuality(q) {
   const tier = QUALITY_TIERS[q] || QUALITY_TIERS.mid;
   Engine.quality = q;
   Engine.lodDist = tier.lodDist;
+  document.body.classList.toggle('photo-mode',q==='photo');
   Engine.actorMul = tier.actorMul;
   const { renderer, lights } = Engine;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, tier.dpr));
@@ -166,34 +167,15 @@ export function buildChunks(chunkData) {
 }
 
 // ---------------------------------------------------------------- 建筑层网格（2× 分辨率，顶点已折算回城市单位）
-export function buildArchMesh(m) {
-  if (Engine.archMesh) {
-    Engine.chunkGroup.remove(Engine.archMesh);
-    Engine.archMesh.geometry.dispose();
-    Engine.archMesh = null;
+export function replaceArchChunks(chunks) {
+  Engine.archChunks=Engine.archChunks||new Map();
+  for(const ch of chunks){
+    const old=Engine.archChunks.get(ch.id);
+    if(old)for(const mesh of [old.full,old.lod]){Engine.chunkGroup.remove(mesh);mesh.geometry.dispose();}
+    const make=(data,lod)=>{const mesh=new THREE.Mesh(geometryFromArrays(data),Engine.materials.opaque);mesh.castShadow=!lod;mesh.receiveShadow=true;mesh.userData.layer='arch';mesh.userData.lod=lod;mesh.visible=!lod;mesh.geometry.computeBoundingSphere();Engine.chunkGroup.add(mesh);return mesh;};
+    const [cx,cz]=ch.id.split(',').map(Number);
+    Engine.archChunks.set(ch.id,{full:make(ch.full,false),lod:make(ch.lod,true),center:new THREE.Vector3(cx*64+32,0,cz*64+32),near:true});
   }
-  if (!m || !m.idx || !m.idx.length) return null;
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-  const n = m.pos.length / 3;
-  const colors = new Uint8Array(n * 3);
-  colors.set(m.col);
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
-  const normals = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const N = NORMALS[m.nor[i]];
-    normals[i * 3] = N[0]; normals[i * 3 + 1] = N[1]; normals[i * 3 + 2] = N[2];
-  }
-  g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-  g.setIndex(new THREE.BufferAttribute(m.idx, 1));
-  g.computeBoundingSphere();
-  const mesh = new THREE.Mesh(g, Engine.materials.opaque);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = true;
-  Engine.chunkGroup.add(mesh);
-  Engine.archMesh = mesh;
-  return mesh;
 }
 
 // LOD 切换：按块心距
@@ -208,7 +190,12 @@ export function adaptFog() {
 
 export function updateLOD() {
   const cam = Engine.camera.position;
-  const D = cam.y > 64 ? 1e9 : Engine.lodDist;
+  const D = Engine.lodDist;
+  if(Engine.archChunks)for(const ch of Engine.archChunks.values()){
+    const distance=ch.center.distanceTo(cam),limit=Engine.quality==='photo'||Engine.quality==='ultra'?1e9:Engine.quality==='low'?120:Engine.quality==='high'?300:210;
+    ch.near=distance<limit+(ch.near?24:-24);
+    ch.full.visible=ch.near;ch.lod.visible=!ch.near;
+  }
   for (const ch of Engine.chunks) {
     const near = ch.center.distanceTo(cam) < D;
     for (const kind of ['opaque', 'water', 'glow']) {

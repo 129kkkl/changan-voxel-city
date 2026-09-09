@@ -1,0 +1,533 @@
+[
+  {
+    "seed": "5a17c4a9",
+    "voxels": 1011762,
+    "archVoxels": 7836415,
+    "archQuads": 0,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 376,
+    "shops": 161,
+    "trees": 942,
+    "towers": 37,
+    "wells": 22,
+    "bridges": 0,
+    "lamps": 363,
+    "checksum": "ce10ae1d",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "建筑层 7836415 体素结构稳固完整"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "1011762 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落207种/最大重复2"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类207，最大重复2"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2782,
+      "walls": 11,
+      "streets": 13,
+      "wards": 1642,
+      "markets": 112,
+      "custom": 30,
+      "palaces": 189,
+      "water": 10,
+      "detail": 53,
+      "seal": 20,
+      "wardId": 3,
+      "audit": 187,
+      "mesh": 1
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 5319,
+    "roofs": 648,
+    "counters": {
+      "buildings": 400,
+      "houses": 278,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 942,
+      "shops": 161,
+      "wells": 22,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 363,
+      "pavilions": 30,
+      "halls": 98,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 380,
+      "roof_jian": 52,
+      "roofspan_2": 22,
+      "roofmin_8": 73,
+      "roofhalf_3": 139,
+      "roofspan_7": 15,
+      "roofmin_9": 11,
+      "roofhalf_4": 14,
+      "roofspan_5": 24,
+      "roofmin_7": 66,
+      "roofspan_4": 20,
+      "hallw_4": 12,
+      "hallh_3": 43,
+      "roof_hip": 38,
+      "roofspan_17": 7,
+      "roofmin_15": 11,
+      "roofhalf_7": 11,
+      "roof_xie": 62,
+      "roofspan_11": 18,
+      "roofmin_11": 11,
+      "roofhalf_5": 19,
+      "hallw_11": 11,
+      "hallh_4": 39,
+      "roof_xuan": 38,
+      "roofspan_6": 25,
+      "hallw_6": 25,
+      "roofspan_13": 4,
+      "roofmin_13": 5,
+      "roofhalf_6": 5,
+      "hallw_13": 3,
+      "roofspan_15": 10,
+      "roofmin_12": 8,
+      "hallw_15": 3,
+      "roofspan_9": 10,
+      "hallw_9": 9,
+      "roofspan_18": 3,
+      "hallw_18": 3,
+      "roofspan_10": 4,
+      "hallw_10": 2,
+      "hallw_7": 10,
+      "hallh_5": 6,
+      "roofspan_8": 5,
+      "hallw_8": 4,
+      "roofspan_16": 2,
+      "roofmin_10": 3,
+      "hallw_16": 2,
+      "roofspan_24": 3,
+      "roofspan_12": 1,
+      "hallw_12": 1,
+      "roofspan_3": 12,
+      "roofmin_17": 1,
+      "roofhalf_8": 1,
+      "roofspan_14": 1,
+      "hallw_14": 1,
+      "roofspan_19": 3,
+      "roofmin_19": 1,
+      "roofhalf_9": 1,
+      "hallw_19": 1,
+      "hallw_17": 1,
+      "roofspan_23": 1
+    }
+  },
+  {
+    "seed": "d7a11c9",
+    "voxels": 1017263,
+    "archVoxels": 7680547,
+    "archQuads": 0,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 373,
+    "shops": 168,
+    "trees": 988,
+    "towers": 37,
+    "wells": 20,
+    "bridges": 0,
+    "lamps": 367,
+    "checksum": "ef51e7a9",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "建筑层 7680547 体素结构稳固完整"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "1017263 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落180种/最大重复2"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类180，最大重复2"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2743,
+      "walls": 9,
+      "streets": 11,
+      "wards": 1590,
+      "markets": 112,
+      "custom": 27,
+      "palaces": 190,
+      "water": 10,
+      "detail": 48,
+      "seal": 20,
+      "wardId": 4,
+      "audit": 279,
+      "mesh": 0
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 5318,
+    "roofs": 644,
+    "counters": {
+      "buildings": 400,
+      "houses": 269,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 988,
+      "shops": 168,
+      "wells": 20,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 367,
+      "pavilions": 27,
+      "halls": 104,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 371,
+      "roof_jian": 48,
+      "roofspan_2": 20,
+      "roofmin_8": 76,
+      "roofhalf_3": 141,
+      "roofspan_7": 17,
+      "roofmin_9": 12,
+      "roofhalf_4": 15,
+      "roofspan_5": 24,
+      "roofmin_7": 65,
+      "roofspan_4": 20,
+      "hallw_4": 12,
+      "hallh_3": 43,
+      "roof_hip": 36,
+      "roofspan_17": 7,
+      "roofmin_15": 11,
+      "roofhalf_7": 11,
+      "roof_xie": 64,
+      "roofspan_11": 19,
+      "roofmin_11": 11,
+      "roofhalf_5": 19,
+      "hallw_11": 12,
+      "hallh_4": 40,
+      "roof_xuan": 45,
+      "roofspan_6": 25,
+      "hallw_6": 25,
+      "roofspan_9": 12,
+      "hallw_9": 11,
+      "hallh_5": 10,
+      "hallw_7": 12,
+      "roofspan_13": 4,
+      "roofmin_13": 5,
+      "roofhalf_6": 5,
+      "hallw_13": 3,
+      "roofspan_15": 10,
+      "roofmin_12": 8,
+      "hallw_15": 3,
+      "roofspan_18": 3,
+      "hallw_18": 3,
+      "roofspan_10": 4,
+      "hallw_10": 2,
+      "roofspan_8": 5,
+      "hallw_8": 4,
+      "roofspan_16": 2,
+      "roofmin_10": 3,
+      "hallw_16": 2,
+      "roofspan_24": 3,
+      "roofspan_12": 1,
+      "hallw_12": 1,
+      "roofspan_3": 12,
+      "roofmin_17": 1,
+      "roofhalf_8": 1,
+      "roofspan_14": 1,
+      "hallw_14": 1,
+      "roofspan_19": 3,
+      "roofmin_19": 1,
+      "roofhalf_9": 1,
+      "hallw_19": 1,
+      "hallw_17": 1,
+      "roofspan_23": 1
+    }
+  },
+  {
+    "seed": "9e3779b9",
+    "voxels": 1018118,
+    "archVoxels": 7566366,
+    "archQuads": 0,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 365,
+    "shops": 177,
+    "trees": 988,
+    "towers": 37,
+    "wells": 29,
+    "bridges": 0,
+    "lamps": 367,
+    "checksum": "10c1d473",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "建筑层 7566366 体素结构稳固完整"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "1018118 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落167种/最大重复3"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类167，最大重复3"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2740,
+      "walls": 8,
+      "streets": 11,
+      "wards": 1691,
+      "markets": 111,
+      "custom": 26,
+      "palaces": 178,
+      "water": 9,
+      "detail": 48,
+      "seal": 20,
+      "wardId": 3,
+      "audit": 230,
+      "mesh": 0
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 5343,
+    "roofs": 626,
+    "counters": {
+      "buildings": 400,
+      "houses": 262,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 988,
+      "shops": 177,
+      "wells": 29,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 367,
+      "pavilions": 29,
+      "halls": 103,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 371,
+      "roof_jian": 58,
+      "roofspan_2": 29,
+      "roofmin_8": 83,
+      "roofhalf_3": 151,
+      "roofspan_7": 15,
+      "roofmin_9": 11,
+      "roofhalf_4": 14,
+      "roofspan_5": 24,
+      "roofmin_7": 68,
+      "roofspan_4": 20,
+      "hallw_4": 12,
+      "hallh_3": 43,
+      "roof_hip": 36,
+      "roofspan_17": 7,
+      "roofmin_15": 11,
+      "roofhalf_7": 11,
+      "roof_xie": 67,
+      "roofspan_11": 18,
+      "roofmin_11": 11,
+      "roofhalf_5": 19,
+      "hallw_11": 11,
+      "hallh_4": 40,
+      "roof_xuan": 41,
+      "roofspan_6": 25,
+      "hallw_6": 25,
+      "roofspan_13": 4,
+      "roofmin_13": 5,
+      "roofhalf_6": 5,
+      "hallw_13": 3,
+      "roofspan_15": 10,
+      "roofmin_12": 8,
+      "hallw_15": 3,
+      "roofspan_9": 12,
+      "hallw_9": 11,
+      "roofspan_18": 3,
+      "hallw_18": 3,
+      "roofspan_10": 5,
+      "hallw_10": 3,
+      "hallh_5": 10,
+      "hallw_7": 10,
+      "roofspan_8": 7,
+      "hallw_8": 6,
+      "roofspan_16": 2,
+      "roofmin_10": 3,
+      "hallw_16": 2,
+      "roofspan_24": 3,
+      "roofspan_12": 1,
+      "hallw_12": 1,
+      "roofspan_3": 12,
+      "roofmin_17": 1,
+      "roofhalf_8": 1,
+      "roofspan_14": 1,
+      "hallw_14": 1,
+      "roofspan_19": 3,
+      "roofmin_19": 1,
+      "roofhalf_9": 1,
+      "hallw_19": 1,
+      "hallw_17": 1,
+      "roofspan_23": 1
+    }
+  }
+]

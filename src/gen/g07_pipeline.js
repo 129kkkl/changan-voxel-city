@@ -87,14 +87,14 @@ CHANGAN.generate = function (seed, onProgress, opts) {
   const checksum = CHANGAN.checksum(ctx);
   ctx.progress('mesh', 0.92);
   let chunks;
-  let archMesh = null, archVoxels = 0;
+  let archChunks = [], archVoxels = 0;
   try {
     const tS = Date.now();
     chunks = CHANGAN.meshAll(ctx, 'full');
     // 建筑层（2× 分辨率）：单独网格化，顶点坐标已折算回城市单位
     if (ctx.arch && ctx.arch.count) {
       archVoxels = ctx.arch.count;
-      archMesh = CHANGAN.meshArch(ctx, ctx.arch);
+      archChunks = CHANGAN.meshArchChunks(ctx);
     }
     stageMs.mesh = Date.now() - tS;
   } catch (err) {
@@ -103,7 +103,11 @@ CHANGAN.generate = function (seed, onProgress, opts) {
   const stats = {
     voxels: store.count,
     archVoxels,
-    archQuads: archMesh ? archMesh.quads : 0,
+    archQuads: archChunks.reduce((n,c)=>n+c.full.quads,0),
+    archLodQuads: archChunks.reduce((n,c)=>n+c.lod.quads,0),
+    archChecksum: CHANGAN.archChecksum(ctx.arch),
+    roofElements: ctx.arch.roofs?.length || 0,
+    compounds: ctx.counters.archBuildings || 0,
     wardCount: ctx.wards.filter(w => w.type === 'ward').length,
     marketPlots: ctx.wards.filter(w => w.type === 'market').length,
     gateCount: ctx.gates.filter(g => g.city).length,
@@ -134,7 +138,7 @@ CHANGAN.generate = function (seed, onProgress, opts) {
       road: fields.road, wardId: fields.wardId, water: fields.water,
     },
     chunks,
-    archMesh, archVoxels,
+    archChunks, archVoxels,
     _ctx: ctx, // Worker 侧保留供 edit/doors；主线程收到的是结构化克隆，不含此项
   };
 };
@@ -143,8 +147,18 @@ CHANGAN.generate = function (seed, onProgress, opts) {
 CHANGAN.applyOps = function (ctx, ops) {
   const { store, fields } = ctx;
   const dirtyChunks = new Set();
-  const dirtyCols = new Set();
+  const dirtyCols = new Set(), dirtyArch = new Set(), applied=[];
   for (const op of ops) {
+    const scale=op.layer==='arch'?4:1,W=CFG.WORLD;
+    if(![op.x,op.y,op.z,op.c].every(Number.isInteger)||op.x<W.x0*scale||op.x>(W.x1+1)*scale-1||op.z<W.z0*scale||op.z>(W.z1+1)*scale-1||op.y<0||op.y>=Math.min(512,W.H*scale)||op.c<0||op.c>CHANGAN.PAL_DEF.length)continue;
+    if(op.layer==='arch'){
+      applied.push({...op,version:2,before:ctx.arch.get(op.x,op.y,op.z)});
+      if(op.c===0)ctx.arch.del(op.x,op.y,op.z);else ctx.arch.set(op.x,op.y,op.z,op.c);
+      CHANGAN.updateArchIndex(ctx,op);
+      for(const [dx,dz] of [[0,0],[2,0],[-2,0],[0,2],[0,-2]])dirtyArch.add(archChunkKey(op.x+dx,op.z+dz));
+      continue;
+    }
+    applied.push({...op,version:2,layer:'city',before:store.get(op.x,op.y,op.z)});
     if (op.c === 0) store.del(op.x, op.y, op.z);
     else store.set(op.x, op.y, op.z, op.c);
     const di = CHANGAN.denseIndex(op.x, op.y, op.z);
@@ -165,7 +179,7 @@ CHANGAN.applyOps = function (ctx, ops) {
     fields.topH[i] = top; fields.topColor[i] = tc;
     colPatches.push({ x, z, topH: top, topColor: tc });
   }
-  return { dirtyChunks: [...dirtyChunks], dirtyCols: [...dirtyCols], colPatches };
+  return { dirtyChunks: [...dirtyChunks], dirtyCols: [...dirtyCols], dirtyArch:[...dirtyArch], applied, colPatches };
 };
 
 CHANGAN.toggleDoors = function (ctx, closed, indices) {
@@ -204,20 +218,17 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
           transfer.push(m.pos.buffer, m.nor.buffer, m.col.buffer, m.idx.buffer);
         }
       }
-      // 建筑层网格（2× 分辨率）也要过桥
-      if (result.archMesh) {
-        transfer.push(result.archMesh.pos.buffer, result.archMesh.nor.buffer, result.archMesh.col.buffer, result.archMesh.idx.buffer);
-      }
-      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks, archMesh: result.archMesh || null }, transfer);
+      for(const ch of result.archChunks) for(const m of [ch.full,ch.lod]) transfer.push(m.pos.buffer,m.nor.buffer,m.col.buffer,m.idx.buffer);
+      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks, archChunks: result.archChunks }, transfer);
     } else if (msg.cmd === 'edit' && liveCtx) {
       const r = CHANGAN.applyOps(liveCtx, msg.ops);
-      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches);
+      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches, r.dirtyArch, r.applied);
     } else if (msg.cmd === 'doors' && liveCtx) {
       const r = CHANGAN.toggleDoors(liveCtx, msg.closed, msg.indices);
-      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches);
+      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches, r.dirtyArch, r.applied);
     }
   };
-  function sendRemesh(ctx, dirtyChunks, reqId, colPatches) {
+  function sendRemesh(ctx, dirtyChunks, reqId, colPatches, dirtyArch, applied) {
     const out = [];
     const transfer = [];
     for (const key of dirtyChunks) {
@@ -237,6 +248,8 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
       }
       out.push({ cx, cz, ox, oz, meshes });
     }
-    self.postMessage({ type: 'remesh', reqId, chunks: out, colPatches: colPatches || [] }, transfer);
+    const archChunks=dirtyArch?.length ? CHANGAN.meshArchChunks(ctx,dirtyArch) : [];
+    for(const ch of archChunks) for(const m of [ch.full,ch.lod]) transfer.push(m.pos.buffer,m.nor.buffer,m.col.buffer,m.idx.buffer);
+    self.postMessage({ type: 'remesh', reqId, chunks: out, archChunks, applied:applied||[], colPatches: colPatches || [] }, transfer);
   }
 })();

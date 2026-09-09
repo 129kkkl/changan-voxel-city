@@ -43,14 +43,32 @@ function macroHeight(x, z, CFG) {
   return h;
 }
 function outsideHeight(x, z, seed, CFG) {
-  // 城外郊野：渭水低滩、南郊平野、终南山剪影
-  if (z < -354) return 1;                                   // 渭水河床
-  if (z < -344) return 2 + (z + 354) * 0.2;                 // 河滩缓坡
-  if (z > 348) {                                            // 终南山（箱庭边缘剪影，只表壳）
-    const t = z - 348;
-    return 3 + t * 2.2 + CHANGAN.fbm(seed, x * 0.02, z * 0.02, 3, 2, 0.5) * 8;
+  // 城外郊野：北濒渭水、南望终南山自然起伏余脉、东控关洛、西引丝路
+  // 1. 北面渭水低滩与主河床（z < -340）
+  if (z < -354) return 1;                                   // 渭水主河槽
+  if (z < -340) return 2 + (z + 354) * 0.14;                 // 漫滩阶地缓坡
+
+  // 2. 南面终南山余脉（z > 336）
+  // 彻底消除人工阶梯山！设计平缓起伏、山脊自然衔接的南山远景，东西边缘柔和隐于旷野
+  if (z > 336) {
+    const u = (z - 336) / (CFG.WORLD.z1 - 336); // 0.0 ~ 1.0
+    // 渐进曲线：近处极其平缓（坡度 < 0.2），远端自然升起至山脊
+    const rise = Math.pow(u, 2.3) * 8.5;
+    // 自然山峦山脊波（多波长叠加）
+    const ridgeNoise = CHANGAN.fbm(seed + 89, x * 0.015, z * 0.015, 3, 2, 0.5) * 4.5;
+    const peakWave = Math.sin(x * 0.022 + 0.6) * 2.6 + Math.cos(x * 0.045 + 1.2) * 1.4;
+    let hillH = rise + Math.pow(u, 1.3) * (ridgeNoise + peakWave);
+    // 东西世界边缘柔和收拢，避免世界边缘露出刀削般垂直截面
+    let edgeFade = 1.0;
+    if (x < -330) edgeFade = Math.max(0, (x - CFG.WORLD.x0) / 70);
+    else if (x > 330) edgeFade = Math.max(0, (CFG.WORLD.x1 - x) / 69);
+    edgeFade = edgeFade * edgeFade * (3 - 2 * edgeFade);
+    hillH *= edgeFade;
+    return 3.5 + hillH;
   }
-  return 3 + CHANGAN.fbm(seed + 7, x * 0.03, z * 0.03, 2, 2, 0.5) * 1.5;
+
+  // 3. 广阔平原（关中农田微地形）
+  return 3.5 + CHANGAN.fbm(seed + 7, x * 0.025, z * 0.025, 2, 2, 0.5) * 0.7;
 }
 
 CHANGAN.stageTerrain = function (ctx) {
@@ -74,17 +92,69 @@ CHANGAN.stageTerrain = function (ctx) {
       y = Math.max(1, Math.round(y));
       fields.groundH[i] = y;
       fields.topH[i] = y;
+
       let c;
-      if (z > 348) {
-        c = PAL.mountainFar;
-        const yBase = Math.max(1, y - 6);
-        for (let yy = yBase; yy < y; yy++) {
-          map.set(xk | ((z + 512) << 9) | yy, c);
+      if (!inCity) {
+        // --- 城外全域环境地表分类 ---
+        if (z < -340) {
+          // 北面渭水与河滩湿地
+          if (z < -354) {
+            c = PAL.weiWater;
+            fields.water[i] = 3;
+          } else {
+            c = (CHANGAN.fbm(seed + 15, x * 0.08, z * 0.08, 2, 2, 0.5) > 0.45) ? PAL.riverSand : PAL.moss;
+          }
+        } else if (z > 336) {
+          // 南面终南山余脉植被与岩壁（消除单一灰色与无纹理块体）
+          if (y >= 8) {
+            c = (CHANGAN.fbm(seed + 17, x * 0.04, z * 0.04, 2, 2, 0.5) > 0.45) ? PAL.mountainFar : PAL.pineGreen;
+          } else if (y >= 5) {
+            c = (CHANGAN.fbm(seed + 19, x * 0.04, z * 0.04, 2, 2, 0.5) > 0.42) ? PAL.pineGreen : PAL.grass;
+          } else {
+            c = (CHANGAN.fbm(seed + 21, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.48) ? PAL.grass : PAL.fieldEarth;
+          }
+        } else {
+          // 广袤关中农田与郊野系统：规整农田畦垄块 + 田埂 + 灌溉微水网 + 草甸
+          const gx = Math.floor((x + 600) / 20);
+          const gz = Math.floor((z + 600) / 16);
+          const cellX = (x + 600) % 20;
+          const cellZ = (z + 600) % 16;
+          const isRidge = (cellX === 0 || cellZ === 0);
+          if (isRidge) {
+            c = ((gx + gz) % 2 === 0) ? PAL.loessDeep : PAL.grass;
+          } else {
+            const stripe = (gz % 2 === 0) ? (cellZ % 3) : (cellX % 3);
+            const patchType = (gx * 7 + gz * 13 + (seed & 7)) % 4;
+            if (patchType === 0) {
+              // 熟麦/金粟垄
+              c = (stripe === 0) ? PAL.withered : (stripe === 1 ? PAL.fieldEarth : PAL.loessLight);
+            } else if (patchType === 1) {
+              // 绿苗田
+              c = (stripe === 0) ? PAL.grass : (stripe === 1 ? PAL.fieldEarth : PAL.moss);
+            } else if (patchType === 2) {
+              // 菜圃与桑麻田
+              c = (stripe === 0) ? PAL.moss : PAL.fieldEarth;
+            } else {
+              // 郊野绿地与草甸
+              c = (CHANGAN.fbm(seed + 31, x * 0.06, z * 0.06, 2, 2, 0.5) > 0.48) ? PAL.grass : PAL.fieldEarth;
+            }
+          }
+        }
+      } else {
+        // 城内基底：乐游原高地略带青草，城郭边缘略带草斑
+        const isLeyou = (x >= 210 && x <= 340 && z >= 95 && z <= 235);
+        if (isLeyou && CHANGAN.fbm(seed + 47, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.55) {
+          c = PAL.grass;
+        } else {
+          c = PAL.loess;
         }
       }
-      else if (z < -344) c = PAL.riverSand;
-      else if (!inCity) c = CHANGAN.fbm(seed + 11, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.55 ? PAL.grass : PAL.fieldEarth;
-      else c = PAL.loess;
+
+      // 保证地表垂直连续坚实（下填至基底或 y-2），防止台阶和斜坡处露出空洞
+      const yBottom = Math.max(1, y - 2);
+      for (let yy = yBottom; yy < y; yy++) {
+        map.set(xk | ((z + 512) << 9) | yy, PAL.loessDeep);
+      }
       map.set(xk | ((z + 512) << 9) | y, c);
       fields.topColor[i] = c;
     }
@@ -95,6 +165,7 @@ CHANGAN.stageTerrain = function (ctx) {
 // ---------------------------------------------------------------- S2 礼制骨架：街网掩膜与街级
 function markStreetMask(ctx) {
   const { CFG, fields } = ctx;
+  const W = CFG.WORLD;
   const setRect = (x0, z0, x1, z1, lv) => {
     for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
       const i = CHANGAN.fieldIndex(x, z);
@@ -131,6 +202,24 @@ function markStreetMask(ctx) {
       fields.road[i] = 0;
     }
   }
+
+  // --- 城外放射状交通干道网络（打破"城外空无一物、道路撞墙断头"） ---
+  // 南出明德门御道（南郊官道直贯南郊，通向圜丘与终南原野）
+  setRect(CFG.AXIS_X[0], CFG.CITY.z1 + 1, CFG.AXIS_X[1], 345, 1);
+  // 南出安化门、启夏门次干道
+  setRect(-162, CFG.CITY.z1 + 1, -158, 335, 4);
+  setRect(159, CFG.CITY.z1 + 1, 163, 335, 4);
+  // 西出开远门、金光门丝路干道（向西贯通至世界西缘）
+  setRect(W.x0, -11, CFG.CITY.x0 - 1, -7, 3);
+  setRect(W.x0, 73, CFG.CITY.x0 - 1, 77, 3);
+  setRect(W.x0, 199, CFG.CITY.x0 - 1, 203, 4);
+  // 东出通化门、春明门、延兴门关洛干道（向东贯通至世界东缘）
+  setRect(CFG.CITY.x1 + 1, -11, W.x1, -7, 3);
+  setRect(CFG.CITY.x1 + 1, 73, W.x1, 77, 3);
+  setRect(CFG.CITY.x1 + 1, 199, W.x1, 202, 4);
+  // 北出玄武门与大明宫北通渭道
+  setRect(-3, -353, 2, CFG.CITY.z0 - 1, 4);
+  setRect(212, -353, 216, CFG.CITY.z0 - 1, 4);
 }
 
 // ---------------------------------------------------------------- S5 街道工程：街面铺装、排水沟、路拱色带

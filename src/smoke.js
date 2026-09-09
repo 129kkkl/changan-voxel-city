@@ -8,7 +8,7 @@ const vm = require('vm');
 const SRC = __dirname;
 const GEN_FILES = [
   'gen/g01_core.js', 'gen/g02_skeleton.js', 'gen/g03_wards.js',
-  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g07_pipeline.js',
+  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g09_refine.js', 'gen/g07_pipeline.js',
 ];
 
 function makeHarness(seed) {
@@ -54,7 +54,7 @@ for (const seed of seeds) {
       console.log('  审计: ' + s.audits.map(a => `${a.name}:${a.pass ? '过' : 'FATAL'}`).join(' '));
       if (s.stageMs) console.log('  分阶段: ' + Object.entries(s.stageMs).map(([k, v]) => k + '=' + v + 'ms').join(' '));
     }
-    sums.push(s.checksum);
+    sums.push(s.checksum+':'+s.archChecksum);
     if (!s.audits.every(a => a.pass)) { console.error('[FAIL] fatal 审计未过'); fail++; }
     if (s.voxels > s.budget.hard) { console.error(`[FAIL] 体素超硬预算 ${s.voxels} > ${s.budget.hard}`); fail++; }
   }

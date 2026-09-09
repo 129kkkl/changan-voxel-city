@@ -102,8 +102,7 @@ async function launch(chromePath) {
     '--no-first-run', '--no-default-browser-check', '--disable-extensions',
     '--disable-background-networking', '--disable-sync', '--disable-translate',
     '--hide-scrollbars', '--mute-audio',
-    '--enable-unsafe-swiftshader',
-    '--use-angle=swiftshader',
+    ...(process.env.CHANGAN_GPU==='hardware'?['--use-angle=d3d11']:['--enable-unsafe-swiftshader','--use-angle=swiftshader']),
     '--window-size=1600,900',
     'about:blank',
   ];
@@ -171,12 +170,14 @@ async function main() {
         const s = JSON.parse(st);
         if (s.fatal) throw new Error('页面 fatal：' + (await cdp.eval('(document.getElementById("fatal-detail")||{}).textContent||""')));
         if (s.ready) { ready = true; break; }
-        if (Date.now() - t0 > 3000 && Date.now() % 1 === 0) process.stdout.write('  等待生成… ' + s.label + '\n');
+        if (Date.now() - t0 > 3000 && Math.floor((Date.now()-t0)/500)%10===0) process.stdout.write('  等待生成… ' + s.label + '\n');
       } catch (e) {
         if (/fatal/.test(e.message)) throw e;
       }
     }
     if (!ready) throw new Error('等待生成超时 ' + a.timeout + 'ms');
+    result.loadMs=Date.now()-t0;
+    if(process.env.CHANGAN_EXERCISE==='1') result.contracts=await require('./browser-contract.js')(cdp);
 
     result.meta = await cdp.eval('JSON.stringify({stats: window.__CHANGAN__.App.stats, voxels: (window.__CHANGAN__.App.stats||{}).voxels, views: (window.__CHANGAN__.App.meta&&window.__CHANGAN__.App.meta.viewAnchors)?Object.keys(window.__CHANGAN__.App.meta.viewAnchors):[]})');
     const metaObj = JSON.parse(result.meta);
@@ -311,7 +312,8 @@ async function main() {
       const fps = await cdp.eval('(document.getElementById("fps-count")||{}).textContent||""');
       const dc = await cdp.eval('(document.getElementById("draw-count")||{}).textContent||""');
       const vx = await cdp.eval('(document.getElementById("voxel-count")||{}).textContent||""');
-      result.shots.push({ view: v, file: path.join(outDir, fname), fps, drawCalls: dc, voxels: vx });
+      const perf=await cdp.eval(`new Promise(resolve=>{const times=[];let prev=performance.now();function frame(t){times.push(t-prev);prev=t;if(times.length<90)requestAnimationFrame(frame);else{times.sort((a,b)=>a-b);const E=window.__CHANGAN__.Engine,gl=E.renderer.getContext(),ex=gl.getExtension('WEBGL_debug_renderer_info');resolve({medianMs:times[45],p95Ms:times[85],renderer:ex?gl.getParameter(ex.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),heap:performance.memory?.usedJSHeapSize||null,triangles:E.renderer.info.render.triangles,quality:E.quality});}}requestAnimationFrame(frame);})`,true);
+      result.shots.push({ perf, view: v, file: path.join(outDir, fname), fps, drawCalls: dc, voxels: vx });
       console.log(`[shot] ${safe.padEnd(34)} fps=${String(fps).padEnd(5)} dc=${String(dc).padEnd(5)} vox=${vx}`);
     }
     fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify({ ...result, meta: metaObj }, null, 2), 'utf8');

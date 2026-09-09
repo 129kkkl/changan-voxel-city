@@ -72,28 +72,30 @@ function isWalkablePortal(nx, nz) {
   return false;
 }
 
-function walkHeight(x, z) {
-  const i = fieldI(x, z);
-  if (i < 0) return 4;
-  const g = U.fields.groundH[i];
-  const top = U.fields.topH[i];
-  if (isWalkablePortal(x, z) && (top - g > 1)) return g;
-  return (top - g <= 1.2) ? top : g;
+function solidMeshes() {
+  return Engine.chunkGroup.children.filter(m=>m.isMesh && !m.userData.lod && (m.visible || (m.userData.layer==='arch' && m.geometry.boundingSphere?.center.distanceTo(Engine.camera.position)<100)));
 }
-
-function canStep(nx, nz) {
-  const i = fieldI(nx, nz);
-  if (i < 0) return false;
-  const top = U.fields.topH[i], g = U.fields.groundH[i], w = U.fields.water[i];
-  if (w && top <= g + 1) return false;
-  if (isDoorClosed(nx, nz)) return false;
-  if (isWalkablePortal(nx, nz) && (top - g > 1)) {
-    const feet = Walk.pos.y - 1.65;
-    return Math.abs(g - feet) <= 1.4;
+function floorAt(x,z,ceiling) {
+  const ray=new THREE.Raycaster(new THREE.Vector3(x,ceiling,z),new THREE.Vector3(0,-1,0),0,8);
+  return ray.intersectObjects(solidMeshes(),false)[0]?.point.y;
+}
+function walkHeight(x,z) {
+  const i=fieldI(x,z);if(i<0)return 4;
+  return floorAt(x,z,U.fields.groundH[i]+2.2) ?? U.fields.groundH[i]+1;
+}
+function canStep(nx,nz) {
+  const i=fieldI(nx,nz);if(i<0||isDoorClosed(nx,nz))return false;
+  if(U.fields.water[i]&&U.fields.topH[i]<=U.fields.groundH[i]+1)return false;
+  const feet=Walk.pos.y-1.65,dx=nx-Walk.pos.x,dz=nz-Walk.pos.z,dist=Math.hypot(dx,dz);
+  if(dist>0){
+    const dir=new THREE.Vector3(dx/dist,0,dz/dist);
+    for(const h of [.4,1.35]){
+      const ray=new THREE.Raycaster(new THREE.Vector3(Walk.pos.x,feet+h,Walk.pos.z),dir,0,dist+.18);
+      if(ray.intersectObjects(solidMeshes(),false).length)return false;
+    }
   }
-  const feet = Walk.pos.y - 1.65;
-  if (top - feet > 1.2) return false;
-  return true;
+  const floor=floorAt(nx,nz,feet+1.1);
+  return floor!==undefined && floor-feet<=1.05;
 }
 
 export function startWalk() {
@@ -200,54 +202,46 @@ function bindWalkKeys() {
 
 // ---------------------------------------------------------------- 涂抹
 const PAINT_C = 5;
-export const Editor = { stack: [], busy: false };
-
-function persistEdits() {
-  try { localStorage.setItem('changan.edit.' + U.seed.toString(16), JSON.stringify(Editor.stack.slice(-8000))); } catch {}
+export const Editor = { stack: [], busy: false, pending:null };
+function persistEdits(){
+  try{localStorage.setItem('changan.edit.v2.'+U.seed.toString(16),JSON.stringify({version:2,ops:Editor.stack.slice(-8000)}));}catch{showToast('存储空间不足，本次编辑仅保留在当前窗口');}
 }
-
-export function replayEdits() {
-  try {
-    const raw = localStorage.getItem('changan.edit.' + U.seed.toString(16));
-    const ops = raw ? JSON.parse(raw) : [];
-    if (ops.length) {
-      Editor.stack = ops;
-      U.worker.postMessage({ cmd: 'edit', ops, reqId: ++U.reqId });
-      showToast('已恢复 ' + ops.length + ' 处涂抹');
-    }
-  } catch {}
+export function submitEdits(ops,kind='paint'){
+  if(Editor.busy)return false;
+  const reqId=++U.reqId;Editor.busy=true;Editor.pending={reqId,kind};
+  U.worker.postMessage({cmd:'edit',ops,reqId});return true;
 }
-
-function paintAt(c) {
-  const ray = new THREE.Raycaster();
-  ray.setFromCamera(new THREE.Vector2(0, 0), Engine.camera);
-  const hits = ray.intersectObjects(Engine.chunkGroup.children, false);
-  if (!hits.length) return;
-  const hit = hits[0];
-  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-  const p = hit.point;
-  let x, y, z;
-  if (c === 0) {
-    x = Math.floor(p.x - n.x * 0.02); y = Math.floor(p.y - n.y * 0.02); z = Math.floor(p.z - n.z * 0.02);
-  } else {
-    x = Math.floor(p.x + n.x * 0.51); y = Math.floor(p.y + n.y * 0.51); z = Math.floor(p.z + n.z * 0.51);
-  }
-  const W = U.meta.world;
-  if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1 || y < 1 || y >= (W.H || 64) - 1) return;
-  const op = { x, y, z, c };
-  Editor.stack.push(op);
-  persistEdits();
-  U.worker.postMessage({ cmd: 'edit', ops: [op], reqId: ++U.reqId });
-  const hud = document.getElementById('edit-hud');
-  if (hud) hud.textContent = (c ? '涂抹' : '消除') + `  (${x},${y},${z})`;
+export function acknowledgeEdits(msg){
+  if(!Editor.pending||msg.reqId!==Editor.pending.reqId)return;
+  const kind=Editor.pending.kind;
+  if(kind==='undo')Editor.stack.pop();
+  else if(kind==='replay')Editor.stack=msg.applied||[];
+  else Editor.stack.push(...(msg.applied||[]));
+  Editor.pending=null;Editor.busy=false;persistEdits();
 }
-
-export function undoEdit() {
-  const op = Editor.stack.pop();
-  if (!op) { showToast('没有可撤销的涂抹'); return; }
-  persistEdits();
-  U.worker.postMessage({ cmd: 'edit', ops: [{ x: op.x, y: op.y, z: op.z, c: op.c ? 0 : PAINT_C }], reqId: ++U.reqId });
-  showToast('已撤销');
+export function replayEdits(){
+  try{
+    const suffix=U.seed.toString(16),current=localStorage.getItem('changan.edit.v2.'+suffix),legacy=localStorage.getItem('changan.edit.'+suffix);
+    const parsed=current?JSON.parse(current):legacy?JSON.parse(legacy):[];
+    const ops=Array.isArray(parsed)?parsed:parsed.ops||[];
+    if(ops.length){submitEdits(ops,'replay');showToast('正在恢复 '+ops.length+' 处编辑');}
+  }catch{showToast('旧编辑记录无法读取，原数据已保留');}
+}
+function paintAt(c){
+  if(Editor.busy)return;
+  const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),Engine.camera);
+  const hit=ray.intersectObjects(solidMeshes(),false)[0];if(!hit)return;
+  const n=hit.face.normal.clone().transformDirection(hit.object.matrixWorld),scale=hit.object.userData.layer==='arch'?4:1;
+  const p=hit.point.clone().addScaledVector(n,c===0?-.01:.01);
+  const x=Math.floor(p.x*scale),y=Math.floor(p.y*scale),z=Math.floor(p.z*scale),W=U.meta.world;
+  if(x<W.x0*scale||x>=(W.x1+1)*scale||z<W.z0*scale||z>=(W.z1+1)*scale||y<1||y>=Math.min(512,W.H*scale))return;
+  submitEdits([{version:2,layer:scale===4?'arch':'city',x,y,z,c}]);
+  const hud=document.getElementById('edit-hud');if(hud)hud.textContent=(c?'添加':'移除')+` (${x/scale},${y/scale},${z/scale})`;
+}
+export function undoEdit(){
+  if(Editor.busy){showToast('编辑处理中');return;}
+  const op=Editor.stack.at(-1);if(!op){showToast('没有可撤销的编辑');return;}
+  submitEdits([{...op,c:op.before}],'undo');
 }
 
 export function applyColPatches(patches) {
@@ -434,6 +428,11 @@ export function tickUI() { drawMini(); }
 
 export function initUI(app) {
   U = app;
+  const lore=document.createElement('button');lore.textContent='景点说明';lore.id='lore-open';lore.className='btn';
+  lore.addEventListener('click',()=>document.getElementById('lore-card')?.setAttribute('aria-hidden','false'));
+  document.querySelector('.actions')?.appendChild(lore);
+  const photo=document.createElement('button');photo.textContent='摄影模式';photo.className='btn';photo.addEventListener('click',()=>applyQuality('photo'));document.querySelector('.actions')?.appendChild(photo);
+  const exit=document.createElement('button');exit.id='photo-exit';exit.textContent='退出摄影';exit.addEventListener('click',()=>applyQuality('mid'));document.body.appendChild(exit);
   bindWalkKeys();
   bakeMini();
   bindMini();

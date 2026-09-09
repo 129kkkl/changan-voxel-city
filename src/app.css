@@ -174,3 +174,12 @@ button { font: inherit; }
   .help { display: none; }
   .lore-card { width: 240px; top: 96px; }
 }
+
+.photo-mode .hud, .photo-mode .tour-panel, .photo-mode .lore-card, .photo-mode .minimap-card, .photo-mode .hint-bar, .photo-mode .stats {display:none!important}
+#photo-exit {position:fixed;right:20px;bottom:20px;z-index:30;display:none}
+.photo-mode #photo-exit{display:block}
+
+.actions>button{color:var(--ink);background:transparent;border:1px solid var(--paper-line);border-radius:7px;padding:5px 8px;font-size:12px;white-space:nowrap}
+.photo-mode .brand,.photo-mode .hint,.photo-mode .stats-bar,.photo-mode .grain,.photo-mode #toast{display:none!important}
+
+.photo-mode .telemetry,.photo-mode .help{display:none!important}

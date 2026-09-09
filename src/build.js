@@ -20,7 +20,7 @@ const GEN_FILES = [
   'gen/g04_landmark.js',
   'gen/g05_detail.js',
   'gen/g06_audit_mesh.js',
-  'gen/g08_arch.js',
+  'gen/g08_arch.js', 'gen/g09_refine.js',
   'gen/g07_pipeline.js',
 ];
 // 主线程（顺序敏感：引擎 → 机位 → 动态 → 交互 → 编排）

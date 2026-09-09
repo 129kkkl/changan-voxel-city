@@ -330,25 +330,9 @@ CHANGAN.platform = platform;
 CHANGAN._wallRing = null; CHANGAN._dougong = null; CHANGAN._chiwei = null;
 
 // 2. 盛唐弯月鸱吻：基座平稳骑脊、背部隆起出鳍、尾梢向内月牙回卷，严禁冲天兔耳
-function chiwei(ctx, x, y, z, axis, palace, dir) {
-  const { store } = ctx;
-  const c = palace ? PAL.glazeGreen : PAL.roofDark;
-  const tipC = palace ? PAL.glazeGreen : PAL.roofLight;
-  const d = dir || 1; // 1: 向正向内卷, -1: 向负向内卷
-
-  if (axis === 'x') {
-    // 基座骑脊 (高 1 格)
-    store.set(x, y + 1, z, c);
-    store.set(x + d, y + 1, z, c);
-    // 月牙回卷鳍形 (高 2 格，稳重古朴，向内勾卷)
-    store.set(x, y + 2, z, c);
-    store.set(x + d, y + 2, z, tipC);
-  } else {
-    store.set(x, y + 1, z, c);
-    store.set(x, y + 1, z + d, c);
-    store.set(x, y + 2, z, c);
-    store.set(x, y + 2, z + d, tipC);
-  }
+function chiwei(ctx,x,y,z,axis,palace,dir){
+  // 粗格只保留脊端一格；细饰由建筑层处理，禁止两格高叉角。
+  if(palace)ctx.store.set(x,y+1,z,PAL.roofDark);
 }
 
 // 3. 斗栱出挑：柱头铺作与补间铺作向外挑出承托檐檩，形成深远出挑与阴影间隙
@@ -544,14 +528,14 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const TONE_BLUE = [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
   const TONE_BROWN = [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG];
   const ROOF_TONES = bigRoof
-    ? [TONE_GREEN, TONE_BLUE, TONE_SLATE, TONE_SLATE, TONE_GREY, TONE_GREEN, TONE_BLUE, TONE_GREY]
+    ? [TONE_SLATE, TONE_GREY, TONE_SLATE, TONE_SLATE, TONE_GREY, TONE_SLATE, TONE_GREY, TONE_GREY]
     : [TONE_GREY, TONE_GREY, TONE_GREY, TONE_GREY, TONE_SLATE, TONE_SLATE, TONE_SLATE, TONE_BROWN];
   const toneIdx = opts.tone != null ? (opts.tone | 0)
     : (Math.abs(Math.imul(x0, 73856093) ^ Math.imul(z0, 19349663)) >>> 0) % ROOF_TONES.length;
   const tone = ROOF_TONES[toneIdx] || ROOF_TONES[0];
   const main = opts.main || tone[0];
   const lip = opts.lip || tone[1];
-  const tileGroove = tone[2];
+  const tileGroove = main;
   const trim = opts.trim;
   const ridgeC = PAL.roofDark;
 
@@ -1813,8 +1797,12 @@ regWard('义宁', 'W', (ctx, w) => {
   // 景教寺（NE 象限：寺堂 + 十字幡）
   const hx = Q.NE.x0 + 6, hz = Q.NE.z0 + 3;
   proto.hall(ctx, hx - 3, hz, hx + 3, hz + 4, w.base, { roof: 'xuan', door: 'S' });
-  store.set(hx, w.base + 5, hz + 4, PAL.paperWhite); store.set(hx, w.base + 6, hz + 4, PAL.paperWhite);
-  store.set(hx - 1, w.base + 5, hz + 4, PAL.paperWhite); store.set(hx + 1, w.base + 5, hz + 4, PAL.paperWhite);
+  const a = ctx.arch;
+  if (a) {
+    const ax = hx * 4, ay = (w.base + 1) * 4, az = (hz + 4) * 4;
+    a.fill(ax - 1, ay + 7, az, ax + 1, ay + 11, az, PAL.paperWhite);
+    a.fill(ax - 3, ay + 9, az, ax + 3, ay + 10, az, PAL.paperWhite);
+  }
   const rng = CHANGAN.rngOf(ctx.seed, 'jing');
   fitCourt(ctx, Q.NW.x0 + 1, Q.NW.z0 + 1, 13, 11, w.base, 0, rng, 'S');
   fitCourt(ctx, Q.SW.x0 + 2, Q.SW.z0 + 1, 12, 10, w.base, 1, rng, 'N');

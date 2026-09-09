@@ -449,11 +449,40 @@ CHANGAN.stageDetail = function (ctx) {
     { x0: CFG.CITY.x0 + 6, x1: CFG.CITY.x1 - 6, z0: CFG.HENGJIE.z1 + 4, z1: CFG.HENGJIE.z1 + 4, step: 8 },
   ];
   for (const r of rows) {
-    if (r.x0 === r.x1) for (let z = r.z0; z <= r.z1; z += r.step) tryTree(ctx, r.x0, z, 'huai', rng);
-    else for (let x = r.x0; x <= r.x1; x += r.step) tryTree(ctx, x, r.z0, 'huai', rng);
+    if (r.x0 === r.x1) for (let z = r.z0; z <= r.z1; z += r.step + (Math.floor((z-r.z0)/r.step)%4===3?5:0)) tryTree(ctx, r.x0, z, 'huai', rng);
+    else for (let x = r.x0; x <= r.x1; x += r.step + (Math.floor((x-r.x0)/r.step)%3===2?4:0)) tryTree(ctx, x, r.z0, 'huai', rng);
   }
-  // 地面铺装纹理：街道用 4×4 石板分格，广场/空地用夯土明暗斑
-  // 评审判"底层地面是无纹理纯色平板，占画面最大面积，持续制造正射贴图感"。
+  // 城外大道夹道树木：明德门外南向官道槐行、东西各城门外官道柳行
+  for (let z = CFG.CITY.z1 + 8; z <= 334; z += 8) {
+    tryTree(ctx, -5, z, 'huai', rng);
+    tryTree(ctx, 4, z, 'huai', rng);
+  }
+  const westGatesZ = [-114, 36, 186];
+  for (const gz of westGatesZ) {
+    for (let x = CFG.CITY.x0 - 8; x >= -384; x -= 10) {
+      tryTree(ctx, x, gz - 4, 'willow', rng);
+      tryTree(ctx, x, gz + 4, 'willow', rng);
+    }
+  }
+  const eastGatesZ = [-114, 36, 186];
+  for (const gz of eastGatesZ) {
+    for (let x = CFG.CITY.x1 + 8; x <= 384; x += 10) {
+      tryTree(ctx, x, gz - 4, 'willow', rng);
+      tryTree(ctx, x, gz + 4, 'willow', rng);
+    }
+  }
+  // 渭水河岸沿线杨柳
+  for (let x = W.x0 + 16; x <= W.x1 - 16; x += 14) {
+    const rx = x + ((x * 7) % 5);
+    tryTree(ctx, rx, -348, 'willow', rng);
+  }
+  // 终南山北麓余脉缓坡苍松
+  for (let x = W.x0 + 20; x <= W.x1 - 20; x += 16) {
+    const rx = x + ((x * 11) % 7);
+    const rz = 344 + Math.abs((x * 13) % 15);
+    tryTree(ctx, rx, rz, 'pine', rng);
+  }
+  // 地面铺装纹理：街道用 4×4 石板分格，广场/空地用夯土明暗斑；保留城外农田、水系与山峦自然纹理
   {
     const { store } = ctx;
     const GROUND_C = new Set([PAL.loess, PAL.loessLight, PAL.loessDeep, PAL.brickPave, PAL.fieldEarth, PAL.riverSand, PAL.rammedLight]);
@@ -464,13 +493,23 @@ CHANGAN.stageDetail = function (ctx) {
       const tc = fields.topColor[i];
       if (!GROUND_C.has(tc)) continue;
       const g = fields.groundH[i];
+      const inCity = x >= CFG.CITY.x0 - 4 && x <= CFG.CITY.x1 + 4 && z >= CFG.CITY.z0 - 4 && z <= CFG.CITY.z1 + 4;
+      if (!inCity) {
+        // 城外：非道路保持农田、田埂、河滩与山地原始材质；道路赋予官道夯土质感
+        if (fields.road[i]) {
+          const c = ((x + z) & 1) ? PAL.rammedLight : PAL.loessLight;
+          store.set(x, g, z, c);
+          fields.topColor[i] = c;
+        }
+        continue;
+      }
       let c;
       if (fields.road[i]) {
         const lv = fields.road[i];
         if (lv === 1) {
-          // 御道：中央天子白灰道，两旁平实夯土
+          // 御道：中央天子白灰道，两旁平实夯土微差
           const isCenter = (x >= -2 && x <= 1);
-          c = isCenter ? PAL.rammedLight : PAL.loess;
+          c = isCenter ? PAL.rammedLight : (((x + z) & 1) ? PAL.loess : PAL.loessLight);
         } else if (lv <= 3) {
           // 主要干道与横街：整体连续夯土，柔和低对比微差
           c = (((x >> 4) + (z >> 4)) & 1) ? PAL.loessLight : PAL.loess;
@@ -481,7 +520,13 @@ CHANGAN.stageDetail = function (ctx) {
       } else {
         // 广场与坊内地坪：统一沉稳底色，殿庭广场用平整青砖，普通坊内用浅夯土
         const inPlaza = (z >= CFG.HENGJIE.z0 && z <= CFG.HENGJIE.z1) || (z <= -260 && z >= -290 && Math.abs(x - 208) <= 40);
-        c = inPlaza ? PAL.brickPave : PAL.loess;
+        if (inPlaza) {
+          c = PAL.brickPave;
+        } else if (tc === PAL.grass || tc === PAL.moss || tc === PAL.brickPave) {
+          continue; // 保留庭园草地、苔藓与青砖
+        } else {
+          c = PAL.loessLight;
+        }
       }
       store.set(x, g, z, c);
       fields.topColor[i] = c;
@@ -501,7 +546,7 @@ CHANGAN.stageDetail = function (ctx) {
     store.set(px, d.base + 5, pz, PAL.lantern);
     ctx.counters.lamps++;
   }
-  // 城里散点井台（十字街坊口）
+  // 城里散点井台（十字街坊口）与城郊官道驿亭井
   for (const w of ctx.wards) {
     if (w.type !== 'ward' || w.small) continue;
     if (w.base == null || CHANGAN.customWardOccupies(w)) continue; // 宫殿园林占用坊不设
@@ -511,6 +556,10 @@ CHANGAN.stageDetail = function (ctx) {
       if (CHANGAN.areaFree(ctx, cx + 3, cz + 3, 2, 2)) proto.well(ctx, cx + 3, cz + 3, w.base);
     }
   }
+  // 城外官道歇马驿亭与水井（南门、东门、西门外）
+  if (CHANGAN.areaFree(ctx, 7, 308, 2, 2)) proto.well(ctx, 7, 308, fields.groundH[CHANGAN.fieldIndex(7, 308)]);
+  if (CHANGAN.areaFree(ctx, CFG.CITY.x1 + 12, 40, 2, 2)) proto.well(ctx, CFG.CITY.x1 + 12, 40, fields.groundH[CHANGAN.fieldIndex(CFG.CITY.x1 + 12, 40)]);
+  if (CHANGAN.areaFree(ctx, CFG.CITY.x0 - 14, 40, 2, 2)) proto.well(ctx, CFG.CITY.x0 - 14, 40, fields.groundH[CHANGAN.fieldIndex(CFG.CITY.x0 - 14, 40)]);
   ctx.progress('detail', 1);
 };
 function tryTree(ctx, x, z, kind, rng) {

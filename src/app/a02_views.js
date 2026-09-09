@@ -101,7 +101,7 @@ export function showLore(v) {
   if (title) title.textContent = v.title;
   if (sub) sub.textContent = v.sub;
   if (desc) desc.textContent = v.lore;
-  if (card) card.setAttribute('aria-hidden', 'false');
+  if (card) card.setAttribute('aria-hidden', 'true');
 }
 
 export function goToView(id, instant) {

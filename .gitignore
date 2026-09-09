@@ -18,3 +18,13 @@ yarn-error.log*
 
 # Historical manual backup archives (git tags now provide version anchors)
 backup/
+
+# Review exports and generated evidence
+验收截图/
+对照/
+_acompare/
+_crop/
+_crops/
+_diff*
+_review*
+*.zip

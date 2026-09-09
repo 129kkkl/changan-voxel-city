@@ -1,0 +1,440 @@
+[
+  {
+    "seed": "5a17c4a9",
+    "voxels": 913832,
+    "archVoxels": 5389326,
+    "archQuads": 0,
+    "archLodQuads": 0,
+    "archChecksum": "9523b17a",
+    "roofElements": 1097,
+    "compounds": 387,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 381,
+    "shops": 161,
+    "trees": 879,
+    "towers": 37,
+    "wells": 22,
+    "bridges": 0,
+    "lamps": 363,
+    "checksum": "76de6125",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "1944 个连通构件，未支承 0 格；[]"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "913832 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落212种/最大重复2"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类212，最大重复2"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2821,
+      "walls": 11,
+      "streets": 14,
+      "wards": 4869,
+      "markets": 370,
+      "custom": 556,
+      "palaces": 768,
+      "water": 15,
+      "detail": 105,
+      "seal": 15,
+      "wardId": 3,
+      "audit": 4416,
+      "mesh": 0
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 15664,
+    "roofs": 1097,
+    "counters": {
+      "buildings": 400,
+      "houses": 284,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 879,
+      "shops": 161,
+      "wells": 22,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 363,
+      "pavilions": 30,
+      "halls": 97,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 387,
+      "roof_jian": 34,
+      "roofspan_2": 22,
+      "roofmin_8": 44,
+      "roofhalf_3": 77,
+      "roof_hip": 25,
+      "roofspan_17": 6,
+      "roofmin_15": 6,
+      "roofhalf_7": 6,
+      "roofspan_5": 22,
+      "roofmin_7": 33,
+      "roofmin_9": 4,
+      "roofhalf_4": 4,
+      "roof_xie": 32,
+      "roofspan_10": 2,
+      "roofspan_8": 1,
+      "roofspan_7": 3,
+      "roofmin_11": 4,
+      "roofhalf_5": 4,
+      "roofspan_3": 12,
+      "roofspan_15": 7,
+      "roofspan_11": 7,
+      "roofspan_4": 8,
+      "roofspan_9": 1
+    },
+    "contracts": "arch delete/restore, legacy edit, invalid input, greedy six faces, floating detection PASS"
+  },
+  {
+    "seed": "d7a11c9",
+    "voxels": 915325,
+    "archVoxels": 5343696,
+    "archQuads": 0,
+    "archLodQuads": 0,
+    "archChecksum": "109d52fb",
+    "roofElements": 1079,
+    "compounds": 376,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 374,
+    "shops": 168,
+    "trees": 905,
+    "towers": 37,
+    "wells": 20,
+    "bridges": 0,
+    "lamps": 367,
+    "checksum": "7567d605",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "1957 个连通构件，未支承 0 格；[]"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "915325 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落184种/最大重复2"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类184，最大重复2"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2788,
+      "walls": 10,
+      "streets": 15,
+      "wards": 4768,
+      "markets": 395,
+      "custom": 575,
+      "palaces": 772,
+      "water": 11,
+      "detail": 96,
+      "seal": 15,
+      "wardId": 3,
+      "audit": 4334,
+      "mesh": 0
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 15433,
+    "roofs": 1079,
+    "counters": {
+      "buildings": 400,
+      "houses": 272,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 905,
+      "shops": 168,
+      "wells": 20,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 367,
+      "pavilions": 27,
+      "halls": 102,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 376,
+      "roof_jian": 32,
+      "roofspan_2": 20,
+      "roofmin_8": 42,
+      "roofhalf_3": 75,
+      "roof_hip": 25,
+      "roofspan_17": 6,
+      "roofmin_15": 6,
+      "roofhalf_7": 6,
+      "roofspan_5": 22,
+      "roofmin_7": 33,
+      "roofmin_9": 4,
+      "roofhalf_4": 4,
+      "roof_xie": 32,
+      "roofspan_10": 2,
+      "roofspan_8": 1,
+      "roofspan_7": 3,
+      "roofmin_11": 4,
+      "roofhalf_5": 4,
+      "roofspan_3": 12,
+      "roofspan_15": 7,
+      "roofspan_11": 7,
+      "roofspan_4": 8,
+      "roofspan_9": 1
+    },
+    "contracts": "arch delete/restore, legacy edit, invalid input, greedy six faces, floating detection PASS"
+  },
+  {
+    "seed": "9e3779b9",
+    "voxels": 917340,
+    "archVoxels": 5285448,
+    "archQuads": 0,
+    "archLodQuads": 0,
+    "archChecksum": "d50decc3",
+    "roofElements": 1077,
+    "compounds": 375,
+    "wardCount": 104,
+    "marketPlots": 4,
+    "gateCount": 12,
+    "buildings": 369,
+    "shops": 177,
+    "trees": 918,
+    "towers": 37,
+    "wells": 29,
+    "bridges": 0,
+    "lamps": 367,
+    "checksum": "f1321875",
+    "audits": [
+      {
+        "name": "坊墙闭合",
+        "pass": true,
+        "detail": "108 坊环墙连续、门位合规"
+      },
+      {
+        "name": "中轴对齐",
+        "pass": true,
+        "detail": "三门 x=-1,-1,-1"
+      },
+      {
+        "name": "108坊计数",
+        "pass": true,
+        "detail": "坊位=108 其中市=4"
+      },
+      {
+        "name": "临街开店",
+        "pass": true,
+        "detail": "店肆均在两市之内"
+      },
+      {
+        "name": "无浮空",
+        "pass": true,
+        "detail": "全域与基岩连通"
+      },
+      {
+        "name": "建筑层无浮空",
+        "pass": true,
+        "detail": "1888 个连通构件，未支承 0 格；[]"
+      },
+      {
+        "name": "体素预算",
+        "pass": true,
+        "detail": "917340 / 硬上限 2800000"
+      },
+      {
+        "name": "地标去模板化",
+        "pass": true,
+        "detail": "P0/P1主体均走独立builder，仅用primitive"
+      },
+      {
+        "name": "地标LOD",
+        "pass": true,
+        "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+      },
+      {
+        "name": "多样性",
+        "pass": true,
+        "detail": "重复签名14/院落172种/最大重复2"
+      },
+      {
+        "name": "十坊抽检",
+        "pass": true,
+        "detail": "院落布局种类172，最大重复2"
+      },
+      {
+        "name": "地标唯一性",
+        "pass": true,
+        "detail": "六大地标轮廓各异"
+      }
+    ],
+    "stageMs": {
+      "terrain": 2798,
+      "walls": 9,
+      "streets": 11,
+      "wards": 4727,
+      "markets": 387,
+      "custom": 612,
+      "palaces": 763,
+      "water": 12,
+      "detail": 99,
+      "seal": 15,
+      "wardId": 3,
+      "audit": 4356,
+      "mesh": 0
+    },
+    "budget": {
+      "soft": 2400000,
+      "hard": 2800000
+    },
+    "genMs": 15457,
+    "roofs": 1077,
+    "counters": {
+      "buildings": 400,
+      "houses": 266,
+      "temples": 13,
+      "towers": 37,
+      "gates": 18,
+      "trees": 918,
+      "shops": 177,
+      "wells": 29,
+      "bridges": 0,
+      "boats": 0,
+      "lamps": 367,
+      "pavilions": 29,
+      "halls": 103,
+      "protoSign": {},
+      "gates0": 18,
+      "archBuildings": 375,
+      "roof_jian": 41,
+      "roofspan_2": 29,
+      "roofmin_8": 51,
+      "roofhalf_3": 84,
+      "roof_hip": 25,
+      "roofspan_17": 6,
+      "roofmin_15": 6,
+      "roofhalf_7": 6,
+      "roofspan_5": 22,
+      "roofmin_7": 33,
+      "roofmin_9": 4,
+      "roofhalf_4": 4,
+      "roof_xie": 32,
+      "roofspan_10": 2,
+      "roofspan_8": 1,
+      "roofspan_7": 3,
+      "roofmin_11": 4,
+      "roofhalf_5": 4,
+      "roofspan_3": 12,
+      "roofspan_15": 7,
+      "roofspan_11": 7,
+      "roofspan_4": 8,
+      "roofspan_9": 1
+    },
+    "contracts": "arch delete/restore, legacy edit, invalid input, greedy six faces, floating detection PASS"
+  }
+]

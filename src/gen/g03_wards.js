@@ -67,90 +67,17 @@ function buildWardShell(ctx, w) {
   for (const g of w.gateCells) {
     const gx = g.axis === 'NS' ? (g.x0 + g.x1) >> 1 : (g.side === 'E' ? w.x1 : w.x0);
     const gz = g.axis === 'NS' ? (g.side === 'S' ? w.z1 : w.z0) : (g.z0 + g.z1) >> 1;
-    const posts = g.axis === 'NS'
-      ? [[g.x0 - 1, gz], [g.x1 + 1, gz]]
-      : [[gx, g.z0 - 1], [gx, g.z1 + 1]];
-    for (const [px, pz] of posts) {
-      store.set(px, base + 1, pz, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) store.set(px, base + y, pz, P.zhu);
-      const pi = CHANGAN.fieldIndex(px, pz);
-      fields.topH[pi] = base + H + 1; fields.topColor[pi] = P.zhu;
-    }
-
-    if (g.axis === 'NS') {
-      store.set(g.x0, base + H + 1, gz, P.timberDark);
-      store.set(g.x1, base + H + 1, gz, P.timberDark);
-      store.set(gx, base + H + 1, gz, P.paperWhite);
-    } else {
-      store.set(gx, base + H + 1, g.z0, P.timberDark);
-      store.set(gx, base + H + 1, g.z1, P.timberDark);
-      store.set(gx, base + H + 1, gz, P.paperWhite);
-    }
-
-    const inZ = g.axis === 'NS' ? (g.side === 'S' ? gz - 1 : gz + 1) : gz;
-    const inX = g.axis === 'EW' ? (g.side === 'E' ? gx - 1 : gx + 1) : gx;
-    const lx0 = Math.min(g.axis === 'NS' ? g.x0 - 1 : gx, inX);
-    const lx1 = Math.max(g.axis === 'NS' ? g.x1 + 1 : gx, inX);
-    const lz0 = Math.min(g.axis === 'EW' ? g.z0 - 1 : gz, inZ);
-    const lz1 = Math.max(g.axis === 'EW' ? g.z1 + 1 : gz, inZ);
-
-    if (g.axis === 'NS') {
-      store.set(g.x0 - 1, base + 1, inZ, P.stoneGrey);
-      store.set(g.x1 + 1, base + 1, inZ, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) {
-        store.set(g.x0 - 1, base + y, inZ, P.zhu);
-        store.set(g.x1 + 1, base + y, inZ, P.zhu);
-      }
-    } else {
-      store.set(inX, base + 1, g.z0 - 1, P.stoneGrey);
-      store.set(inX, base + 1, g.z1 + 1, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) {
-        store.set(inX, base + y, g.z0 - 1, P.zhu);
-        store.set(inX, base + y, g.z1 + 1, P.zhu);
-      }
-    }
-
-    for (let x = lx0; x <= lx1; x++) {
-      for (let z = lz0; z <= lz1; z++) {
-        const isCorner = (x === lx0 || x === lx1) && (z === lz0 || z === lz1);
-        if (isCorner) {
-          store.set(x, base + H + 2, z, P.zhu);
-          store.set(x, base + H + 3, z, P.timberDark);
-        } else {
-          store.set(x, base + H + 2, z, P.plasterWarm);
-          store.set(x, base + H + 3, z, P.timberDark);
-        }
-      }
-    }
-
-    // 坊门瓦顶：檐口整片 → 内收一步坡面 → 正脊 + 两端起翘。
-    // 原做法是"一张平板 + 一条脊"，近景读作平顶城垛；这里补出真实的坡面层次。
-    for (let x = lx0; x <= lx1; x++) {
-      for (let z = lz0; z <= lz1; z++) {
-        store.set(x, base + H + 4, z, P.roofGrey);
-      }
-    }
-    for (let x = lx0 + 1; x <= lx1 - 1; x++) {
-      for (let z = lz0 + 1; z <= lz1 - 1; z++) store.set(x, base + H + 5, z, P.roofLight);
-    }
-    if (g.axis === 'NS') {
-      for (let x = lx0 + 1; x <= lx1 - 1; x++) {
-        store.set(x, base + H + 5, gz, P.roofLight);
-        store.set(x, base + H + 6, gz, P.roofDark);
-      }
-      store.set(lx0, base + H + 5, gz, P.roofLight);
-      store.set(lx1, base + H + 5, gz, P.roofLight);
-    } else {
-      for (let z = lz0 + 1; z <= lz1 - 1; z++) {
-        store.set(gx, base + H + 5, z, P.roofLight);
-        store.set(gx, base + H + 6, z, P.roofDark);
-      }
-      store.set(gx, base + H + 5, lz0, P.roofLight);
-      store.set(gx, base + H + 5, lz1, P.roofLight);
-    }
-
-    const gi = CHANGAN.fieldIndex(gx, gz);
-    fields.topH[gi] = base + H + 6; fields.topColor[gi] = P.roofDark;
+    const a=ctx.arch,S=4,ab=(base+1)*S;
+    const x0=(g.axis==='NS'?g.x0-1:gx-1)*S,x1=(g.axis==='NS'?g.x1+2:gx+2)*S-1;
+    const z0=(g.axis==='EW'?g.z0-1:gz-1)*S,z1=(g.axis==='EW'?g.z1+2:gz+2)*S-1;
+    const y=ab+Math.max(10,H*S);
+    for(const x of [x0+1,x1-1])for(const z of [z0+1,z1-1])a.fill(x,ab,z,x+1,y,z+1,P.zhu);
+    ARCH.roofTang(a,x0,z0,x1,z1,y+1,{kind:'xie',main:P.roofSlate,overhang:3,finialH:0});
+    // 坊榜依附梁额，主门保持两城市格净宽，昼夜门扉仍走原协议。
+    if(g.axis==='NS'){a.fill(x0,y,gz*S+S,x1,y,gz*S+S,P.timber);a.fill(gx*S,y-2,gz*S+S,gx*S+3,y-1,gz*S+S,P.timber);}
+    else {a.fill(gx*S+S,y,z0,gx*S+S,y,z1,P.timber);a.fill(gx*S+S,y-2,gz*S,gx*S+S,y-1,gz*S+3,P.timber);}
+    const gi=CHANGAN.fieldIndex(gx,gz);
+    fields.topH[gi]=base+H+3;fields.topColor[gi]=P.roofSlate;
 
     ctx.doors.push({ kind: 'ward', ward: w.name, x: gx, z: gz, axis: g.axis, base, cells: g.axis === 'NS' ? [[g.x0, gz], [g.x1, gz]] : [[gx, g.z0], [gx, g.z1]] });
   }
@@ -410,6 +337,7 @@ function splitStripX(ctx, w, rect, face, family, rng) {
   let x = rect.x0;
   while (rect.x1 - x + 1 >= 12) {
     let sw = CHANGAN.rint(rng, 14, 24);
+    if(family==='dense')sw=Math.max(14,sw-2);
     if (rect.x1 - (x + sw) < 12) sw = rect.x1 - x + 1; // 收尾并入末段
     pushStripPlot(ctx, w, { x0: x, z0: rect.z0, x1: x + sw - 1, z1: rect.z1 }, face, family, rng);
     x += sw;
@@ -448,6 +376,7 @@ function splitBand(ctx, w, band, face, family, rng) {
   const laneW = Math.max(1, (CHANGAN.PLAN && CHANGAN.PLAN.laneW) || 1);
   while (band.x1 - x + 1 >= 12) {
     let sw = CHANGAN.rint(rng, 14, 24);
+    if(family==='dense')sw=Math.max(14,sw-2);
     if (band.x1 - (x + sw) < 12) sw = band.x1 - x + 1;
     let kind = 'court', level = 0;
     if (family === 'sparse') { const t = rng(); kind = t < 0.25 ? 'court' : t < 0.6 ? 'field' : 'grove'; }
@@ -512,6 +441,7 @@ function fillWardPlots(ctx, w, family) {
         ctx.residencePlans = ctx.residencePlans || [];
         ctx.residencePlans.push([plan.rank, plan.facing, plan.courtyardCount, plan.mainHallBays, plan.wingMode, plan.rearHall ? 1 : 0, plan.sideCourt ? 1 : 0, plan.serviceCourt ? 1 : 0, plan.garden ? 1 : 0, plan.well ? 1 : 0, plan.gateType].join('|') + '|' + rw + 'x' + rd);
         // 坊级风格：色调与高度基调由坊位决定 —— 相邻坊读起来不一样，破"全城一片灰"
+        plan.family=family;
         plan.style = {
           tone: (w.id * 7 + w.col * 5 + w.row * 3) % 5,
           hBias: ((w.id * 11 + w.row * 5) % 5) - 2,

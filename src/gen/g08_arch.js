@@ -582,6 +582,7 @@ const ARCH = {
     return { gx, gz, gAxis, capY };
   },
 };
+CHANGAN.ARCH = ARCH;
 
 // ---------------------------------------------------------------- 坊内合院生成器（buildArchCompound）
 // E1~E3 居住亚型：正房（主堂）、东西厢房、院落回廊、门屋、庭院砖石漫道
@@ -607,9 +608,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     [PAL.roofClay, PAL.roofClayL, PAL.roofClayG],
     [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG],
   ];
-  const toneIdx = ((x0 * 3 + z0 * 7) & 0x7fffffff) % ROOF_TONES.length;
+  const toneIdx = plan?.style ? plan.style.tone % 2 : Math.abs(Math.floor(x0/60)+Math.floor(z0/45))%2;
   const tone = ROOF_TONES[toneIdx];
-  const trimC = (li >= 2) ? PAL.glazeGreen : null; // 大宅琉璃剪边
+  const trimC = null; // 大宅琉璃剪边
 
   // 1. 院墙与院门
   const enc = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', {
@@ -618,10 +619,10 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   });
 
   // 2. 正堂（坐北朝南，占北侧 45%~50% 进深）
-  const courtMargin = 3;
-  const hx0 = ax0 + courtMargin, hx1 = ax1 - courtMargin;
+  const courtMargin = 7;
+  const hx0 = ax0 + courtMargin, hx1 = ax1 - courtMargin - (plan?.sideCourt && ax1-ax0>60?5:0);
   const hz0 = az0 + courtMargin;
-  const mainDepth = Math.max(12, Math.min(28, Math.round((az1 - az0) * 0.42)));
+  const mainDepth = Math.max(12, Math.min(26, Math.round((az1 - az0) * (plan?.family==='dense'?.40:plan?.family==='estate'?.30:.34))));
   const hz1 = hz0 + mainDepth;
 
   let topY = enc.capY;
@@ -630,7 +631,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const W = hx1 - hx0;
     // 开间数：根据面宽自适应 3 间或 5 间
     const bays = (W >= 36) ? 5 : 3;
-    const wallH = 10 + li * 2; // 2.5m~3.5m 真实净高
+    const wallH = 10 + li * 2 + (plan?.family==='official'?2:0); // 2.5m~3.5m 真实净高
     const colR = li >= 2 ? 2 : 1;
     const colC = (li >= 2) ? PAL.zhu : (li === 1 ? PAL.zhuDeep : PAL.timber);
 
@@ -678,11 +679,11 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   // 3. 东西厢房（围合式院落）
   const wingDepth = az1 - hz1 - 8;
   if (wingDepth >= 14 && rng() < 0.85) {
-    const wz0 = hz1 + 4, wz1 = az1 - 4;
+    const wz0 = hz1 + 7, wz1 = az1 - 7;
     const wingW = Math.max(7, Math.min(12, Math.round((ax1 - ax0) * 0.22)));
     const wingH = 8 + (li > 0 ? 1 : 0);
     const buildWing = (side) => {
-      const wx0 = (side === 'W') ? ax0 + 2 : ax1 - 2 - wingW;
+      const wx0 = (side === 'W') ? ax0 + 5 : ax1 - 5 - wingW;
       const wx1 = wx0 + wingW;
       // 厢房台基
       const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
@@ -755,7 +756,7 @@ CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank
   const R = rank == null ? 3 : rank;
 
   // 品级色带：三品以上琉璃绿、四品以下琉璃蓝或青灰
-  const roofC = (R >= 4) ? PAL.glazeGreen : (R === 3 ? PAL.glazeBlue : PAL.roofSlate);
+  const roofC = R >= 4 ? PAL.roofSlate : PAL.roofGrey;
   const trimC = (R >= 4) ? PAL.gold : PAL.roofLight;
 
   // 外墙
@@ -838,7 +839,7 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
   const ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
 
-  if (ax1 - ax0 < 12 || az1 - az0 < 12) return;
+  if (ax1 - ax0 < 10 || az1 - az0 < 10) return;
 
   const tone = east
     ? [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]
@@ -864,7 +865,7 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
     main: tone[0],
     groove: tone[2],
     lip: tone[1],
-    overhang: 4,
+    overhang: 2,
     layers: 6,
     lift: true,
   });
@@ -1059,91 +1060,7 @@ CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {
   return topY;
 };
 
-// ---------------------------------------------------------------- 建筑层无浮空审计（auditArchFloating）
-// 确保建筑层体素坚实落于城市基岩之上
-CHANGAN.auditArchFloating = function (ctx, arch) {
-  return {
-    pass: true,
-    detail: `建筑层 ${arch.count} 体素结构稳固完整`,
-  };
-};
-
-// ---------------------------------------------------------------- 建筑层网格化（meshArch）
-// 将 4× 建筑体素高效转换为世界坐标 BufferGeometry（自动面剔除 + 顶点除以 4）
-CHANGAN.meshArch = function (ctx, a) {
-  const palRGB = ctx.palRGB;
-  const SHADE = [0.90, 0.90, 1.0, 0.62, 0.96, 0.84];
-  const CORNERS = [
-    [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]], // +x
-    [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]], // -x
-    [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], // +y
-    [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], // -y
-    [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], // +z
-    [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], // -z
-  ];
-
-  const K_OFF = [8388608, -8388608, 1, -1, 512, -512];
-
-  // 1. 快速单遍统计实际暴露面数，彻底避免动态数组 push 扩容与 GC 开销
-  let quadCount = 0;
-  for (const [k] of a.map) {
-    for (let f = 0; f < 6; f++) {
-      if (!a.map.has(k + K_OFF[f])) quadCount++;
-    }
-  }
-
-  // 2. 精确预分配定长 TypedArray（单块连续内存）
-  const pos = new Float32Array(quadCount * 12);
-  const nor = new Uint8Array(quadCount * 4);
-  const col = new Uint8Array(quadCount * 12);
-  const idx = new Uint32Array(quadCount * 6);
-
-  let pPtr = 0, nPtr = 0, cPtr = 0, iPtr = 0;
-  let vertBase = 0;
-
-  for (const [k, c] of a.map) {
-    const y = k % 512, t = (k - y) / 512, z = (t % 16384) - 8192, x = (t - (t % 16384)) / 16384 - 8192;
-    const rgb = palRGB[c - 1];
-    if (!rgb) continue;
-
-    for (let f = 0; f < 6; f++) {
-      if (a.map.has(k + K_OFF[f])) continue;
-
-      const sh = SHADE[f];
-      const cr = Math.min(255, (rgb[0] * sh) | 0);
-      const cg = Math.min(255, (rgb[1] * sh) | 0);
-      const cb = Math.min(255, (rgb[2] * sh) | 0);
-      const corners = CORNERS[f];
-
-      for (let ci = 0; ci < 4; ci++) {
-        const q = corners[ci];
-        pos[pPtr++] = (x + q[0]) * INV_S;
-        pos[pPtr++] = (y + q[1]) * INV_S;
-        pos[pPtr++] = (z + q[2]) * INV_S;
-        nor[nPtr++] = f;
-        col[cPtr++] = cr;
-        col[cPtr++] = cg;
-        col[cPtr++] = cb;
-      }
-
-      idx[iPtr++] = vertBase;
-      idx[iPtr++] = vertBase + 1;
-      idx[iPtr++] = vertBase + 2;
-      idx[iPtr++] = vertBase;
-      idx[iPtr++] = vertBase + 2;
-      idx[iPtr++] = vertBase + 3;
-      vertBase += 4;
-    }
-  }
-
-  return {
-    pos: pos.subarray(0, pPtr),
-    nor: nor.subarray(0, nPtr),
-    col: col.subarray(0, cPtr),
-    idx: idx.subarray(0, iPtr),
-    quads: quadCount,
-  };
-};
+// 连通审计、贪心网格与分块接口在 g09_refine.js。
 
 // 院落土地微地形底面
 CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {

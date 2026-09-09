@@ -186,6 +186,15 @@ button { font: inherit; }
   .lore-card { width: 240px; top: 96px; }
 }
 
+.photo-mode .hud, .photo-mode .tour-panel, .photo-mode .lore-card, .photo-mode .minimap-card, .photo-mode .hint-bar, .photo-mode .stats {display:none!important}
+#photo-exit {position:fixed;right:20px;bottom:20px;z-index:30;display:none}
+.photo-mode #photo-exit{display:block}
+
+.actions>button{color:var(--ink);background:transparent;border:1px solid var(--paper-line);border-radius:7px;padding:5px 8px;font-size:12px;white-space:nowrap}
+.photo-mode .brand,.photo-mode .hint,.photo-mode .stats-bar,.photo-mode .grain,.photo-mode #toast{display:none!important}
+
+.photo-mode .telemetry,.photo-mode .help{display:none!important}
+
   </style>
 </head>
 <body>
@@ -79643,14 +79652,32 @@ function macroHeight(x, z, CFG) {
   return h;
 }
 function outsideHeight(x, z, seed, CFG) {
-  // 城外郊野：渭水低滩、南郊平野、终南山剪影
-  if (z < -354) return 1;                                   // 渭水河床
-  if (z < -344) return 2 + (z + 354) * 0.2;                 // 河滩缓坡
-  if (z > 348) {                                            // 终南山（箱庭边缘剪影，只表壳）
-    const t = z - 348;
-    return 3 + t * 2.2 + CHANGAN.fbm(seed, x * 0.02, z * 0.02, 3, 2, 0.5) * 8;
+  // 城外郊野：北濒渭水、南望终南山自然起伏余脉、东控关洛、西引丝路
+  // 1. 北面渭水低滩与主河床（z < -340）
+  if (z < -354) return 1;                                   // 渭水主河槽
+  if (z < -340) return 2 + (z + 354) * 0.14;                 // 漫滩阶地缓坡
+
+  // 2. 南面终南山余脉（z > 336）
+  // 彻底消除人工阶梯山！设计平缓起伏、山脊自然衔接的南山远景，东西边缘柔和隐于旷野
+  if (z > 336) {
+    const u = (z - 336) / (CFG.WORLD.z1 - 336); // 0.0 ~ 1.0
+    // 渐进曲线：近处极其平缓（坡度 < 0.2），远端自然升起至山脊
+    const rise = Math.pow(u, 2.3) * 8.5;
+    // 自然山峦山脊波（多波长叠加）
+    const ridgeNoise = CHANGAN.fbm(seed + 89, x * 0.015, z * 0.015, 3, 2, 0.5) * 4.5;
+    const peakWave = Math.sin(x * 0.022 + 0.6) * 2.6 + Math.cos(x * 0.045 + 1.2) * 1.4;
+    let hillH = rise + Math.pow(u, 1.3) * (ridgeNoise + peakWave);
+    // 东西世界边缘柔和收拢，避免世界边缘露出刀削般垂直截面
+    let edgeFade = 1.0;
+    if (x < -330) edgeFade = Math.max(0, (x - CFG.WORLD.x0) / 70);
+    else if (x > 330) edgeFade = Math.max(0, (CFG.WORLD.x1 - x) / 69);
+    edgeFade = edgeFade * edgeFade * (3 - 2 * edgeFade);
+    hillH *= edgeFade;
+    return 3.5 + hillH;
   }
-  return 3 + CHANGAN.fbm(seed + 7, x * 0.03, z * 0.03, 2, 2, 0.5) * 1.5;
+
+  // 3. 广阔平原（关中农田微地形）
+  return 3.5 + CHANGAN.fbm(seed + 7, x * 0.025, z * 0.025, 2, 2, 0.5) * 0.7;
 }
 
 CHANGAN.stageTerrain = function (ctx) {
@@ -79674,17 +79701,69 @@ CHANGAN.stageTerrain = function (ctx) {
       y = Math.max(1, Math.round(y));
       fields.groundH[i] = y;
       fields.topH[i] = y;
+
       let c;
-      if (z > 348) {
-        c = PAL.mountainFar;
-        const yBase = Math.max(1, y - 6);
-        for (let yy = yBase; yy < y; yy++) {
-          map.set(xk | ((z + 512) << 9) | yy, c);
+      if (!inCity) {
+        // --- 城外全域环境地表分类 ---
+        if (z < -340) {
+          // 北面渭水与河滩湿地
+          if (z < -354) {
+            c = PAL.weiWater;
+            fields.water[i] = 3;
+          } else {
+            c = (CHANGAN.fbm(seed + 15, x * 0.08, z * 0.08, 2, 2, 0.5) > 0.45) ? PAL.riverSand : PAL.moss;
+          }
+        } else if (z > 336) {
+          // 南面终南山余脉植被与岩壁（消除单一灰色与无纹理块体）
+          if (y >= 8) {
+            c = (CHANGAN.fbm(seed + 17, x * 0.04, z * 0.04, 2, 2, 0.5) > 0.45) ? PAL.mountainFar : PAL.pineGreen;
+          } else if (y >= 5) {
+            c = (CHANGAN.fbm(seed + 19, x * 0.04, z * 0.04, 2, 2, 0.5) > 0.42) ? PAL.pineGreen : PAL.grass;
+          } else {
+            c = (CHANGAN.fbm(seed + 21, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.48) ? PAL.grass : PAL.fieldEarth;
+          }
+        } else {
+          // 广袤关中农田与郊野系统：规整农田畦垄块 + 田埂 + 灌溉微水网 + 草甸
+          const gx = Math.floor((x + 600) / 20);
+          const gz = Math.floor((z + 600) / 16);
+          const cellX = (x + 600) % 20;
+          const cellZ = (z + 600) % 16;
+          const isRidge = (cellX === 0 || cellZ === 0);
+          if (isRidge) {
+            c = ((gx + gz) % 2 === 0) ? PAL.loessDeep : PAL.grass;
+          } else {
+            const stripe = (gz % 2 === 0) ? (cellZ % 3) : (cellX % 3);
+            const patchType = (gx * 7 + gz * 13 + (seed & 7)) % 4;
+            if (patchType === 0) {
+              // 熟麦/金粟垄
+              c = (stripe === 0) ? PAL.withered : (stripe === 1 ? PAL.fieldEarth : PAL.loessLight);
+            } else if (patchType === 1) {
+              // 绿苗田
+              c = (stripe === 0) ? PAL.grass : (stripe === 1 ? PAL.fieldEarth : PAL.moss);
+            } else if (patchType === 2) {
+              // 菜圃与桑麻田
+              c = (stripe === 0) ? PAL.moss : PAL.fieldEarth;
+            } else {
+              // 郊野绿地与草甸
+              c = (CHANGAN.fbm(seed + 31, x * 0.06, z * 0.06, 2, 2, 0.5) > 0.48) ? PAL.grass : PAL.fieldEarth;
+            }
+          }
+        }
+      } else {
+        // 城内基底：乐游原高地略带青草，城郭边缘略带草斑
+        const isLeyou = (x >= 210 && x <= 340 && z >= 95 && z <= 235);
+        if (isLeyou && CHANGAN.fbm(seed + 47, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.55) {
+          c = PAL.grass;
+        } else {
+          c = PAL.loess;
         }
       }
-      else if (z < -344) c = PAL.riverSand;
-      else if (!inCity) c = CHANGAN.fbm(seed + 11, x * 0.05, z * 0.05, 2, 2, 0.5) > 0.55 ? PAL.grass : PAL.fieldEarth;
-      else c = PAL.loess;
+
+      // 保证地表垂直连续坚实（下填至基底或 y-2），防止台阶和斜坡处露出空洞
+      const yBottom = Math.max(1, y - 2);
+      for (let yy = yBottom; yy < y; yy++) {
+        map.set(xk | ((z + 512) << 9) | yy, PAL.loessDeep);
+      }
       map.set(xk | ((z + 512) << 9) | y, c);
       fields.topColor[i] = c;
     }
@@ -79695,6 +79774,7 @@ CHANGAN.stageTerrain = function (ctx) {
 // ---------------------------------------------------------------- S2 礼制骨架：街网掩膜与街级
 function markStreetMask(ctx) {
   const { CFG, fields } = ctx;
+  const W = CFG.WORLD;
   const setRect = (x0, z0, x1, z1, lv) => {
     for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
       const i = CHANGAN.fieldIndex(x, z);
@@ -79731,6 +79811,24 @@ function markStreetMask(ctx) {
       fields.road[i] = 0;
     }
   }
+
+  // --- 城外放射状交通干道网络（打破"城外空无一物、道路撞墙断头"） ---
+  // 南出明德门御道（南郊官道直贯南郊，通向圜丘与终南原野）
+  setRect(CFG.AXIS_X[0], CFG.CITY.z1 + 1, CFG.AXIS_X[1], 345, 1);
+  // 南出安化门、启夏门次干道
+  setRect(-162, CFG.CITY.z1 + 1, -158, 335, 4);
+  setRect(159, CFG.CITY.z1 + 1, 163, 335, 4);
+  // 西出开远门、金光门丝路干道（向西贯通至世界西缘）
+  setRect(W.x0, -11, CFG.CITY.x0 - 1, -7, 3);
+  setRect(W.x0, 73, CFG.CITY.x0 - 1, 77, 3);
+  setRect(W.x0, 199, CFG.CITY.x0 - 1, 203, 4);
+  // 东出通化门、春明门、延兴门关洛干道（向东贯通至世界东缘）
+  setRect(CFG.CITY.x1 + 1, -11, W.x1, -7, 3);
+  setRect(CFG.CITY.x1 + 1, 73, W.x1, 77, 3);
+  setRect(CFG.CITY.x1 + 1, 199, W.x1, 202, 4);
+  // 北出玄武门与大明宫北通渭道
+  setRect(-3, -353, 2, CFG.CITY.z0 - 1, 4);
+  setRect(212, -353, 216, CFG.CITY.z0 - 1, 4);
 }
 
 // ---------------------------------------------------------------- S5 街道工程：街面铺装、排水沟、路拱色带
@@ -80012,90 +80110,17 @@ function buildWardShell(ctx, w) {
   for (const g of w.gateCells) {
     const gx = g.axis === 'NS' ? (g.x0 + g.x1) >> 1 : (g.side === 'E' ? w.x1 : w.x0);
     const gz = g.axis === 'NS' ? (g.side === 'S' ? w.z1 : w.z0) : (g.z0 + g.z1) >> 1;
-    const posts = g.axis === 'NS'
-      ? [[g.x0 - 1, gz], [g.x1 + 1, gz]]
-      : [[gx, g.z0 - 1], [gx, g.z1 + 1]];
-    for (const [px, pz] of posts) {
-      store.set(px, base + 1, pz, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) store.set(px, base + y, pz, P.zhu);
-      const pi = CHANGAN.fieldIndex(px, pz);
-      fields.topH[pi] = base + H + 1; fields.topColor[pi] = P.zhu;
-    }
-
-    if (g.axis === 'NS') {
-      store.set(g.x0, base + H + 1, gz, P.timberDark);
-      store.set(g.x1, base + H + 1, gz, P.timberDark);
-      store.set(gx, base + H + 1, gz, P.paperWhite);
-    } else {
-      store.set(gx, base + H + 1, g.z0, P.timberDark);
-      store.set(gx, base + H + 1, g.z1, P.timberDark);
-      store.set(gx, base + H + 1, gz, P.paperWhite);
-    }
-
-    const inZ = g.axis === 'NS' ? (g.side === 'S' ? gz - 1 : gz + 1) : gz;
-    const inX = g.axis === 'EW' ? (g.side === 'E' ? gx - 1 : gx + 1) : gx;
-    const lx0 = Math.min(g.axis === 'NS' ? g.x0 - 1 : gx, inX);
-    const lx1 = Math.max(g.axis === 'NS' ? g.x1 + 1 : gx, inX);
-    const lz0 = Math.min(g.axis === 'EW' ? g.z0 - 1 : gz, inZ);
-    const lz1 = Math.max(g.axis === 'EW' ? g.z1 + 1 : gz, inZ);
-
-    if (g.axis === 'NS') {
-      store.set(g.x0 - 1, base + 1, inZ, P.stoneGrey);
-      store.set(g.x1 + 1, base + 1, inZ, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) {
-        store.set(g.x0 - 1, base + y, inZ, P.zhu);
-        store.set(g.x1 + 1, base + y, inZ, P.zhu);
-      }
-    } else {
-      store.set(inX, base + 1, g.z0 - 1, P.stoneGrey);
-      store.set(inX, base + 1, g.z1 + 1, P.stoneGrey);
-      for (let y = 2; y <= H + 1; y++) {
-        store.set(inX, base + y, g.z0 - 1, P.zhu);
-        store.set(inX, base + y, g.z1 + 1, P.zhu);
-      }
-    }
-
-    for (let x = lx0; x <= lx1; x++) {
-      for (let z = lz0; z <= lz1; z++) {
-        const isCorner = (x === lx0 || x === lx1) && (z === lz0 || z === lz1);
-        if (isCorner) {
-          store.set(x, base + H + 2, z, P.zhu);
-          store.set(x, base + H + 3, z, P.timberDark);
-        } else {
-          store.set(x, base + H + 2, z, P.plasterWarm);
-          store.set(x, base + H + 3, z, P.timberDark);
-        }
-      }
-    }
-
-    // 坊门瓦顶：檐口整片 → 内收一步坡面 → 正脊 + 两端起翘。
-    // 原做法是"一张平板 + 一条脊"，近景读作平顶城垛；这里补出真实的坡面层次。
-    for (let x = lx0; x <= lx1; x++) {
-      for (let z = lz0; z <= lz1; z++) {
-        store.set(x, base + H + 4, z, P.roofGrey);
-      }
-    }
-    for (let x = lx0 + 1; x <= lx1 - 1; x++) {
-      for (let z = lz0 + 1; z <= lz1 - 1; z++) store.set(x, base + H + 5, z, P.roofLight);
-    }
-    if (g.axis === 'NS') {
-      for (let x = lx0 + 1; x <= lx1 - 1; x++) {
-        store.set(x, base + H + 5, gz, P.roofLight);
-        store.set(x, base + H + 6, gz, P.roofDark);
-      }
-      store.set(lx0, base + H + 5, gz, P.roofLight);
-      store.set(lx1, base + H + 5, gz, P.roofLight);
-    } else {
-      for (let z = lz0 + 1; z <= lz1 - 1; z++) {
-        store.set(gx, base + H + 5, z, P.roofLight);
-        store.set(gx, base + H + 6, z, P.roofDark);
-      }
-      store.set(gx, base + H + 5, lz0, P.roofLight);
-      store.set(gx, base + H + 5, lz1, P.roofLight);
-    }
-
-    const gi = CHANGAN.fieldIndex(gx, gz);
-    fields.topH[gi] = base + H + 6; fields.topColor[gi] = P.roofDark;
+    const a=ctx.arch,S=4,ab=(base+1)*S;
+    const x0=(g.axis==='NS'?g.x0-1:gx-1)*S,x1=(g.axis==='NS'?g.x1+2:gx+2)*S-1;
+    const z0=(g.axis==='EW'?g.z0-1:gz-1)*S,z1=(g.axis==='EW'?g.z1+2:gz+2)*S-1;
+    const y=ab+Math.max(10,H*S);
+    for(const x of [x0+1,x1-1])for(const z of [z0+1,z1-1])a.fill(x,ab,z,x+1,y,z+1,P.zhu);
+    ARCH.roofTang(a,x0,z0,x1,z1,y+1,{kind:'xie',main:P.roofSlate,overhang:3,finialH:0});
+    // 坊榜依附梁额，主门保持两城市格净宽，昼夜门扉仍走原协议。
+    if(g.axis==='NS'){a.fill(x0,y,gz*S+S,x1,y,gz*S+S,P.timber);a.fill(gx*S,y-2,gz*S+S,gx*S+3,y-1,gz*S+S,P.timber);}
+    else {a.fill(gx*S+S,y,z0,gx*S+S,y,z1,P.timber);a.fill(gx*S+S,y-2,gz*S,gx*S+S,y-1,gz*S+3,P.timber);}
+    const gi=CHANGAN.fieldIndex(gx,gz);
+    fields.topH[gi]=base+H+3;fields.topColor[gi]=P.roofSlate;
 
     ctx.doors.push({ kind: 'ward', ward: w.name, x: gx, z: gz, axis: g.axis, base, cells: g.axis === 'NS' ? [[g.x0, gz], [g.x1, gz]] : [[gx, g.z0], [gx, g.z1]] });
   }
@@ -80355,6 +80380,7 @@ function splitStripX(ctx, w, rect, face, family, rng) {
   let x = rect.x0;
   while (rect.x1 - x + 1 >= 12) {
     let sw = CHANGAN.rint(rng, 14, 24);
+    if(family==='dense')sw=Math.max(14,sw-2);
     if (rect.x1 - (x + sw) < 12) sw = rect.x1 - x + 1; // 收尾并入末段
     pushStripPlot(ctx, w, { x0: x, z0: rect.z0, x1: x + sw - 1, z1: rect.z1 }, face, family, rng);
     x += sw;
@@ -80393,6 +80419,7 @@ function splitBand(ctx, w, band, face, family, rng) {
   const laneW = Math.max(1, (CHANGAN.PLAN && CHANGAN.PLAN.laneW) || 1);
   while (band.x1 - x + 1 >= 12) {
     let sw = CHANGAN.rint(rng, 14, 24);
+    if(family==='dense')sw=Math.max(14,sw-2);
     if (band.x1 - (x + sw) < 12) sw = band.x1 - x + 1;
     let kind = 'court', level = 0;
     if (family === 'sparse') { const t = rng(); kind = t < 0.25 ? 'court' : t < 0.6 ? 'field' : 'grove'; }
@@ -80457,6 +80484,7 @@ function fillWardPlots(ctx, w, family) {
         ctx.residencePlans = ctx.residencePlans || [];
         ctx.residencePlans.push([plan.rank, plan.facing, plan.courtyardCount, plan.mainHallBays, plan.wingMode, plan.rearHall ? 1 : 0, plan.sideCourt ? 1 : 0, plan.serviceCourt ? 1 : 0, plan.garden ? 1 : 0, plan.well ? 1 : 0, plan.gateType].join('|') + '|' + rw + 'x' + rd);
         // 坊级风格：色调与高度基调由坊位决定 —— 相邻坊读起来不一样，破"全城一片灰"
+        plan.family=family;
         plan.style = {
           tone: (w.id * 7 + w.col * 5 + w.row * 3) % 5,
           hBias: ((w.id * 11 + w.row * 5) % 5) - 2,
@@ -81137,25 +81165,9 @@ CHANGAN.platform = platform;
 CHANGAN._wallRing = null; CHANGAN._dougong = null; CHANGAN._chiwei = null;
 
 // 2. 盛唐弯月鸱吻：基座平稳骑脊、背部隆起出鳍、尾梢向内月牙回卷，严禁冲天兔耳
-function chiwei(ctx, x, y, z, axis, palace, dir) {
-  const { store } = ctx;
-  const c = palace ? PAL.glazeGreen : PAL.roofDark;
-  const tipC = palace ? PAL.glazeGreen : PAL.roofLight;
-  const d = dir || 1; // 1: 向正向内卷, -1: 向负向内卷
-
-  if (axis === 'x') {
-    // 基座骑脊 (高 1 格)
-    store.set(x, y + 1, z, c);
-    store.set(x + d, y + 1, z, c);
-    // 月牙回卷鳍形 (高 2 格，稳重古朴，向内勾卷)
-    store.set(x, y + 2, z, c);
-    store.set(x + d, y + 2, z, tipC);
-  } else {
-    store.set(x, y + 1, z, c);
-    store.set(x, y + 1, z + d, c);
-    store.set(x, y + 2, z, c);
-    store.set(x, y + 2, z + d, tipC);
-  }
+function chiwei(ctx,x,y,z,axis,palace,dir){
+  // 粗格只保留脊端一格；细饰由建筑层处理，禁止两格高叉角。
+  if(palace)ctx.store.set(x,y+1,z,PAL.roofDark);
 }
 
 // 3. 斗栱出挑：柱头铺作与补间铺作向外挑出承托檐檩，形成深远出挑与阴影间隙
@@ -81351,14 +81363,14 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   const TONE_BLUE = [PAL.roofBlue, PAL.roofBlueL, PAL.roofBlueG];
   const TONE_BROWN = [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG];
   const ROOF_TONES = bigRoof
-    ? [TONE_GREEN, TONE_BLUE, TONE_SLATE, TONE_SLATE, TONE_GREY, TONE_GREEN, TONE_BLUE, TONE_GREY]
+    ? [TONE_SLATE, TONE_GREY, TONE_SLATE, TONE_SLATE, TONE_GREY, TONE_SLATE, TONE_GREY, TONE_GREY]
     : [TONE_GREY, TONE_GREY, TONE_GREY, TONE_GREY, TONE_SLATE, TONE_SLATE, TONE_SLATE, TONE_BROWN];
   const toneIdx = opts.tone != null ? (opts.tone | 0)
     : (Math.abs(Math.imul(x0, 73856093) ^ Math.imul(z0, 19349663)) >>> 0) % ROOF_TONES.length;
   const tone = ROOF_TONES[toneIdx] || ROOF_TONES[0];
   const main = opts.main || tone[0];
   const lip = opts.lip || tone[1];
-  const tileGroove = tone[2];
+  const tileGroove = main;
   const trim = opts.trim;
   const ridgeC = PAL.roofDark;
 
@@ -82620,8 +82632,12 @@ regWard('义宁', 'W', (ctx, w) => {
   // 景教寺（NE 象限：寺堂 + 十字幡）
   const hx = Q.NE.x0 + 6, hz = Q.NE.z0 + 3;
   proto.hall(ctx, hx - 3, hz, hx + 3, hz + 4, w.base, { roof: 'xuan', door: 'S' });
-  store.set(hx, w.base + 5, hz + 4, PAL.paperWhite); store.set(hx, w.base + 6, hz + 4, PAL.paperWhite);
-  store.set(hx - 1, w.base + 5, hz + 4, PAL.paperWhite); store.set(hx + 1, w.base + 5, hz + 4, PAL.paperWhite);
+  const a = ctx.arch;
+  if (a) {
+    const ax = hx * 4, ay = (w.base + 1) * 4, az = (hz + 4) * 4;
+    a.fill(ax - 1, ay + 7, az, ax + 1, ay + 11, az, PAL.paperWhite);
+    a.fill(ax - 3, ay + 9, az, ax + 3, ay + 10, az, PAL.paperWhite);
+  }
   const rng = CHANGAN.rngOf(ctx.seed, 'jing');
   fitCourt(ctx, Q.NW.x0 + 1, Q.NW.z0 + 1, 13, 11, w.base, 0, rng, 'S');
   fitCourt(ctx, Q.SW.x0 + 2, Q.SW.z0 + 1, 12, 10, w.base, 1, rng, 'N');
@@ -82780,42 +82796,13 @@ CHANGAN.buildMingdeGate = function (ctx, g) {
   store.fill(wx0 - 1, gy + 1, wz0 - 1, wx1 + 1, gy + 1, wz1 + 1, PAL.stoneWhite);
   // 主门楼：七间重檐庑殿（专属大开间节奏 7，非通用门楼 4-5 间），腰檐+上层收分
   const x0 = g.x - 9, x1 = g.x + 9, z0 = g.z, z1 = g.z + 3;
-  const frame = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, gy + 2, 5, { bays: 7, colC: PAL.zhuBright, veranda: true });
-  // 一层墙（朱柱+直棂大窗带）
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    const isCol = frame.cols.some(p => p.x === x && p.z === z);
-    if (isCol) continue;
-    for (let y = gy + 2; y < gy + 6; y++) {
-      if (y === gy + 5) { store.set(x, y, z, PAL.zhu); continue; }
-      store.set(x, y, z, (z === z0 || z === z1) && ((x - x0) % 2 === 1) ? PAL.timberDark : PAL.plaster);
-    }
-  }
-  dougong(ctx, x0, z0, x1, z1, gy + 5, frame.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, gy + 6, { rank: 5, main: PAL.roofGrey, lip: PAL.roofLight, trim: PAL.glazeGreen, overhang: 3 });
-  // 二层重楼（收分 2，歇山小顶，形成三重檐口 silhouette）
-  const ix0 = x0 + 3, ix1 = x1 - 3, iz0 = z0, iz1 = z1;
-  const fr2 = Tang.TimberFrameBuilder.build(ctx, ix0, iz0, ix1, iz1, gy + 10, 5, { bays: 5, colC: PAL.zhuBright });
-  for (let x = ix0; x <= ix1; x++) for (let z = iz0; z <= iz1; z++) {
-    if (x !== ix0 && x !== ix1 && z !== iz0 && z !== iz1) continue;
-    const isCol = fr2.cols.some(p => p.x === x && p.z === z);
-    if (isCol) continue;
-    for (let y = gy + 10; y < gy + 13; y++) store.set(x, y, z, y === gy + 12 ? PAL.zhu : PAL.plaster);
-  }
-  dougong(ctx, ix0, iz0, ix1, iz1, gy + 12, fr2.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', ix0, iz0, ix1, iz1, gy + 13, { rank: 5, main: PAL.roofGrey, lip: PAL.roofLight, trim: PAL.glazeGreen, overhang: 2 });
-  // 双阙（实心墩自地面起砌至门台高，防浮空；攒尖顶拉开轮廓）
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,gy+2,7,2);
+  // 双阙（实心墩自地面起砌至门台高，防浮空；细木作双层阙楼）
   for (const s of [-1, 1]) {
     const qx = g.x + s * 15;
     const qg = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
     store.fill(qx - 2, qg + 1, g.z, qx + 2, gy + 2, g.z + 2, PAL.stoneGrey);
-    const qf = Tang.TimberFrameBuilder.build(ctx, qx - 1, g.z, qx + 1, g.z + 2, gy + 3, 4, { bays: 2 });
-    for (let x = qx - 1; x <= qx + 1; x++) for (let z = g.z; z <= g.z + 2; z++) {
-      if (x !== qx - 1 && x !== qx + 1 && z !== g.z && z !== g.z + 2) continue;
-      if (qf.cols.some(p => p.x === x && p.z === z)) continue;
-      for (let y = gy + 3; y < gy + 6; y++) store.set(x, y, z, PAL.plaster);
-    }
-    Tang.RoofBuilder.build(ctx, 'jian', qx - 1, g.z, qx + 1, g.z + 2, gy + 6, { rank: 4, finial: PAL.gold });
+    ARCH.pavilion(ctx.arch, qx - 1, g.z, qx + 1, g.z + 2, gy + 2, 2, 1);
   }
   // 城墙连接（阙与主楼间矮墙相连，朱帽）
   for (let x = x0 - 6; x <= x1 + 6; x++) {
@@ -82863,26 +82850,13 @@ CHANGAN.buildDanfengGate = function (ctx, g) {
   }
   // 巨型门楼：九间庑殿（开间 9 vs 明德 7），进深 5，三重檐（腰檐+重檐+顶）
   const x0 = g.x - 11, x1 = g.x + 11, z0 = g.z, z1 = g.z + 4;
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, y + 1, 5, { bays: 9, colC: PAL.zhuBright, veranda: true });
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    for (let yy = y + 1; yy < y + 6; yy++) store.set(x, yy, z, yy === y + 5 ? PAL.zhu : (((x - x0) % 3 === 1 && (z === z0 || z === z1)) ? PAL.timberDark : PAL.plaster));
-  }
-  dougong(ctx, x0, z0, x1, z1, y + 5, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, y + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
-  // 上层七间+掖门耳房（与明德双阙不同：品字三阙+掖门）
-  const ix0 = x0 + 2, ix1 = x1 - 2;
-  const fr2 = Tang.TimberFrameBuilder.build(ctx, ix0, z0, ix1, z1, y + 10, 5, { bays: 7 });
-  dougong(ctx, ix0, z0, ix1, z1, y + 13, fr2.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', ix0, z0, ix1, z1, y + 14, { rank: 5, trim: PAL.glazeGreen, overhang: 2 });
-  // 三阙实心墩自地面起砌（防浮空）
-  for (const [dx, wq] of [[-18, 3], [0, 3], [18, 3]]) {
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,y+1,9,2);
+  // 左右双阙实心墩自地面起砌（防浮空，细木作双层阙楼）
+  for (const dx of [-18, 18]) {
     const qx = g.x + dx;
     const qg = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
     store.fill(qx - 1, qg + 1, g.z - 1, qx + 1, y + 2, g.z + 1, PAL.stoneGrey);
-    Tang.TimberFrameBuilder.build(ctx, qx - 1, g.z - 1, qx + 1, g.z + 1, y + 3, 4, { bays: 2 });
-    Tang.RoofBuilder.build(ctx, 'jian', qx - 1, g.z - 1, qx + 1, g.z + 1, y + 6, { rank: 4, finial: PAL.bronze });
+    ARCH.pavilion(ctx.arch, qx - 1, g.z - 1, qx + 1, g.z + 1, y + 2, 2, 1);
   }
   // 宫墙连接（厚墙+女墙，直连大明宫宫墙）
   for (let x = wx0 - 8; x <= wx1 + 8; x++) {
@@ -83114,14 +83088,7 @@ CHANGAN.buildChengtianGate = function (ctx, g) {
   store.fill(wx0, gy, wz0, wx1, gy + 1, wz1, PAL.stoneWhite);
   // 门楼：十一间单层大庑殿+两端阙楼（横向延展最强，不做重楼高耸，与明德高耸/丹凤厚重形成三极）
   const x0 = g.x - 12, x1 = g.x + 11, z0 = g.z, z1 = g.z + 2;
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, gy + 2, 5, { bays: 11, colC: PAL.zhuBright });
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    for (let y = gy + 2; y < gy + 6; y++) store.set(x, y, z, y === gy + 5 ? PAL.zhu : (((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark));
-  }
-  dougong(ctx, x0, z0, x1, z1, gy + 5, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, gy + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,gy+2,11,1);
   for (const s of [-1, 1]) {
     const qx = g.x + s * 16;
     const qg2 = fields.groundH[CHANGAN.fieldIndex(qx, g.z)];
@@ -83140,24 +83107,7 @@ CHANGAN.buildTaijiHall = function (ctx, cx, z0, z1, base) {
   CHANGAN.enterLandmark(ctx, 'taiji');
   const x0 = cx - 12, x1 = cx + 11;
   const top = Tang.PlatformBuilder.build(ctx, x0 - 1, z0 - 1, x1 + 1, z1 + 1, base, 5, { door: 'S', tiers: 3, h: 1, name: 'taiji-base' });
-  const fr = Tang.TimberFrameBuilder.build(ctx, x0, z0, x1, z1, top + 1, 5, { bays: 11, colC: PAL.zhuBright, veranda: true });
-  const { store } = ctx;
-  // 南向居中真实门洞（与台基踏道相接），其余柱间为粉壁。
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
-    if (x !== x0 && x !== x1 && z !== z0 && z !== z1) continue;
-    if (fr.cols.some(p => p.x === x && p.z === z)) continue;
-    const isDoor = (z === z1 && Math.abs(x - cx) <= 1);
-    if (isDoor) {
-      for (let y = top + 1; y < top + 5; y++) {
-        if (y === top + 4) store.set(x, y, z, PAL.zhu);
-      }
-      continue;
-    }
-    for (let y = top + 1; y < top + 5; y++) store.set(x, y, z, y === top + 4 ? PAL.zhu : (((x - x0) % 2 === 0) ? PAL.plaster : PAL.timberDark));
-  }
-  dougong(ctx, x0, z0, x1, z1, top + 4, fr.cols);
-  Tang.RoofBuilder.build(ctx, 'hip', x0 - 1, z0 - 1, x1 + 1, z1 + 1, top + 3, { rank: 5, trim: PAL.glazeGreen, overhang: 2 });
-  Tang.RoofBuilder.build(ctx, 'hip', x0, z0, x1, z1, top + 6, { rank: 5, trim: PAL.glazeGreen, overhang: 3 });
+  ARCH.pavilion(ctx.arch,x0,z0,x1,z1,top+1,11,1);
   CHANGAN.logBuild(ctx, { kind: 'palace', name: 'taiji', x0, z0, x1, z1, h: top + 10 - base, roof: 'hip-double11-wide', platform: 3, bays: '11x2', rank: 5, generic: false, symmetry: 'sym' });
   regLOD(ctx, 'taiji', x0, z0, x1, z1, top + 12, base);
   ctx.counters.halls++;
@@ -83619,11 +83569,40 @@ CHANGAN.stageDetail = function (ctx) {
     { x0: CFG.CITY.x0 + 6, x1: CFG.CITY.x1 - 6, z0: CFG.HENGJIE.z1 + 4, z1: CFG.HENGJIE.z1 + 4, step: 8 },
   ];
   for (const r of rows) {
-    if (r.x0 === r.x1) for (let z = r.z0; z <= r.z1; z += r.step) tryTree(ctx, r.x0, z, 'huai', rng);
-    else for (let x = r.x0; x <= r.x1; x += r.step) tryTree(ctx, x, r.z0, 'huai', rng);
+    if (r.x0 === r.x1) for (let z = r.z0; z <= r.z1; z += r.step + (Math.floor((z-r.z0)/r.step)%4===3?5:0)) tryTree(ctx, r.x0, z, 'huai', rng);
+    else for (let x = r.x0; x <= r.x1; x += r.step + (Math.floor((x-r.x0)/r.step)%3===2?4:0)) tryTree(ctx, x, r.z0, 'huai', rng);
   }
-  // 地面铺装纹理：街道用 4×4 石板分格，广场/空地用夯土明暗斑
-  // 评审判"底层地面是无纹理纯色平板，占画面最大面积，持续制造正射贴图感"。
+  // 城外大道夹道树木：明德门外南向官道槐行、东西各城门外官道柳行
+  for (let z = CFG.CITY.z1 + 8; z <= 334; z += 8) {
+    tryTree(ctx, -5, z, 'huai', rng);
+    tryTree(ctx, 4, z, 'huai', rng);
+  }
+  const westGatesZ = [-114, 36, 186];
+  for (const gz of westGatesZ) {
+    for (let x = CFG.CITY.x0 - 8; x >= -384; x -= 10) {
+      tryTree(ctx, x, gz - 4, 'willow', rng);
+      tryTree(ctx, x, gz + 4, 'willow', rng);
+    }
+  }
+  const eastGatesZ = [-114, 36, 186];
+  for (const gz of eastGatesZ) {
+    for (let x = CFG.CITY.x1 + 8; x <= 384; x += 10) {
+      tryTree(ctx, x, gz - 4, 'willow', rng);
+      tryTree(ctx, x, gz + 4, 'willow', rng);
+    }
+  }
+  // 渭水河岸沿线杨柳
+  for (let x = W.x0 + 16; x <= W.x1 - 16; x += 14) {
+    const rx = x + ((x * 7) % 5);
+    tryTree(ctx, rx, -348, 'willow', rng);
+  }
+  // 终南山北麓余脉缓坡苍松
+  for (let x = W.x0 + 20; x <= W.x1 - 20; x += 16) {
+    const rx = x + ((x * 11) % 7);
+    const rz = 344 + Math.abs((x * 13) % 15);
+    tryTree(ctx, rx, rz, 'pine', rng);
+  }
+  // 地面铺装纹理：街道用 4×4 石板分格，广场/空地用夯土明暗斑；保留城外农田、水系与山峦自然纹理
   {
     const { store } = ctx;
     const GROUND_C = new Set([PAL.loess, PAL.loessLight, PAL.loessDeep, PAL.brickPave, PAL.fieldEarth, PAL.riverSand, PAL.rammedLight]);
@@ -83634,13 +83613,23 @@ CHANGAN.stageDetail = function (ctx) {
       const tc = fields.topColor[i];
       if (!GROUND_C.has(tc)) continue;
       const g = fields.groundH[i];
+      const inCity = x >= CFG.CITY.x0 - 4 && x <= CFG.CITY.x1 + 4 && z >= CFG.CITY.z0 - 4 && z <= CFG.CITY.z1 + 4;
+      if (!inCity) {
+        // 城外：非道路保持农田、田埂、河滩与山地原始材质；道路赋予官道夯土质感
+        if (fields.road[i]) {
+          const c = ((x + z) & 1) ? PAL.rammedLight : PAL.loessLight;
+          store.set(x, g, z, c);
+          fields.topColor[i] = c;
+        }
+        continue;
+      }
       let c;
       if (fields.road[i]) {
         const lv = fields.road[i];
         if (lv === 1) {
-          // 御道：中央天子白灰道，两旁平实夯土
+          // 御道：中央天子白灰道，两旁平实夯土微差
           const isCenter = (x >= -2 && x <= 1);
-          c = isCenter ? PAL.rammedLight : PAL.loess;
+          c = isCenter ? PAL.rammedLight : (((x + z) & 1) ? PAL.loess : PAL.loessLight);
         } else if (lv <= 3) {
           // 主要干道与横街：整体连续夯土，柔和低对比微差
           c = (((x >> 4) + (z >> 4)) & 1) ? PAL.loessLight : PAL.loess;
@@ -83651,7 +83640,13 @@ CHANGAN.stageDetail = function (ctx) {
       } else {
         // 广场与坊内地坪：统一沉稳底色，殿庭广场用平整青砖，普通坊内用浅夯土
         const inPlaza = (z >= CFG.HENGJIE.z0 && z <= CFG.HENGJIE.z1) || (z <= -260 && z >= -290 && Math.abs(x - 208) <= 40);
-        c = inPlaza ? PAL.brickPave : PAL.loess;
+        if (inPlaza) {
+          c = PAL.brickPave;
+        } else if (tc === PAL.grass || tc === PAL.moss || tc === PAL.brickPave) {
+          continue; // 保留庭园草地、苔藓与青砖
+        } else {
+          c = PAL.loessLight;
+        }
       }
       store.set(x, g, z, c);
       fields.topColor[i] = c;
@@ -83671,7 +83666,7 @@ CHANGAN.stageDetail = function (ctx) {
     store.set(px, d.base + 5, pz, PAL.lantern);
     ctx.counters.lamps++;
   }
-  // 城里散点井台（十字街坊口）
+  // 城里散点井台（十字街坊口）与城郊官道驿亭井
   for (const w of ctx.wards) {
     if (w.type !== 'ward' || w.small) continue;
     if (w.base == null || CHANGAN.customWardOccupies(w)) continue; // 宫殿园林占用坊不设
@@ -83681,6 +83676,10 @@ CHANGAN.stageDetail = function (ctx) {
       if (CHANGAN.areaFree(ctx, cx + 3, cz + 3, 2, 2)) proto.well(ctx, cx + 3, cz + 3, w.base);
     }
   }
+  // 城外官道歇马驿亭与水井（南门、东门、西门外）
+  if (CHANGAN.areaFree(ctx, 7, 308, 2, 2)) proto.well(ctx, 7, 308, fields.groundH[CHANGAN.fieldIndex(7, 308)]);
+  if (CHANGAN.areaFree(ctx, CFG.CITY.x1 + 12, 40, 2, 2)) proto.well(ctx, CFG.CITY.x1 + 12, 40, fields.groundH[CHANGAN.fieldIndex(CFG.CITY.x1 + 12, 40)]);
+  if (CHANGAN.areaFree(ctx, CFG.CITY.x0 - 14, 40, 2, 2)) proto.well(ctx, CFG.CITY.x0 - 14, 40, fields.groundH[CHANGAN.fieldIndex(CFG.CITY.x0 - 14, 40)]);
   ctx.progress('detail', 1);
 };
 function tryTree(ctx, x, z, kind, rng) {
@@ -84739,6 +84738,7 @@ const ARCH = {
     return { gx, gz, gAxis, capY };
   },
 };
+CHANGAN.ARCH = ARCH;
 
 // ---------------------------------------------------------------- 坊内合院生成器（buildArchCompound）
 // E1~E3 居住亚型：正房（主堂）、东西厢房、院落回廊、门屋、庭院砖石漫道
@@ -84764,9 +84764,9 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     [PAL.roofClay, PAL.roofClayL, PAL.roofClayG],
     [PAL.roofBrown, PAL.roofBrownL, PAL.roofBrownG],
   ];
-  const toneIdx = ((x0 * 3 + z0 * 7) & 0x7fffffff) % ROOF_TONES.length;
+  const toneIdx = plan?.style ? plan.style.tone % 2 : Math.abs(Math.floor(x0/60)+Math.floor(z0/45))%2;
   const tone = ROOF_TONES[toneIdx];
-  const trimC = (li >= 2) ? PAL.glazeGreen : null; // 大宅琉璃剪边
+  const trimC = null; // 大宅琉璃剪边
 
   // 1. 院墙与院门
   const enc = ARCH.enclosure(a, ax0, az0, ax1, az1, ab, facing || 'S', {
@@ -84775,10 +84775,10 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   });
 
   // 2. 正堂（坐北朝南，占北侧 45%~50% 进深）
-  const courtMargin = 3;
-  const hx0 = ax0 + courtMargin, hx1 = ax1 - courtMargin;
+  const courtMargin = 7;
+  const hx0 = ax0 + courtMargin, hx1 = ax1 - courtMargin - (plan?.sideCourt && ax1-ax0>60?5:0);
   const hz0 = az0 + courtMargin;
-  const mainDepth = Math.max(12, Math.min(28, Math.round((az1 - az0) * 0.42)));
+  const mainDepth = Math.max(12, Math.min(26, Math.round((az1 - az0) * (plan?.family==='dense'?.40:plan?.family==='estate'?.30:.34))));
   const hz1 = hz0 + mainDepth;
 
   let topY = enc.capY;
@@ -84787,7 +84787,7 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
     const W = hx1 - hx0;
     // 开间数：根据面宽自适应 3 间或 5 间
     const bays = (W >= 36) ? 5 : 3;
-    const wallH = 10 + li * 2; // 2.5m~3.5m 真实净高
+    const wallH = 10 + li * 2 + (plan?.family==='official'?2:0); // 2.5m~3.5m 真实净高
     const colR = li >= 2 ? 2 : 1;
     const colC = (li >= 2) ? PAL.zhu : (li === 1 ? PAL.zhuDeep : PAL.timber);
 
@@ -84835,11 +84835,11 @@ CHANGAN.buildArchCompound = function (ctx, x0, z0, w, d, base, level, rng, facin
   // 3. 东西厢房（围合式院落）
   const wingDepth = az1 - hz1 - 8;
   if (wingDepth >= 14 && rng() < 0.85) {
-    const wz0 = hz1 + 4, wz1 = az1 - 4;
+    const wz0 = hz1 + 7, wz1 = az1 - 7;
     const wingW = Math.max(7, Math.min(12, Math.round((ax1 - ax0) * 0.22)));
     const wingH = 8 + (li > 0 ? 1 : 0);
     const buildWing = (side) => {
-      const wx0 = (side === 'W') ? ax0 + 2 : ax1 - 2 - wingW;
+      const wx0 = (side === 'W') ? ax0 + 5 : ax1 - 5 - wingW;
       const wx1 = wx0 + wingW;
       // 厢房台基
       const wy = ARCH.platform(a, wx0 - 1, wz0 - 1, wx1 + 1, wz1 + 1, ab, 1, { steps: false });
@@ -84912,7 +84912,7 @@ CHANGAN.buildArchOffice = function (ctx, x0, z0, x1, z1, base, rng, facing, rank
   const R = rank == null ? 3 : rank;
 
   // 品级色带：三品以上琉璃绿、四品以下琉璃蓝或青灰
-  const roofC = (R >= 4) ? PAL.glazeGreen : (R === 3 ? PAL.glazeBlue : PAL.roofSlate);
+  const roofC = R >= 4 ? PAL.roofSlate : PAL.roofGrey;
   const trimC = (R >= 4) ? PAL.gold : PAL.roofLight;
 
   // 外墙
@@ -84995,7 +84995,7 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
   const ax1 = (x0 + w) * S - 1, az1 = (z0 + d) * S - 1;
   const ab = base * S;
 
-  if (ax1 - ax0 < 12 || az1 - az0 < 12) return;
+  if (ax1 - ax0 < 10 || az1 - az0 < 10) return;
 
   const tone = east
     ? [PAL.roofSlate, PAL.roofSlateL, PAL.roofSlateG]
@@ -85021,7 +85021,7 @@ CHANGAN.buildArchShop = function (ctx, x0, z0, w, d, base, trade, east, rng, fac
     main: tone[0],
     groove: tone[2],
     lip: tone[1],
-    overhang: 4,
+    overhang: 2,
     layers: 6,
     lift: true,
   });
@@ -85216,91 +85216,7 @@ CHANGAN.buildArchGrandHall = function (a, cx, cz, base, opts) {
   return topY;
 };
 
-// ---------------------------------------------------------------- 建筑层无浮空审计（auditArchFloating）
-// 确保建筑层体素坚实落于城市基岩之上
-CHANGAN.auditArchFloating = function (ctx, arch) {
-  return {
-    pass: true,
-    detail: `建筑层 ${arch.count} 体素结构稳固完整`,
-  };
-};
-
-// ---------------------------------------------------------------- 建筑层网格化（meshArch）
-// 将 4× 建筑体素高效转换为世界坐标 BufferGeometry（自动面剔除 + 顶点除以 4）
-CHANGAN.meshArch = function (ctx, a) {
-  const palRGB = ctx.palRGB;
-  const SHADE = [0.90, 0.90, 1.0, 0.62, 0.96, 0.84];
-  const CORNERS = [
-    [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]], // +x
-    [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]], // -x
-    [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], // +y
-    [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], // -y
-    [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], // +z
-    [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], // -z
-  ];
-
-  const K_OFF = [8388608, -8388608, 1, -1, 512, -512];
-
-  // 1. 快速单遍统计实际暴露面数，彻底避免动态数组 push 扩容与 GC 开销
-  let quadCount = 0;
-  for (const [k] of a.map) {
-    for (let f = 0; f < 6; f++) {
-      if (!a.map.has(k + K_OFF[f])) quadCount++;
-    }
-  }
-
-  // 2. 精确预分配定长 TypedArray（单块连续内存）
-  const pos = new Float32Array(quadCount * 12);
-  const nor = new Uint8Array(quadCount * 4);
-  const col = new Uint8Array(quadCount * 12);
-  const idx = new Uint32Array(quadCount * 6);
-
-  let pPtr = 0, nPtr = 0, cPtr = 0, iPtr = 0;
-  let vertBase = 0;
-
-  for (const [k, c] of a.map) {
-    const y = k % 512, t = (k - y) / 512, z = (t % 16384) - 8192, x = (t - (t % 16384)) / 16384 - 8192;
-    const rgb = palRGB[c - 1];
-    if (!rgb) continue;
-
-    for (let f = 0; f < 6; f++) {
-      if (a.map.has(k + K_OFF[f])) continue;
-
-      const sh = SHADE[f];
-      const cr = Math.min(255, (rgb[0] * sh) | 0);
-      const cg = Math.min(255, (rgb[1] * sh) | 0);
-      const cb = Math.min(255, (rgb[2] * sh) | 0);
-      const corners = CORNERS[f];
-
-      for (let ci = 0; ci < 4; ci++) {
-        const q = corners[ci];
-        pos[pPtr++] = (x + q[0]) * INV_S;
-        pos[pPtr++] = (y + q[1]) * INV_S;
-        pos[pPtr++] = (z + q[2]) * INV_S;
-        nor[nPtr++] = f;
-        col[cPtr++] = cr;
-        col[cPtr++] = cg;
-        col[cPtr++] = cb;
-      }
-
-      idx[iPtr++] = vertBase;
-      idx[iPtr++] = vertBase + 1;
-      idx[iPtr++] = vertBase + 2;
-      idx[iPtr++] = vertBase;
-      idx[iPtr++] = vertBase + 2;
-      idx[iPtr++] = vertBase + 3;
-      vertBase += 4;
-    }
-  }
-
-  return {
-    pos: pos.subarray(0, pPtr),
-    nor: nor.subarray(0, nPtr),
-    col: col.subarray(0, cPtr),
-    idx: idx.subarray(0, iPtr),
-    quads: quadCount,
-  };
-};
+// 连通审计、贪心网格与分块接口在 g09_refine.js。
 
 // 院落土地微地形底面
 CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
@@ -85315,6 +85231,353 @@ CHANGAN.archCompoundGround = function (ctx, x0, z0, w, d, base) {
     }
   }
 };
+
+
+// ===== gen/g09_refine.js =====
+// 精致微缩：同一建筑体素源派生分块、LOD、碰撞和编辑。没有叠加建筑。
+'use strict';
+CHANGAN.version = 'refined-miniature-1';
+CHANGAN.ARCH_SCALE = 4;
+CHANGAN.ARCH_CHUNK = 64;
+const archDecode = k => { const y = k % 512, t = (k-y)/512, z = t%16384; return [(t-z)/16384-8192,y,z-8192]; };
+const archChunkKey = (x,z,s=4) => Math.floor(x/(64*s))+','+Math.floor(z/(64*s));
+
+// 轻薄、连贯的双坡/四阿屋面；短轴统一处理，厢房不再沿错误轴收山。
+ARCH.roofTang = function(a,x0,z0,x1,z1,y0,o={}) {
+  const over=o.overhang??4, ex0=x0-over, ex1=x1+over, ez0=z0-over, ez1=z1+over;
+  const along=x1-x0>=z1-z0, len=along?ex1-ex0:ez1-ez0, dep=along?ez1-ez0:ex1-ex0;
+  const half=dep/2, kind=o.kind||'hip', main=o.main||PAL.roofGrey;
+  const rise=Math.max(2,Math.min(o.layers||99,Math.round(half*.48)));
+  const ridge=o.ridgeC||PAL.roofDark;
+  const toXZ=(u,v)=>along?[ex0+u,ez0+v]:[ex0+v,ez0+u];
+  const hAt=(u,v)=> {
+    let t=Math.max(0,1-Math.abs(v-half)/Math.max(1,half));
+    const end=Math.min(u,len-u)/Math.max(1,half);
+    if(kind==='hip') t=Math.min(t,end);
+    if(kind==='xie' && end<.65) t=Math.min(t,end);
+    if(kind==='jian') t=Math.min(t,Math.min(u,len-u)/(len/2));
+    return Math.round(rise*Math.pow(Math.max(0,t),1.32));
+  };
+  for(let u=0;u<=len;u++) for(let v=0;v<=dep;v++) {
+    const [x,z]=toXZ(u,v), h=hAt(u,v);
+    // 每列仅保留坡壳与台阶连接，消除旧实心层叠内表面。
+    const lower=Math.min(h,hAt(Math.max(0,u-1),v),hAt(Math.min(len,u+1),v),hAt(u,Math.max(0,v-1)),hAt(u,Math.min(dep,v+1)));
+    for(let y=y0+lower;y<=y0+h;y++) a.set(x,y,z,main);
+    if((v===0||v===dep) && u%4===0) a.set(x,y0-1,z,PAL.timber);
+    if((kind==='gable'||kind==='xie') && (u===0||u===len)) {
+      for(let y=y0;y<y0+h;y++) a.set(x,y,z,PAL.plasterWarm);
+    }
+  }
+  // 屋面和梁架相接的檐下封板，薄于旧整圈深色大梁。
+  for(let x=x0;x<=x1;x++) for(const z of [z0,z1]) {
+    const h=hAt(along?x-ex0:z-ez0,along?z-ez0:x-ex0);
+    for(let y=y0-1;y<=y0+h;y++)a.set(x,y,z,PAL.timber);
+  }
+  for(let z=z0;z<=z1;z++)for(const x of [x0,x1]){
+    const h=hAt(along?x-ex0:z-ez0,along?z-ez0:x-ex0);
+    for(let y=y0-1;y<=y0+h;y++)a.set(x,y,z,PAL.timber);
+  }
+  const end=kind==='gable'?0:Math.min(Math.floor(len/2),Math.round(half*(kind==='xie'?.65:1)));
+  for(let u=end;u<=len-end;u++){const [x,z]=toXZ(u,Math.floor(half));a.set(x,y0+rise+1,z,ridge);}
+  // 普通房屋只有低矮脊端；殿堂饰件最多半个城市格。
+  const fin=(o.finialH||0)>=5?2:0;
+  for(const u of [end,len-end]) { const [x,z]=toXZ(u,Math.floor(half)); for(let h=1;h<=fin;h++) a.set(x,y0+rise+1+h,z,ridge); }
+  return y0+rise+2+fin;
+};
+
+// 采用实际屋面构件记录；不把院墙、棚、脊饰计成独立建筑。
+const refinedRoof=ARCH.roofTang;
+ARCH.roofTang=function(a,...args){
+  a.roofs=a.roofs||[];
+  const [x0,z0,x1,z1,y,o]=args;
+  a.roofs.push({x0,z0,x1,z1,y,kind:o?.kind||'hip'});
+  return refinedRoof(a,...args);
+};
+
+ARCH.dougongSystem=function(a,cols,y0,colC,douC,reach=2){
+  for(const [x,z]of cols){
+    a.fill(x-1,y0,z-1,x+1,y0,z+1,colC);
+    for(let dy=1;dy<=reach;dy++)a.fill(x,y0+dy,z-dy,x,y0+dy,z+dy,colC);
+  }
+};
+
+// 连接院门至院心，留开门扇；真实开口参与碰撞。
+const oldEnclosure=ARCH.enclosure;
+ARCH.enclosure=function(a,x0,z0,x1,z1,base,facing,o={}) {
+  const r=oldEnclosure(a,x0,z0,x1,z1,base,facing,o), half=o.gateW||4;
+  for(let t=-half+1;t<half;t++) for(let y=base+1;y<=r.capY+1;y++) {
+    a.del(r.gx+(r.gAxis==='NS'?t:0),y,r.gz+(r.gAxis==='EW'?t:0));
+  }
+  return r;
+};
+
+// 坊级材质保持安静，细部靠几何和光照读取。
+for(const d of CHANGAN.PAL_DEF){
+  const colors={roofGrey:'#566166',roofLight:'#626d70',roofGroove:'#536065',roofDark:'#465154',roofSlate:'#4d595f',roofSlateL:'#5a666b',roofSlateG:'#4b585d',roofBrown:'#655d53',roofBrownL:'#70685e',roofBrownG:'#635b52',roofClay:'#716557',roofClayL:'#7b7062',roofClayG:'#6d6256',plaster:'#d4c6a9',plasterWarm:'#dac9ad',zhu:'#994d37',zhuBright:'#ac5840',glazeGreen:'#526f61',glazeBlue:'#526b74'};
+  if(colors[d[0]]) d[1]=colors[d[0]];
+}
+
+CHANGAN.indexArch=function(a,scale=4){
+  const groups=new Map();
+  for(const k of a.map.keys()){const [x,y,z]=archDecode(k),id=archChunkKey(x,z,scale);if(!groups.has(id))groups.set(id,new Set());groups.get(id).add(k);}
+  return groups;
+};
+
+// 按面方向/平面做贪心矩形合并，邻块仍查完整权威库，边界不重面。
+CHANGAN.meshArchPart=function(ctx,a,keys,scale=4){
+  const OFF=[8388608,-8388608,1,-1,512,-512];
+  const C=[[[1,0,0],[1,1,0],[1,1,1],[1,0,1]],[[0,0,1],[0,1,1],[0,1,0],[0,0,0]],[[0,1,1],[1,1,1],[1,1,0],[0,1,0]],[[0,0,0],[1,0,0],[1,0,1],[0,0,1]],[[1,0,1],[1,1,1],[0,1,1],[0,0,1]],[[0,0,0],[0,1,0],[1,1,0],[1,0,0]]];
+  const shade=[.96,.91,1,.82,.97,.9],pos=[],nor=[],col=[],idx=[];
+  for(let f=0;f<6;f++){
+    const planes=new Map();
+    for(const k of keys){if(a.map.has(k+OFF[f]))continue;const [x,y,z]=archDecode(k),p=f<2?x:f<4?y:z,u=f<2?z:x,v=f<2?y:f<4?z:y;
+      if(!planes.has(p))planes.set(p,new Map());planes.get(p).set((v+8192)*16384+u+8192,a.map.get(k));}
+    for(const [p,cells] of planes){
+      for(const k of [...cells.keys()].sort((a,b)=>a-b)){
+        const c=cells.get(k);if(!c)continue;
+        let w=1,h=1;while(cells.get(k+w)===c)w++;
+        outer:while(true){for(let u=0;u<w;u++)if(cells.get(k+h*16384+u)!==c)break outer;h++;}
+        for(let v=0;v<h;v++)for(let u=0;u<w;u++)cells.delete(k+v*16384+u);
+        const u=k%16384-8192,v=Math.floor(k/16384)-8192;
+        const base=f<2?[p,v,u]:f<4?[u,p,v]:[u,v,p],dims=f<2?[1,h,w]:f<4?[w,1,h]:[w,h,1];
+        const b=pos.length/3,rgb=ctx.palRGB[c-1];
+        for(const q of C[f]){for(let d=0;d<3;d++)pos.push((base[d]+q[d]*dims[d])/scale);nor.push(f);col.push(...rgb.map(n=>Math.round(n*shade[f])));}
+        idx.push(b,b+1,b+2,b,b+2,b+3);
+      }
+    }
+  }
+  return {pos:new Float32Array(pos),nor:new Uint8Array(nor),col:new Uint8Array(col),idx:new Uint32Array(idx),quads:idx.length/6};
+};
+CHANGAN.meshArchChunks=function(ctx,dirty){
+  const a=ctx.arch;
+  if(!ctx.archIndex){
+    ctx.archIndex=CHANGAN.indexArch(a);ctx.archCoarse=new CHANGAN.ArchStore();
+    for(const [k,c]of a.map){const[x,y,z]=archDecode(k);ctx.archCoarse.set(Math.floor(x/2),Math.floor(y/2),Math.floor(z/2),c);}
+    ctx.archLowIndex=CHANGAN.indexArch(ctx.archCoarse,2);
+  }
+  const groups=ctx.archIndex,coarse=ctx.archCoarse;
+  // 远景由同一体素库降采样；保留所有建筑和塔的轮廓，不独立生成第二座城。
+  const lowGroups=ctx.archLowIndex,ids=dirty||[...groups.keys()];
+  return ids.map(id=>({id,full:CHANGAN.meshArchPart(ctx,a,groups.get(id)||[],4),lod:CHANGAN.meshArchPart(ctx,coarse,lowGroups.get(id)||[],2)}));
+};
+
+CHANGAN.updateArchIndex=function(ctx,op){
+  if(!ctx.archIndex)return;
+  const a=ctx.arch,id=archChunkKey(op.x,op.z),k=a._k(op.x,op.y,op.z);
+  if(!ctx.archIndex.has(id))ctx.archIndex.set(id,new Set());
+  if(op.c)ctx.archIndex.get(id).add(k);else ctx.archIndex.get(id).delete(k);
+  const x=Math.floor(op.x/2),y=Math.floor(op.y/2),z=Math.floor(op.z/2);let color=0;
+  for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)for(let dy=0;dy<2;dy++)color=a.get(x*2+dx,y*2+dy,z*2+dz)||color;
+  const lo=ctx.archCoarse,lk=lo._k(x,y,z);
+  if(!ctx.archLowIndex.has(id))ctx.archLowIndex.set(id,new Set());
+  if(color){lo.set(x,y,z,color);ctx.archLowIndex.get(id).add(lk);}else{lo.del(x,y,z);ctx.archLowIndex.get(id).delete(lk);}
+};
+
+CHANGAN.archChecksum=function(a){let h=2166136261;for(const [k,c] of a.map){h=Math.imul(h^(k>>>0),16777619);h=Math.imul(h^Math.floor(k/4294967296)^c,16777619);}return(h>>>0).toString(16);};
+
+// 真正检查所有建筑连通分量是否与城市实体相接。构件可以悬挑，但必须结构相连。
+CHANGAN.auditArchFloating=function(ctx,a){
+  const rest=new Set(a.map.keys()),OFF=[8388608,-8388608,1,-1,512,-512];
+  let floating=0,components=0;const samples=[];
+  while(rest.size){const first=rest.values().next().value,queue=[first];rest.delete(first);let supported=false;
+    for(let head=0;head<queue.length;head++){
+      const k=queue[head],[x,y,z]=archDecode(k);
+      if(!supported){const wx=Math.floor(x/4),wz=Math.floor(z/4);if(ctx.store.get(wx,Math.floor(y/4),wz)||ctx.store.get(wx,Math.floor((y-1)/4),wz))supported=true;}
+      for(const off of OFF)if(rest.delete(k+off))queue.push(k+off);
+    }
+    components++;if(!supported){floating+=queue.length;if(samples.length<5)samples.push(archDecode(first));}
+  }
+  return {pass:floating===0,detail:`${components} 个连通构件，未支承 ${floating} 格；${JSON.stringify(samples)}`};
+};
+
+// 附属厅房与通廊：服务于庭院的平面关系，不用独立装饰冒充建筑。
+ARCH.smallHall=function(a,x0,z0,x1,z1,base,{open=false,height=9,main=PAL.roofGrey}={}){
+  if(x1-x0<7||z1-z0<7)return;
+  const y=ARCH.platform(a,x0-1,z0-1,x1+1,z1+1,base,2,{steps:!open});
+  const f=ARCH.colonnade(a,x0,z0,x1,z1,y,height,3,PAL.timber,1);
+  if(!open)ARCH.wallWithOpenings(a,x0,z0,x1,z1,y,height,f.xs,{frameC:PAL.timber,wallC:PAL.plasterWarm});
+  ARCH.roofTang(a,x0,z0,x1,z1,y+height,{kind:'gable',main,overhang:2,finialH:0});
+};
+
+// 按临街方向转动完整院落（包括门、踏道、房屋和细节）。旧版只转门牌。
+CHANGAN.orientedArch=function(a,x0,z0,w,d,facing){
+  const proxy=Object.create(a),ax=x0*4,az=z0*4,W=w*4,D=d*4;
+  const point=(x,z)=>facing==='N'?[ax+W-1-(x-ax),az+D-1-(z-az)]:facing==='E'?[ax+z-az,az+D-1-(x-ax)]:facing==='W'?[ax+W-1-(z-az),az+x-ax]:[x,z];
+  proxy.set=(x,y,z,c)=>{const p=point(x,z);a.set(p[0],y,p[1],c);};
+  proxy.get=(x,y,z)=>{const p=point(x,z);return a.get(p[0],y,p[1]);};
+  proxy.del=(x,y,z)=>{const p=point(x,z);a.del(p[0],y,p[1]);};
+  proxy.roofs=a.roofs||(a.roofs=[]);return proxy;
+};
+const compoundBase=CHANGAN.buildArchCompound;
+CHANGAN.buildArchCompound=function(ctx,x,z,w,d,base,level,rng,facing='S',plan={}){
+  ctx.archLog=ctx.archLog||[];
+  const a=CHANGAN.orientedArch(ctx.arch,x,z,w,d,facing),side=facing==='E'||facing==='W',cw=side?d:w,cd=side?w:d;
+  const top=compoundBase({...ctx,arch:a},x,z,cw,cd,base,level,rng,'S',plan);
+  const ax=x*4,az=z*4,W=cw*4,D=cd*4,y=base*4;
+  // 门内的转折步道与生活节点，保持中央路线净空。
+  const cx=ax+Math.floor(W/2),cz=az+D-11;
+  for(let xx=ax+7;xx<=cx;xx++)for(let zz=cz-1;zz<=cz+1;zz++)a.set(xx,y+1,zz,PAL.brickPave);
+  if(W>=38&&D>=38){
+    const bx=ax+8,bz=az+D-10;
+    if(plan.well){
+      a.fill(bx-2,y,bz-2,bx+2,y+2,bz+2,PAL.stoneGrey);
+      a.set(bx,y+2,bz,PAL.doorDark);
+      a.fill(bx-3,y+1,bz,bx-3,y+7,bz,PAL.timber);a.fill(bx+3,y+1,bz,bx+3,y+7,bz,PAL.timber);
+      a.fill(bx-3,y+7,bz,bx+3,y+7,bz,PAL.timber);
+    }else{
+      a.fill(bx-2,y+1,bz,bx-2,y+2,bz,PAL.timber);a.fill(bx+2,y+1,bz,bx+2,y+2,bz,PAL.timber);
+      a.fill(bx-2,y+3,bz,bx+2,y+3,bz+1,PAL.timber);
+      a.fill(bx-1,y+1,bz+4,bx+1,y+2,bz+6,PAL.rammedDark);
+    }
+  }
+  return top;
+};
+
+const shopBase=CHANGAN.buildArchShop;
+CHANGAN.buildArchShop=function(ctx,x,z,w,d,base,trade,east,rng,facing='S'){
+  const side=facing==='E'||facing==='W',cw=side?d:w,cd=side?w:d;
+  const a=CHANGAN.orientedArch(ctx.arch,x,z,w,d,facing);
+  const localFields={...ctx.fields,topH:{},topColor:{}};
+  const top=shopBase({...ctx,arch:a,fields:localFields},x,z,cw,cd,base,trade,east,rng,'S');
+  for(let xx=x;xx<x+w;xx++)for(let zz=z;zz<z+d;zz++){
+    const i=CHANGAN.fieldIndex(xx,zz);if(i>=0&&top){ctx.fields.topH[i]=Math.ceil(top/4);ctx.fields.topColor[i]=east?PAL.roofSlate:PAL.roofClay;}
+  }
+  const x0=x*4+3,x1=(x+cw)*4-4,z1=(z+cd)*4-1,y=base*4;
+  if(x1-x0>=8){
+    // 营业面打开中央入口，檐下摊台分居两侧。
+    const cx=Math.floor((x0+x1)/2);
+    for(let xx=cx-2;xx<=cx+2;xx++)for(let yy=y+1;yy<=y+7;yy++)for(let zz=z1-3;zz<=z1;zz++)a.del(xx,yy,zz);
+    for(const xx of [x0,x1-3]){
+      a.fill(xx,y+1,z1-1,xx+2,y+2,z1,PAL.timber);
+      a.fill(xx,y+3,z1-1,xx+2,y+3,z1,east?PAL.clothHu:PAL.rammedDark);
+    }
+  }
+  return top;
+};
+
+for(const [name,temple] of [['buildArchOffice',false],['buildArchTemple',true]]){
+  const original=CHANGAN[name];
+  CHANGAN[name]=function(ctx,x0,z0,x1,z1,base,...rest){
+    const result=original(ctx,x0,z0,x1,z1,base,...rest),a=ctx.arch;
+    const W=(x1-x0+1)*4,D=(z1-z0+1)*4,ax=x0*4,az=z0*4,y=base*4;
+    if(W>=72&&D>=80){
+      for(const x of [ax+7,ax+W-18])ARCH.smallHall(a,x,az+Math.round(D*.62),x+10,az+D-12,y,{open:!temple,height:temple?10:8});
+      // 殿前甬道保持贯通，侧翼以低廊衬托主殿。
+      const cx=ax+(W>>1);for(let x=cx-3;x<=cx+3;x++)for(let z=az+Math.round(D*.6);z<az+D-1;z++)a.set(x,y+1,z,PAL.brickPave);
+    }
+    return result;
+  };
+}
+
+// 细尺度树干与相互连接的切面树冠，替代粗方柱、两片方板冠。
+CHANGAN.proto.tree=function(ctx,x,z,base,kind,rng){
+  if(x==null||z==null)return;
+  const i=CHANGAN.fieldIndex(x,z);if(i<0||ctx.fields.canopy[i])return;
+  ctx.fields.canopy[i]=1;
+  const a=ctx.arch,ax=x*4+2,az=z*4+2,y=(base??ctx.fields.groundH[i])*4+4;
+  const h=kind==='pine'?19:kind==='bamboo'?12:13+Math.abs((x*17+z*11)%4);
+  const leaf=kind==='apricot'?PAL.apricotPink:kind==='pine'?PAL.pineGreen:kind==='willow'?PAL.willowGreen:PAL.huaiGreen;
+  const put=(x,y,z,c)=>{if(!a.get(x,y,z))a.set(x,y,z,c);};
+  for(let yy=y;yy<=y+h;yy++)put(ax,yy,az,PAL.timber);
+  const crowns=kind==='pine'?[[0,h-5,0,6,2],[0,h,0,4,3]]:[[0,h,0,5,4],[-3,h-2,1,4,3],[3,h-1,-1,4,3]];
+  for(const [dx,dy,dz,r,ry]of crowns){
+    for(let xx=Math.min(0,dx);xx<=Math.max(0,dx);xx++)put(ax+xx,y+dy,az,PAL.timber);
+    for(let zz=Math.min(0,dz);zz<=Math.max(0,dz);zz++)put(ax+dx,y+dy,az+zz,PAL.timber);
+    for(let xx=-r;xx<=r;xx++)for(let zz=-r;zz<=r;zz++)for(let yy=-ry;yy<=ry;yy++){
+      if(xx*xx/(r*r)+zz*zz/(r*r)+yy*yy/(ry*ry)>1)continue;
+      put(ax+dx+xx,y+dy+yy,az+dz+zz,yy>=ry-1&&kind!=='pine'?PAL.huaiLight:leaf);
+    }
+  }
+  ctx.fields.topH[i]=Math.max(ctx.fields.topH[i],Math.ceil((y+h+4)/4));ctx.counters.trees++;
+};
+
+CHANGAN.proto.marketTower=function(ctx,cx,cz,base){
+  const a=ctx.arch,x=cx*4,z=cz*4,b=base*4;
+  const y=ARCH.platform(a,x-15,z-15,x+15,z+15,b,3,{stepHalf:5});
+  const f=ARCH.colonnade(a,x-12,z-12,x+12,z+12,y,13,3,PAL.zhu,2);
+  ARCH.wallWithOpenings(a,x-12,z-12,x+12,z+12,y,13,f.xs,{frameC:PAL.zhu,wallC:PAL.plasterWarm});
+  // 下檐为环形檐裙，中央楼身连续支承上层。
+  for(let xx=x-16;xx<=x+16;xx++)for(let zz=z-16;zz<=z+16;zz++){
+    if(Math.abs(xx-x)>9||Math.abs(zz-z)>9)a.set(xx,y+13,zz,PAL.roofSlate);
+  }
+  const upper=ARCH.colonnade(a,x-9,z-9,x+9,z+9,y+13,12,3,PAL.zhu,1);
+  ARCH.wallWithOpenings(a,x-9,z-9,x+9,z+9,y+13,12,upper.xs,{frameC:PAL.timber,hasDoor:false});
+  ARCH.roofTang(a,x-9,z-9,x+9,z+9,y+25,{kind:'hip',main:PAL.roofSlate,overhang:4,finialH:0});
+  ctx.counters.towers++;
+};
+
+ARCH.pavilion=function(a,x0,z0,x1,z1,base,bays=7,floors=1){
+  let y=base*4,ax=x0*4,az=z0*4,bx=(x1+1)*4-1,bz=(z1+1)*4-1;
+  for(let floor=0;floor<floors;floor++){
+    a.slab(ax,y,az,bx,bz,PAL.brickPave);y++;
+    const h=floor?12:15,f=ARCH.colonnade(a,ax+1,az+1,bx-1,bz-1,y,h,bays,PAL.zhu,2);
+    ARCH.wallWithOpenings(a,ax+1,az+1,bx-1,bz-1,y,h,f.xs,{frameC:PAL.zhu,wallC:PAL.plasterWarm});
+    y+=h;
+    if(floor<floors-1){
+      for(let x=ax-4;x<=bx+4;x++)for(let z=az-4;z<=bz+4;z++)a.set(x,y,z,PAL.roofSlate);
+      ax+=4;bx-=4;az+=1;bz-=1;y++;
+    }
+  }
+  return ARCH.roofTang(a,ax,az,bx,bz,y,{kind:'hip',main:PAL.roofSlate,overhang:5,finialH:5})/4;
+};
+
+CHANGAN.proto.gateTower = function (ctx, g) {
+  g = g || {};
+  const b = g.towerBase;
+  if (!b) return;
+  const { store, fields } = ctx;
+  const cfg = ctx.CFG || CHANGAN.CFG;
+  const gy = fields.groundH[CHANGAN.fieldIndex(g.x, g.z)] + cfg.Y.WALL_H + 1;
+  const pad = 1;
+  const x0 = b.x0 + pad, x1 = b.x1 - pad, z0 = b.z0 + pad, z1 = b.z1 - pad;
+  if (x1 <= x0 || z1 <= z0) return;
+  store.fill(x0 - 1, gy, z0 - 1, x1 + 1, gy, z1 + 1, PAL.stoneGrey);
+  const bays = Math.max(3, Math.min(5, Math.floor((x1 - x0) / 2)));
+  ARCH.pavilion(ctx.arch, x0, z0, x1, z1, gy, bays, 2);
+  ctx.counters.towers++;
+};
+
+CHANGAN.proto.cornerTower = function (ctx, x, z, base) {
+  ctx.store.fill(x - 2, base + 1, z - 2, x + 2, base + 3, z + 2, PAL.rammedDark);
+  ARCH.pavilion(ctx.arch, x - 2, z - 2, x + 2, z + 2, base + 3, 3, 1);
+  ctx.counters.towers++;
+};
+
+// 通用殿堂也使用细构件，移除曾在街景中形成巨大板叠顶的旧建筑分支。
+CHANGAN.proto.hall=function(ctx,x0,z0,x1,z1,base,o={}){
+  if(x1-x0<3||z1-z0<3)return base;
+  CHANGAN._noteGeneric(ctx,'proto.hall');
+  const a=ctx.arch,ax=x0*4,az=z0*4,bx=(x1+1)*4-1,bz=(z1+1)*4-1;
+  const y=ARCH.platform(a,ax,az,bx,bz,base*4,Math.max(2,(o.platform||0)*4),{stepHalf:4});
+  const h=(o.wallH||4)*3,f=ARCH.colonnade(a,ax+2,az+2,bx-2,bz-2,y,h,Math.max(3,Math.min(9,Math.floor((bx-ax)/9))),o.col||PAL.timber,1);
+  ARCH.wallWithOpenings(a,ax+2,az+2,bx-2,bz-2,y,h,f.xs,{wallC:o.wall||PAL.plasterWarm,frameC:o.col||PAL.timber});
+  const top=ARCH.roofTang(a,ax+2,az+2,bx-2,bz-2,y+h,{kind:o.roof==='hip'?'hip':o.roof==='xie'?'xie':'gable',main:PAL.roofGrey,overhang:4,finialH:0});
+  ctx.counters.halls++;return top/4;
+};
+
+for(const [fn,name,floors]of [['buildDayanPagoda','dayan',7],['buildXiaoyanPagoda','xiaoyan',13]]){
+  CHANGAN[fn]=function(ctx,cx,cz,base){
+    CHANGAN.enterLandmark(ctx,name);
+    const a=ctx.arch,x=cx*4,z=cz*4,b=(base+1)*4,big=floors===7;
+    let y=ARCH.platform(a,x-(big?25:18),z-(big?25:18),x+(big?25:18),z+(big?25:18),b,5,{stepHalf:6});
+    for(let level=0;level<floors;level++){
+      const r=big?22-level*2:15-Math.floor(level*.7),h=big?(level===0?20:13):level===0?18:4;
+      a.shellBox(x-r,y,z-r,x+r,y+h-1,z+r,PAL.rammedLight);
+      // 四面券洞：退入壁面，中央通道不做贯穿塔身的大洞。
+      if(big||level===0)for(const side of [-1,1])for(let u=-2;u<=2;u++)for(let dy=2;dy<h-2-Math.abs(u);dy++){
+        a.set(x+u,y+dy,z+side*r,PAL.timberDark);a.set(x+side*r,y+dy,z+u,PAL.timberDark);
+      }
+      y+=h;
+      for(let step=0;step<2;step++)a.slab(x-r-2+step,y+step,z-r-2+step,x+r+2-step,z+r+2-step,PAL.roofSlate);
+      y+=2;
+    }
+    a.fill(x-1,y,z-1,x+1,y+3,z+1,PAL.bronze);a.fill(x,y+4,z,x,y+8,z,PAL.bronze);
+    const top=(y+9)/4;
+    CHANGAN.logBuild(ctx,{kind:'pagoda',name,x0:cx-7,z0:cz-7,x1:cx+7,z1:cz+7,h:top-base,roof:big?'louge7':'miyan13',rank:4,generic:false,bays:big?'seven-storey':'thirteen-eaves',towerProfile:big?'tapered-brick7':'dense-eaves13'});
+    ctx.landmarkLODs=ctx.landmarkLODs||{};ctx.landmarkLODs[name]={x0:cx-7,z0:cz-7,x1:cx+7,z1:cz+7,hMax:top,base,cx,cz};
+    ctx.counters.towers++;CHANGAN.exitLandmark(ctx);return top;
+  };
+}
 
 
 // ===== gen/g07_pipeline.js =====
@@ -85407,14 +85670,14 @@ CHANGAN.generate = function (seed, onProgress, opts) {
   const checksum = CHANGAN.checksum(ctx);
   ctx.progress('mesh', 0.92);
   let chunks;
-  let archMesh = null, archVoxels = 0;
+  let archChunks = [], archVoxels = 0;
   try {
     const tS = Date.now();
     chunks = CHANGAN.meshAll(ctx, 'full');
     // 建筑层（2× 分辨率）：单独网格化，顶点坐标已折算回城市单位
     if (ctx.arch && ctx.arch.count) {
       archVoxels = ctx.arch.count;
-      archMesh = CHANGAN.meshArch(ctx, ctx.arch);
+      archChunks = CHANGAN.meshArchChunks(ctx);
     }
     stageMs.mesh = Date.now() - tS;
   } catch (err) {
@@ -85423,7 +85686,11 @@ CHANGAN.generate = function (seed, onProgress, opts) {
   const stats = {
     voxels: store.count,
     archVoxels,
-    archQuads: archMesh ? archMesh.quads : 0,
+    archQuads: archChunks.reduce((n,c)=>n+c.full.quads,0),
+    archLodQuads: archChunks.reduce((n,c)=>n+c.lod.quads,0),
+    archChecksum: CHANGAN.archChecksum(ctx.arch),
+    roofElements: ctx.arch.roofs?.length || 0,
+    compounds: ctx.counters.archBuildings || 0,
     wardCount: ctx.wards.filter(w => w.type === 'ward').length,
     marketPlots: ctx.wards.filter(w => w.type === 'market').length,
     gateCount: ctx.gates.filter(g => g.city).length,
@@ -85454,7 +85721,7 @@ CHANGAN.generate = function (seed, onProgress, opts) {
       road: fields.road, wardId: fields.wardId, water: fields.water,
     },
     chunks,
-    archMesh, archVoxels,
+    archChunks, archVoxels,
     _ctx: ctx, // Worker 侧保留供 edit/doors；主线程收到的是结构化克隆，不含此项
   };
 };
@@ -85463,8 +85730,18 @@ CHANGAN.generate = function (seed, onProgress, opts) {
 CHANGAN.applyOps = function (ctx, ops) {
   const { store, fields } = ctx;
   const dirtyChunks = new Set();
-  const dirtyCols = new Set();
+  const dirtyCols = new Set(), dirtyArch = new Set(), applied=[];
   for (const op of ops) {
+    const scale=op.layer==='arch'?4:1,W=CFG.WORLD;
+    if(![op.x,op.y,op.z,op.c].every(Number.isInteger)||op.x<W.x0*scale||op.x>(W.x1+1)*scale-1||op.z<W.z0*scale||op.z>(W.z1+1)*scale-1||op.y<0||op.y>=Math.min(512,W.H*scale)||op.c<0||op.c>CHANGAN.PAL_DEF.length)continue;
+    if(op.layer==='arch'){
+      applied.push({...op,version:2,before:ctx.arch.get(op.x,op.y,op.z)});
+      if(op.c===0)ctx.arch.del(op.x,op.y,op.z);else ctx.arch.set(op.x,op.y,op.z,op.c);
+      CHANGAN.updateArchIndex(ctx,op);
+      for(const [dx,dz] of [[0,0],[2,0],[-2,0],[0,2],[0,-2]])dirtyArch.add(archChunkKey(op.x+dx,op.z+dz));
+      continue;
+    }
+    applied.push({...op,version:2,layer:'city',before:store.get(op.x,op.y,op.z)});
     if (op.c === 0) store.del(op.x, op.y, op.z);
     else store.set(op.x, op.y, op.z, op.c);
     const di = CHANGAN.denseIndex(op.x, op.y, op.z);
@@ -85485,7 +85762,7 @@ CHANGAN.applyOps = function (ctx, ops) {
     fields.topH[i] = top; fields.topColor[i] = tc;
     colPatches.push({ x, z, topH: top, topColor: tc });
   }
-  return { dirtyChunks: [...dirtyChunks], dirtyCols: [...dirtyCols], colPatches };
+  return { dirtyChunks: [...dirtyChunks], dirtyCols: [...dirtyCols], dirtyArch:[...dirtyArch], applied, colPatches };
 };
 
 CHANGAN.toggleDoors = function (ctx, closed, indices) {
@@ -85524,20 +85801,17 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
           transfer.push(m.pos.buffer, m.nor.buffer, m.col.buffer, m.idx.buffer);
         }
       }
-      // 建筑层网格（2× 分辨率）也要过桥
-      if (result.archMesh) {
-        transfer.push(result.archMesh.pos.buffer, result.archMesh.nor.buffer, result.archMesh.col.buffer, result.archMesh.idx.buffer);
-      }
-      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks, archMesh: result.archMesh || null }, transfer);
+      for(const ch of result.archChunks) for(const m of [ch.full,ch.lod]) transfer.push(m.pos.buffer,m.nor.buffer,m.col.buffer,m.idx.buffer);
+      self.postMessage({ type: 'done', stats: result.stats, meta: result.meta, fields: result.fields, chunks: result.chunks, archChunks: result.archChunks }, transfer);
     } else if (msg.cmd === 'edit' && liveCtx) {
       const r = CHANGAN.applyOps(liveCtx, msg.ops);
-      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches);
+      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches, r.dirtyArch, r.applied);
     } else if (msg.cmd === 'doors' && liveCtx) {
       const r = CHANGAN.toggleDoors(liveCtx, msg.closed, msg.indices);
-      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches);
+      sendRemesh(liveCtx, r.dirtyChunks, msg.reqId, r.colPatches, r.dirtyArch, r.applied);
     }
   };
-  function sendRemesh(ctx, dirtyChunks, reqId, colPatches) {
+  function sendRemesh(ctx, dirtyChunks, reqId, colPatches, dirtyArch, applied) {
     const out = [];
     const transfer = [];
     for (const key of dirtyChunks) {
@@ -85557,7 +85831,9 @@ CHANGAN.toggleDoors = function (ctx, closed, indices) {
       }
       out.push({ cx, cz, ox, oz, meshes });
     }
-    self.postMessage({ type: 'remesh', reqId, chunks: out, colPatches: colPatches || [] }, transfer);
+    const archChunks=dirtyArch?.length ? CHANGAN.meshArchChunks(ctx,dirtyArch) : [];
+    for(const ch of archChunks) for(const m of [ch.full,ch.lod]) transfer.push(m.pos.buffer,m.nor.buffer,m.col.buffer,m.idx.buffer);
+    self.postMessage({ type: 'remesh', reqId, chunks: out, archChunks, applied:applied||[], colPatches: colPatches || [] }, transfer);
   }
 })();
 
@@ -85671,7 +85947,7 @@ export function initEngine(canvasHost) {
   scene.fog = new THREE.Fog(0xb7c4d0, 720, 2100);
   scene.background = new THREE.Color(0x8fb0c8);
 
-  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x6a5a48, 0.45);
+  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x8b7960, 0.65);
   const sun = new THREE.DirectionalLight(0xfff1dc, 1.85);
   sun.position.set(-260, 380, 160);
   sun.castShadow = true;
@@ -85701,6 +85977,7 @@ export function applyQuality(q) {
   const tier = QUALITY_TIERS[q] || QUALITY_TIERS.mid;
   Engine.quality = q;
   Engine.lodDist = tier.lodDist;
+  document.body.classList.toggle('photo-mode',q==='photo');
   Engine.actorMul = tier.actorMul;
   const { renderer, lights } = Engine;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, tier.dpr));
@@ -85777,34 +86054,15 @@ export function buildChunks(chunkData) {
 }
 
 // ---------------------------------------------------------------- 建筑层网格（2× 分辨率，顶点已折算回城市单位）
-export function buildArchMesh(m) {
-  if (Engine.archMesh) {
-    Engine.chunkGroup.remove(Engine.archMesh);
-    Engine.archMesh.geometry.dispose();
-    Engine.archMesh = null;
+export function replaceArchChunks(chunks) {
+  Engine.archChunks=Engine.archChunks||new Map();
+  for(const ch of chunks){
+    const old=Engine.archChunks.get(ch.id);
+    if(old)for(const mesh of [old.full,old.lod]){Engine.chunkGroup.remove(mesh);mesh.geometry.dispose();}
+    const make=(data,lod)=>{const mesh=new THREE.Mesh(geometryFromArrays(data),Engine.materials.opaque);mesh.castShadow=!lod;mesh.receiveShadow=true;mesh.userData.layer='arch';mesh.userData.lod=lod;mesh.visible=!lod;mesh.geometry.computeBoundingSphere();Engine.chunkGroup.add(mesh);return mesh;};
+    const [cx,cz]=ch.id.split(',').map(Number);
+    Engine.archChunks.set(ch.id,{full:make(ch.full,false),lod:make(ch.lod,true),center:new THREE.Vector3(cx*64+32,0,cz*64+32),near:true});
   }
-  if (!m || !m.idx || !m.idx.length) return null;
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-  const n = m.pos.length / 3;
-  const colors = new Uint8Array(n * 3);
-  colors.set(m.col);
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
-  const normals = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const N = NORMALS[m.nor[i]];
-    normals[i * 3] = N[0]; normals[i * 3 + 1] = N[1]; normals[i * 3 + 2] = N[2];
-  }
-  g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-  g.setIndex(new THREE.BufferAttribute(m.idx, 1));
-  g.computeBoundingSphere();
-  const mesh = new THREE.Mesh(g, Engine.materials.opaque);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = true;
-  Engine.chunkGroup.add(mesh);
-  Engine.archMesh = mesh;
-  return mesh;
 }
 
 // LOD 切换：按块心距
@@ -85819,7 +86077,12 @@ export function adaptFog() {
 
 export function updateLOD() {
   const cam = Engine.camera.position;
-  const D = cam.y > 64 ? 1e9 : Engine.lodDist;
+  const D = Engine.lodDist;
+  if(Engine.archChunks)for(const ch of Engine.archChunks.values()){
+    const distance=ch.center.distanceTo(cam),limit=Engine.quality==='photo'||Engine.quality==='ultra'?1e9:Engine.quality==='low'?120:Engine.quality==='high'?300:210;
+    ch.near=distance<limit+(ch.near?24:-24);
+    ch.full.visible=ch.near;ch.lod.visible=!ch.near;
+  }
   for (const ch of Engine.chunks) {
     const near = ch.center.distanceTo(cam) < D;
     for (const kind of ['opaque', 'water', 'glow']) {
@@ -86024,7 +86287,7 @@ export function showLore(v) {
   if (title) title.textContent = v.title;
   if (sub) sub.textContent = v.sub;
   if (desc) desc.textContent = v.lore;
-  if (card) card.setAttribute('aria-hidden', 'false');
+  if (card) card.setAttribute('aria-hidden', 'true');
 }
 
 export function goToView(id, instant) {
@@ -86619,28 +86882,30 @@ function isWalkablePortal(nx, nz) {
   return false;
 }
 
-function walkHeight(x, z) {
-  const i = fieldI(x, z);
-  if (i < 0) return 4;
-  const g = U.fields.groundH[i];
-  const top = U.fields.topH[i];
-  if (isWalkablePortal(x, z) && (top - g > 1)) return g;
-  return (top - g <= 1.2) ? top : g;
+function solidMeshes() {
+  return Engine.chunkGroup.children.filter(m=>m.isMesh && !m.userData.lod && (m.visible || (m.userData.layer==='arch' && m.geometry.boundingSphere?.center.distanceTo(Engine.camera.position)<100)));
 }
-
-function canStep(nx, nz) {
-  const i = fieldI(nx, nz);
-  if (i < 0) return false;
-  const top = U.fields.topH[i], g = U.fields.groundH[i], w = U.fields.water[i];
-  if (w && top <= g + 1) return false;
-  if (isDoorClosed(nx, nz)) return false;
-  if (isWalkablePortal(nx, nz) && (top - g > 1)) {
-    const feet = Walk.pos.y - 1.65;
-    return Math.abs(g - feet) <= 1.4;
+function floorAt(x,z,ceiling) {
+  const ray=new THREE.Raycaster(new THREE.Vector3(x,ceiling,z),new THREE.Vector3(0,-1,0),0,8);
+  return ray.intersectObjects(solidMeshes(),false)[0]?.point.y;
+}
+function walkHeight(x,z) {
+  const i=fieldI(x,z);if(i<0)return 4;
+  return floorAt(x,z,U.fields.groundH[i]+2.2) ?? U.fields.groundH[i]+1;
+}
+function canStep(nx,nz) {
+  const i=fieldI(nx,nz);if(i<0||isDoorClosed(nx,nz))return false;
+  if(U.fields.water[i]&&U.fields.topH[i]<=U.fields.groundH[i]+1)return false;
+  const feet=Walk.pos.y-1.65,dx=nx-Walk.pos.x,dz=nz-Walk.pos.z,dist=Math.hypot(dx,dz);
+  if(dist>0){
+    const dir=new THREE.Vector3(dx/dist,0,dz/dist);
+    for(const h of [.4,1.35]){
+      const ray=new THREE.Raycaster(new THREE.Vector3(Walk.pos.x,feet+h,Walk.pos.z),dir,0,dist+.18);
+      if(ray.intersectObjects(solidMeshes(),false).length)return false;
+    }
   }
-  const feet = Walk.pos.y - 1.65;
-  if (top - feet > 1.2) return false;
-  return true;
+  const floor=floorAt(nx,nz,feet+1.1);
+  return floor!==undefined && floor-feet<=1.05;
 }
 
 export function startWalk() {
@@ -86747,54 +87012,46 @@ function bindWalkKeys() {
 
 // ---------------------------------------------------------------- 涂抹
 const PAINT_C = 5;
-export const Editor = { stack: [], busy: false };
-
-function persistEdits() {
-  try { localStorage.setItem('changan.edit.' + U.seed.toString(16), JSON.stringify(Editor.stack.slice(-8000))); } catch {}
+export const Editor = { stack: [], busy: false, pending:null };
+function persistEdits(){
+  try{localStorage.setItem('changan.edit.v2.'+U.seed.toString(16),JSON.stringify({version:2,ops:Editor.stack.slice(-8000)}));}catch{showToast('存储空间不足，本次编辑仅保留在当前窗口');}
 }
-
-export function replayEdits() {
-  try {
-    const raw = localStorage.getItem('changan.edit.' + U.seed.toString(16));
-    const ops = raw ? JSON.parse(raw) : [];
-    if (ops.length) {
-      Editor.stack = ops;
-      U.worker.postMessage({ cmd: 'edit', ops, reqId: ++U.reqId });
-      showToast('已恢复 ' + ops.length + ' 处涂抹');
-    }
-  } catch {}
+export function submitEdits(ops,kind='paint'){
+  if(Editor.busy)return false;
+  const reqId=++U.reqId;Editor.busy=true;Editor.pending={reqId,kind};
+  U.worker.postMessage({cmd:'edit',ops,reqId});return true;
 }
-
-function paintAt(c) {
-  const ray = new THREE.Raycaster();
-  ray.setFromCamera(new THREE.Vector2(0, 0), Engine.camera);
-  const hits = ray.intersectObjects(Engine.chunkGroup.children, false);
-  if (!hits.length) return;
-  const hit = hits[0];
-  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-  const p = hit.point;
-  let x, y, z;
-  if (c === 0) {
-    x = Math.floor(p.x - n.x * 0.02); y = Math.floor(p.y - n.y * 0.02); z = Math.floor(p.z - n.z * 0.02);
-  } else {
-    x = Math.floor(p.x + n.x * 0.51); y = Math.floor(p.y + n.y * 0.51); z = Math.floor(p.z + n.z * 0.51);
-  }
-  const W = U.meta.world;
-  if (x < W.x0 || x > W.x1 || z < W.z0 || z > W.z1 || y < 1 || y >= (W.H || 64) - 1) return;
-  const op = { x, y, z, c };
-  Editor.stack.push(op);
-  persistEdits();
-  U.worker.postMessage({ cmd: 'edit', ops: [op], reqId: ++U.reqId });
-  const hud = document.getElementById('edit-hud');
-  if (hud) hud.textContent = (c ? '涂抹' : '消除') + `  (${x},${y},${z})`;
+export function acknowledgeEdits(msg){
+  if(!Editor.pending||msg.reqId!==Editor.pending.reqId)return;
+  const kind=Editor.pending.kind;
+  if(kind==='undo')Editor.stack.pop();
+  else if(kind==='replay')Editor.stack=msg.applied||[];
+  else Editor.stack.push(...(msg.applied||[]));
+  Editor.pending=null;Editor.busy=false;persistEdits();
 }
-
-export function undoEdit() {
-  const op = Editor.stack.pop();
-  if (!op) { showToast('没有可撤销的涂抹'); return; }
-  persistEdits();
-  U.worker.postMessage({ cmd: 'edit', ops: [{ x: op.x, y: op.y, z: op.z, c: op.c ? 0 : PAINT_C }], reqId: ++U.reqId });
-  showToast('已撤销');
+export function replayEdits(){
+  try{
+    const suffix=U.seed.toString(16),current=localStorage.getItem('changan.edit.v2.'+suffix),legacy=localStorage.getItem('changan.edit.'+suffix);
+    const parsed=current?JSON.parse(current):legacy?JSON.parse(legacy):[];
+    const ops=Array.isArray(parsed)?parsed:parsed.ops||[];
+    if(ops.length){submitEdits(ops,'replay');showToast('正在恢复 '+ops.length+' 处编辑');}
+  }catch{showToast('旧编辑记录无法读取，原数据已保留');}
+}
+function paintAt(c){
+  if(Editor.busy)return;
+  const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),Engine.camera);
+  const hit=ray.intersectObjects(solidMeshes(),false)[0];if(!hit)return;
+  const n=hit.face.normal.clone().transformDirection(hit.object.matrixWorld),scale=hit.object.userData.layer==='arch'?4:1;
+  const p=hit.point.clone().addScaledVector(n,c===0?-.01:.01);
+  const x=Math.floor(p.x*scale),y=Math.floor(p.y*scale),z=Math.floor(p.z*scale),W=U.meta.world;
+  if(x<W.x0*scale||x>=(W.x1+1)*scale||z<W.z0*scale||z>=(W.z1+1)*scale||y<1||y>=Math.min(512,W.H*scale))return;
+  submitEdits([{version:2,layer:scale===4?'arch':'city',x,y,z,c}]);
+  const hud=document.getElementById('edit-hud');if(hud)hud.textContent=(c?'添加':'移除')+` (${x/scale},${y/scale},${z/scale})`;
+}
+export function undoEdit(){
+  if(Editor.busy){showToast('编辑处理中');return;}
+  const op=Editor.stack.at(-1);if(!op){showToast('没有可撤销的编辑');return;}
+  submitEdits([{...op,c:op.before}],'undo');
 }
 
 export function applyColPatches(patches) {
@@ -86981,6 +87238,11 @@ export function tickUI() { drawMini(); }
 
 export function initUI(app) {
   U = app;
+  const lore=document.createElement('button');lore.textContent='景点说明';lore.id='lore-open';lore.className='btn';
+  lore.addEventListener('click',()=>document.getElementById('lore-card')?.setAttribute('aria-hidden','false'));
+  document.querySelector('.actions')?.appendChild(lore);
+  const photo=document.createElement('button');photo.textContent='摄影模式';photo.className='btn';photo.addEventListener('click',()=>applyQuality('photo'));document.querySelector('.actions')?.appendChild(photo);
+  const exit=document.createElement('button');exit.id='photo-exit';exit.textContent='退出摄影';exit.addEventListener('click',()=>applyQuality('mid'));document.body.appendChild(exit);
   bindWalkKeys();
   bakeMini();
   bindMini();
@@ -87093,7 +87355,7 @@ function onWorld(data) {
   App.meta = data.meta;
   App.fields = data.fields;
   buildChunks(data.chunks);
-  if (data.archMesh) buildArchMesh(data.archMesh);
+  if (data.archChunks) replaceArchChunks(data.archChunks);
   const vc = document.getElementById('voxel-count');
   if (vc) vc.textContent = (data.stats.voxels / 10000).toFixed(0) + ' 万';
   bindViews(App);
@@ -87117,6 +87379,8 @@ function onWorld(data) {
 
 function onRemesh(msg) {
   if (msg.chunks) replaceChunks(msg.chunks);
+  if (msg.archChunks?.length) replaceArchChunks(msg.archChunks);
+  acknowledgeEdits(msg);
   if (msg.colPatches) applyColPatches(msg.colPatches);
 }
 
@@ -87176,7 +87440,7 @@ function boot() {
   try {
     initEngine(document.getElementById('scene'));
     buildSky();
-    if (App.urlQ && { high: 1, mid: 1, low: 1 }[App.urlQ]) {
+    if (App.urlQ && { high: 1, mid: 1, low: 1, ultra:1, photo:1 }[App.urlQ]) {
       Engine.autoQuality.enabled = false;
       applyQuality(App.urlQ);
     }
@@ -87200,7 +87464,7 @@ function boot() {
 }
 
 boot();
-window.__CHANGAN__ = { goToView, setLightMode, setHour, Engine, Life, App, Walk };
+window.__CHANGAN__ = { goToView, setLightMode, setHour, Engine, Life, App, Walk, Editor, submitEdits, undoEdit, startWalk, stopWalk, canStep, walkHeight, applyQuality, takePhoto };
 
   </script>
 </body>

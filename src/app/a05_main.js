@@ -72,7 +72,7 @@ function onWorld(data) {
   App.meta = data.meta;
   App.fields = data.fields;
   buildChunks(data.chunks);
-  if (data.archMesh) buildArchMesh(data.archMesh);
+  if (data.archChunks) replaceArchChunks(data.archChunks);
   const vc = document.getElementById('voxel-count');
   if (vc) vc.textContent = (data.stats.voxels / 10000).toFixed(0) + ' 万';
   bindViews(App);
@@ -96,6 +96,8 @@ function onWorld(data) {
 
 function onRemesh(msg) {
   if (msg.chunks) replaceChunks(msg.chunks);
+  if (msg.archChunks?.length) replaceArchChunks(msg.archChunks);
+  acknowledgeEdits(msg);
   if (msg.colPatches) applyColPatches(msg.colPatches);
 }
 
@@ -155,7 +157,7 @@ function boot() {
   try {
     initEngine(document.getElementById('scene'));
     buildSky();
-    if (App.urlQ && { high: 1, mid: 1, low: 1 }[App.urlQ]) {
+    if (App.urlQ && { high: 1, mid: 1, low: 1, ultra:1, photo:1 }[App.urlQ]) {
       Engine.autoQuality.enabled = false;
       applyQuality(App.urlQ);
     }
@@ -179,4 +181,4 @@ function boot() {
 }
 
 boot();
-window.__CHANGAN__ = { goToView, setLightMode, setHour, Engine, Life, App, Walk };
+window.__CHANGAN__ = { goToView, setLightMode, setHour, Engine, Life, App, Walk, Editor, submitEdits, undoEdit, startWalk, stopWalk, canStep, walkHeight, applyQuality, takePhoto };
