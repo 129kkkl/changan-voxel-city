@@ -1,0 +1,401 @@
+{
+  "shots": [
+    {
+      "perf": {
+        "medianMs": 324.90000000000146,
+        "p95Ms": 331.40000000000146,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 1128224,
+        "quality": "mid"
+      },
+      "view": "mingde",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\mingde_noon_5a17c4a9.png",
+      "fps": "25",
+      "drawCalls": "152",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 275,
+        "p95Ms": 287.5,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 921592,
+        "quality": "mid"
+      },
+      "view": "axis",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\axis_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "128",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 100.10000000000582,
+        "p95Ms": 106.30000000000291,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 172354,
+        "quality": "mid"
+      },
+      "view": "hengjie",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\hengjie_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "38",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 106.19999999999709,
+        "p95Ms": 112.5,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 218058,
+        "quality": "mid"
+      },
+      "view": "hanyuan",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\hanyuan_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "50",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 231.3000000000029,
+        "p95Ms": 237.60000000000582,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 953076,
+        "quality": "mid"
+      },
+      "view": "hanyuanTop",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\hanyuanTop_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "137",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 50.09999999997672,
+        "p95Ms": 56.29999999998836,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 40564,
+        "quality": "mid"
+      },
+      "view": "taiye",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\taiye_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "12",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 125,
+        "p95Ms": 131.30000000001746,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 249022,
+        "quality": "mid"
+      },
+      "view": "xingqing",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\xingqing_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "38",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 293.80000000001746,
+        "p95Ms": 306.30000000001746,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 949580,
+        "quality": "mid"
+      },
+      "view": "westMarket",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\westMarket_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "129",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 300,
+        "p95Ms": 312.5,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 903684,
+        "quality": "mid"
+      },
+      "view": "eastMarket",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\eastMarket_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "115",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 356.29999999998836,
+        "p95Ms": 368.79999999998836,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 1269146,
+        "quality": "mid"
+      },
+      "view": "dayanta",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\dayanta_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "157",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 187.5,
+        "p95Ms": 193.80000000004657,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 557088,
+        "quality": "mid"
+      },
+      "view": "xiaoyanta",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\xiaoyanta_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "79",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 212.5,
+        "p95Ms": 218.79999999998836,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 627872,
+        "quality": "mid"
+      },
+      "view": "qinglong",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\qinglong_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "93",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 231.20000000001164,
+        "p95Ms": 237.5,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 591928,
+        "quality": "mid"
+      },
+      "view": "jingshan",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\jingshan_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "80",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 200,
+        "p95Ms": 206.29999999998836,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 473406,
+        "quality": "mid"
+      },
+      "view": "wardGate",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\wardGate_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "72",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 206.20000000001164,
+        "p95Ms": 206.30000000004657,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 589214,
+        "quality": "mid"
+      },
+      "view": "lane",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\lane_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "57",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 87.5,
+        "p95Ms": 93.79999999998836,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 189152,
+        "quality": "mid"
+      },
+      "view": "qujiang",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\qujiang_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "28",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 168.70000000001164,
+        "p95Ms": 174.90000000002328,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 591350,
+        "quality": "mid"
+      },
+      "view": "jinguang",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\jinguang_noon_5a17c4a9.png",
+      "fps": "20",
+      "drawCalls": "84",
+      "voxels": "190 万"
+    },
+    {
+      "perf": {
+        "medianMs": 243.79999999998836,
+        "p95Ms": 250.09999999997672,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "heap": 254000000,
+        "triangles": 654992,
+        "quality": "mid"
+      },
+      "view": "curfew",
+      "file": "E:\\Aclaw文件\\唐长安城体素箱庭\\审计截图\\cur18\\curfew_noon_5a17c4a9.png",
+      "fps": "22",
+      "drawCalls": "95",
+      "voxels": "190 万"
+    }
+  ],
+  "console": [],
+  "errors": [],
+  "meta": {
+    "stats": {
+      "voxels": 1899100,
+      "archVoxels": 5666310,
+      "archQuads": 980641,
+      "archLodQuads": 473493,
+      "archChecksum": "9c857dcc",
+      "roofElements": 1129,
+      "compounds": 387,
+      "wardCount": 104,
+      "marketPlots": 4,
+      "gateCount": 12,
+      "buildings": 381,
+      "shops": 161,
+      "trees": 1014,
+      "towers": 37,
+      "wells": 25,
+      "bridges": 0,
+      "lamps": 363,
+      "checksum": "12f1d019",
+      "audits": [
+        {
+          "name": "坊墙闭合",
+          "pass": true,
+          "detail": "108 坊环墙连续、门位合规"
+        },
+        {
+          "name": "中轴对齐",
+          "pass": true,
+          "detail": "三门 x=-1,-1,-1"
+        },
+        {
+          "name": "108坊计数",
+          "pass": true,
+          "detail": "坊位=108 其中市=4"
+        },
+        {
+          "name": "临街开店",
+          "pass": true,
+          "detail": "店肆均在两市之内"
+        },
+        {
+          "name": "无浮空",
+          "pass": true,
+          "detail": "全域与基岩连通"
+        },
+        {
+          "name": "建筑层无浮空",
+          "pass": true,
+          "detail": "2109 个连通构件，未支承 0 格；[]"
+        },
+        {
+          "name": "体素预算",
+          "pass": true,
+          "detail": "1899100 / 硬上限 2800000"
+        },
+        {
+          "name": "地标去模板化",
+          "pass": true,
+          "detail": "P0/P1主体均走独立builder，仅用primitive"
+        },
+        {
+          "name": "地标LOD",
+          "pass": true,
+          "detail": "六大地标LOD0/1/2完备，远景保轮廓"
+        },
+        {
+          "name": "多样性",
+          "pass": true,
+          "detail": "重复签名14/院落212种/最大重复2"
+        },
+        {
+          "name": "十坊抽检",
+          "pass": true,
+          "detail": "院落布局种类212，最大重复2"
+        },
+        {
+          "name": "地标唯一性",
+          "pass": true,
+          "detail": "六大地标轮廓各异"
+        }
+      ],
+      "stageMs": {
+        "terrain": 573,
+        "walls": 18,
+        "streets": 21,
+        "wards": 2257,
+        "markets": 194,
+        "custom": 307,
+        "palaces": 397,
+        "water": 32,
+        "detail": 203,
+        "seal": 54,
+        "wardId": 5,
+        "audit": 4263,
+        "mesh": 12299
+      },
+      "budget": {
+        "soft": 2400000,
+        "hard": 2800000
+      },
+      "genMs": 20673
+    },
+    "voxels": 1899100,
+    "views": [
+      "mingde",
+      "axis",
+      "hengjie",
+      "hanyuan",
+      "taiye",
+      "xingqing",
+      "westMarket",
+      "eastMarket",
+      "dayanta",
+      "xiaoyanta",
+      "qinglong",
+      "jingshan",
+      "wardGate",
+      "lane",
+      "qujiang",
+      "jinguang",
+      "kaiyuan"
+    ]
+  },
+  "loadMs": 21469
+}
