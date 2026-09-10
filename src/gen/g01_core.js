@@ -229,18 +229,18 @@ const PALETTE_DEF = [
   ['moss',        '#5f7444', 'opaque'], // 苔（沟边/林下）
   ['fieldEarth',  '#8f7a52', 'opaque'], // 田土（郊野）
   ['riverSand',   '#b3a172', 'opaque'], // 河滩
-  ['plaster',     '#ede4cf', 'opaque'], // 粉墙米白
-  ['plasterWarm', '#e2d5b8', 'opaque'], // 粉墙暖白
-  ['zhu',         '#b23a27', 'opaque'], // 朱红（柱额门窗）
+  ['plaster',     '#d4c6a9', 'opaque'], // 粉墙米白
+  ['plasterWarm', '#dac9ad', 'opaque'], // 粉墙暖白
+  ['zhu',         '#994d37', 'opaque'], // 朱红（柱额门窗）
   ['zhuDeep',     '#8c2d1f', 'opaque'], // 土朱
-  ['zhuBright',   '#cf5032', 'opaque'], // 朱亮
+  ['zhuBright',   '#ac5840', 'opaque'], // 朱亮
   ['timber',      '#6d4a2f', 'opaque'], // 木
   ['timberDark',  '#4c311e', 'opaque'], // 木深
-  ['roofGrey',    '#55616a', 'opaque'], // 青灰瓦（唐式青瓦：偏冷偏深的蓝灰，与夯土墙/白灰墙拉开材质层次）
-  ['roofLight',   '#6e7a84', 'opaque'], // 瓦亮（檐口/剪边）
-  ['roofDark',    '#3f4a52', 'opaque'], // 瓦暗（正脊/垂脊）
-  ['glazeGreen',  '#3f7d5a', 'opaque'], // 琉璃绿（仅剪边/鸱尾）
-  ['glazeBlue',   '#3a6d8f', 'opaque'], // 琉璃蓝（仅剪边/鸱尾）
+  ['roofGrey',    '#566166', 'opaque'], // 青灰瓦（唐式青瓦：偏冷偏深的蓝灰，与夯土墙/白灰墙拉开材质层次）
+  ['roofLight',   '#626d70', 'opaque'], // 瓦亮（檐口/剪边）
+  ['roofDark',    '#465154', 'opaque'], // 瓦暗（正脊/垂脊）
+  ['glazeGreen',  '#526f61', 'opaque'], // 琉璃绿（仅剪边/鸱尾）
+  ['glazeBlue',   '#526b74', 'opaque'], // 琉璃蓝（仅剪边/鸱尾）
   ['gold',        '#c9a227', 'opaque'], // 金（极小面积）
   ['bronze',      '#8a6a3a', 'opaque'], // 铜
   ['iron',        '#3d4145', 'opaque'], // 铁
@@ -284,23 +284,23 @@ const PALETTE_DEF = [
   ['mountainFar', '#8fa3b8', 'opaque'], // 终南山剪影
   ['doorDark',    '#3a2a1c', 'opaque'], // 板门
   ['paperWhite',  '#f2ead8', 'opaque'], // 纸幡
-  ['roofGroove',  '#46505a', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
+  ['roofGroove',  '#536065', 'opaque'], // 瓦沟（瓦垄分色的暗格，与 roofGrey 对比适中，远处不成摩尔纹）
   // ---- 屋面色族（艺术化：一城之内拉开屋顶色调，避免"清一色蓝灰平顶"的同质化）----
-  ['roofSlate',   '#4a5560', 'opaque'], // 黛瓦
-  ['roofSlateL',  '#61707c', 'opaque'], // 黛瓦亮（檐口）
-  ['roofSlateG',  '#3b4650', 'opaque'], // 黛瓦沟
+  ['roofSlate',   '#4d595f', 'opaque'], // 黛瓦
+  ['roofSlateL',  '#5a666b', 'opaque'], // 黛瓦亮（檐口）
+  ['roofSlateG',  '#4b585d', 'opaque'], // 黛瓦沟
   ['roofGreen',   '#2f7a5a', 'opaque'], // 琉璃绿（主要建筑屋面，艺术化用色；提饱和以便鸟瞰辨识品级）
   ['roofGreenL',  '#4a9d78', 'opaque'],
   ['roofGreenG',  '#1f5a42', 'opaque'],
   ['roofBlue',    '#35669c', 'opaque'], // 琉璃蓝（提饱和，避免与青灰瓦在正午平光下混淆）
   ['roofBlueL',   '#4a85bd', 'opaque'],
   ['roofBlueG',   '#234a72', 'opaque'],
-  ['roofBrown',   '#5a4a42', 'opaque'], // 深褐瓦（少量，破单调）
-  ['roofBrownL',  '#726056', 'opaque'],
-  ['roofBrownG',  '#453833', 'opaque'],
-  ['roofClay',    '#6b5a4e', 'opaque'], // 灰陶瓦（暖褐灰，与青灰拉开色相）
-  ['roofClayL',   '#84705f', 'opaque'],
-  ['roofClayG',   '#54463c', 'opaque'],
+  ['roofBrown',   '#655d53', 'opaque'], // 深褐瓦（少量，破单调）
+  ['roofBrownL',  '#70685e', 'opaque'],
+  ['roofBrownG',  '#635b52', 'opaque'],
+  ['roofClay',    '#716557', 'opaque'], // 灰陶瓦（暖褐灰，与青灰拉开色相）
+  ['roofClayL',   '#7b7062', 'opaque'],
+  ['roofClayG',   '#6d6256', 'opaque'],
   ['roofOchre',   '#7a6242', 'opaque'], // 赭石瓦（暖黄褐）
   ['roofOchreL',  '#94794f', 'opaque'],
   ['roofOchreG',  '#5e4b32', 'opaque'],

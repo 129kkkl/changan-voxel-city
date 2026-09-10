@@ -14,13 +14,19 @@ function read(p) { return fs.readFileSync(path.join(SRC, p), 'utf8'); }
 // 生成器（纯数据层，顺序敏感：核心 → 骨架 → 坊市 → 原型地标 → 独立地标 → 细节 → 审计网格 → 编排）
 const GEN_FILES = [
   'gen/g01_core.js',
+  'core/c01_units.js',
+  'arch/b11_atlas.js',
+  'arch/b10_mesh.js',
+  'arch/b03_roof.js',
+  'arch/b01_spec.js',
+  'arch/b04_house.js',
   'gen/g02_skeleton.js',
   'gen/g03_wards.js',
   'gen/g04_proto.js',
   'gen/g04_landmark.js',
   'gen/g05_detail.js',
   'gen/g06_audit_mesh.js',
-  'gen/g08_arch.js', 'gen/g09_refine.js',
+  'gen/g08_arch.js',
   'gen/g07_pipeline.js',
 ];
 // 主线程（顺序敏感：引擎 → 机位 → 动态 → 交互 → 编排）

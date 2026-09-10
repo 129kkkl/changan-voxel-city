@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [大重构 P0+P1 立骨] 2026-09-10
+
+- **P0 验收闭环**：新增 `tools/visual-gate.js`（构建→截图→imgstat→gate.json）；修复 `tools/shot.js` 审计 B1（光照复位改在 `goToView` 之后）；浮空 ArchStore 残片生成后清理。
+- **P1 表示层**：新增 `src/core/c01_units.js` 与 `src/arch/`（MeshBuf、连续举折屋面、BuildingSpec、材质色表、厅堂组装）。`proto.hall` 与南向合院主堂/厢房屋面改走语义网格；建筑 mesh 使用 MeshStandard + 顶点 AO。
+- **证据**：`node src/smoke.js` 三种子全过；`node tools/visual-gate.js --tag p1` 通过（meshHalls=217）；截图 `验收截图/p1/`。
+- 规格：`docs/compose/spec/full-refactor.md`。
+
 ## [大重构 P0] 2026-09-10
 
 - 独立审计（`docs/14_项目审计报告_20260910.md`）：视觉基线 **4.56**（独立评审，18 景），推翻此前 7 轮自评分（最高 8.34）。审计证据：`审计截图/cur18/`。

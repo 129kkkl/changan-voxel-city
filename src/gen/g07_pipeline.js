@@ -30,6 +30,7 @@ CHANGAN.generate = function (seed, onProgress, opts) {
     wards: CHANGAN.buildWardTable(),
     counters: CHANGAN.makeCounters(),
     gates: [], doors: [],
+    meshParts: [],
     fatal: null,
     progress: (stage, pct) => { if (onProgress) onProgress({ type: 'progress', stage, pct: Math.min(1, Math.max(0, pct)) }); },
   };
@@ -88,6 +89,7 @@ CHANGAN.generate = function (seed, onProgress, opts) {
   ctx.progress('mesh', 0.92);
   let chunks;
   let archChunks = [], archVoxels = 0;
+  let meshChunks = [];
   try {
     const tS = Date.now();
     chunks = CHANGAN.meshAll(ctx, 'full');
@@ -95,6 +97,10 @@ CHANGAN.generate = function (seed, onProgress, opts) {
     if (ctx.arch && ctx.arch.count) {
       archVoxels = ctx.arch.count;
       archChunks = CHANGAN.meshArchChunks(ctx);
+    }
+    // P1 语义建筑网格：厅堂连续屋面
+    if (ctx.meshParts && ctx.meshParts.length) {
+      meshChunks = CHANGAN.meshPartsToChunks(ctx.meshParts, 64);
     }
     stageMs.mesh = Date.now() - tS;
   } catch (err) {
@@ -108,6 +114,9 @@ CHANGAN.generate = function (seed, onProgress, opts) {
     archChecksum: CHANGAN.archChecksum(ctx.arch),
     roofElements: ctx.arch.roofs?.length || 0,
     compounds: ctx.counters.archBuildings || 0,
+    meshHalls: ctx.counters.meshHalls || 0,
+    meshChunks: meshChunks.length,
+    meshTris: meshChunks.reduce((n, c) => n + (c.idx ? c.idx.length / 3 : 0), 0),
     wardCount: ctx.wards.filter(w => w.type === 'ward').length,
     marketPlots: ctx.wards.filter(w => w.type === 'market').length,
     gateCount: ctx.gates.filter(g => g.city).length,
@@ -139,6 +148,7 @@ CHANGAN.generate = function (seed, onProgress, opts) {
     },
     chunks,
     archChunks, archVoxels,
+    meshChunks,
     _ctx: ctx, // Worker 侧保留供 edit/doors；主线程收到的是结构化克隆，不含此项
   };
 };

@@ -760,60 +760,53 @@ proto.roof = function (ctx, type, x0, z0, x1, z1, y, opts) {
   return ry + 4;
 };
 
-// ================================================================ 通用殿堂（台基 + 开间柱网 + 柱头斗栱 + 屋顶）
-proto.hall = function (ctx, x0, z0, x1, z1, base, opts) {
-  // 退化地块保护：1~2 格宽/深会在近景变成"孤零零的灰色薄鳍"（法医检查已确认为最丑之处）。
-  // 小于 3×3 直接不生成，宁可留空也不留一根墙片。
+// ================================================================ 通用殿堂（4× 建筑层：台基 + 开间柱网 + 墙体 + 屋面）
+// 旧 1× 粗体素实现已下线；本实现原在 g09_refine.js 以后置覆盖生效，现并为本文件标准实现。
+proto.hall = function (ctx, x0, z0, x1, z1, base, o) {
+  o = o || {};
   if (x1 - x0 < 3 || z1 - z0 < 3) return base;
   CHANGAN._noteGeneric(ctx, 'proto.hall');
-  opts = opts || {};
-  const { store } = ctx;
-  const wallH = opts.wallH || 4;
-  const doorSide = opts.door || 'S';
-
-  // 1. 台基
-  const top = opts.platform ? platform(ctx, x0, z0, x1, z1, base, opts.platform, opts.platformC, doorSide) : base;
-
-  // 室内地面铺砖
-  if (x1 - x0 >= 2 && z1 - z0 >= 2) {
-    store.fill(x0 + 1, top, z0 + 1, x1 - 1, top, z1 - 1, PAL.brickPave);
-  }
-
-  // 2. 开间立面与柱网
-  const cols = wallRing(ctx, x0, z0, x1, z1, top + 1, wallH, opts.wall || PAL.plaster, opts.col || PAL.zhu, {
-    door: doorSide,
-    windows: opts.windows !== false,
-    openDoor: !!opts.openDoor,
-    recess: opts.recess !== false,
+  // P1：厅堂主体改走语义网格（连续举折屋面 + 真柱径），不再写 4× 台阶体素。
+  // 体素 ArchStore 仅保留给地标细节与动态门扉。
+  const built = CHANGAN.buildHallMesh({
+    x0, z0, x1, z1, baseY: base,
+    rank: o.rank != null ? o.rank : (o.platform ? 2 : 1),
+    roof: o.roof === 'hip' ? 'hip' : o.roof === 'xie' ? 'xie' : 'gable',
+    wallHCells: o.wallH || 3,
+    platform: o.platform || 0,
+    seed: ctx.seed,
   });
-
-  // 3. 柱头出跳斗栱
-  dougong(ctx, x0, z0, x1, z1, top + wallH, cols);
-
-  // 4. 屋顶
-  const over = opts.overhang != null ? opts.overhang : ((x1 - x0) >= 10 ? 3 : ((x1 - x0) >= 6 ? 2 : 1));
-  const ry = proto.roof(ctx, opts.roof || 'xuan', x0, z0, x1, z1, top + wallH + 1, Object.assign({}, opts, { overhang: over }));
-
-  // 重檐腰檐（doubleEave）：单层檐裙 + 真实楼身空带，禁两张屋顶互穿。
-  // 上轮此处在墙身中部再铺一整张 hip 顶，檐层插入主屋顶造成互穿；本轮改为
-  // 薄檐裙（仅一周檐口环，不起坡），与主屋顶之间留出 >=2 格楼身墙段可读。
-  if (opts.doubleEave) {
-    const midY = top + Math.max(2, Math.floor(wallH / 2));
-    const ex0 = x0 - 2, ex1 = x1 + 2, ez0 = z0 - 2, ez1 = z1 + 2;
-    for (let x = ex0; x <= ex1; x++) for (let z = ez0; z <= ez1; z++) {
-      const ring = (x === ex0 || x === ex1 || z === ez0 || z === ez1);
-      if (!ring) continue;
-      store.set(x, midY, z, (opts.lip !== undefined && (x === ex0 || x === ex1 || z === ez0 || z === ez1)) ? PAL.roofLight : (opts.main || PAL.roofGrey));
+  if (built && built.mesh && built.mesh.idx && built.mesh.idx.length) {
+    ctx.meshParts = ctx.meshParts || [];
+    ctx.meshParts.push(built.mesh);
+    // 地面锚点写入 ArchStore：保证“建筑层无浮空”审计与邻接结构仍可连通。
+    // 仅中心 1 格、压在地面层，避免与 mesh 台基双绘。
+    const a = ctx.arch;
+    const mcx = ((x0 + x1) >> 1) * 4 + 1;
+    const mcz = ((z0 + z1) >> 1) * 4 + 1;
+    a.set(mcx, base * 4, mcz, PAL.loess);
+    // 更新 topH，供漫游/小地图/树木避让
+    const topCity = Math.ceil(built.topY);
+    for (let x = x0; x <= x1; x++) {
+      for (let z = z0; z <= z1; z++) {
+        const i = CHANGAN.fieldIndex(x, z);
+        if (i >= 0 && topCity > ctx.fields.topH[i]) {
+          ctx.fields.topH[i] = topCity;
+          ctx.fields.topColor[i] = PAL.roofGrey;
+        }
+      }
     }
-    // 檐角起翘点（四角高 1，不另起坡）
-    store.set(ex0, midY + 1, ez0, PAL.roofLight); store.set(ex1, midY + 1, ez0, PAL.roofLight);
-    store.set(ex0, midY + 1, ez1, PAL.roofLight); store.set(ex1, midY + 1, ez1, PAL.roofLight);
+    ctx.counters.halls++;
+    ctx.counters.meshHalls = (ctx.counters.meshHalls || 0) + 1;
+    return topCity;
   }
-
-  ctx.counters.halls++;
-  ctx.counters['hallw_' + Math.min(24, x1 - x0 + 1)] = (ctx.counters['hallw_' + Math.min(24, x1 - x0 + 1)] || 0) + 1;
-  ctx.counters['hallh_' + Math.min(12, wallH)] = (ctx.counters['hallh_' + Math.min(12, wallH)] || 0) + 1;
-  return ry;
+  // 回退：旧体素路径
+  const a = ctx.arch, ax = x0 * 4, az = z0 * 4, bx = (x1 + 1) * 4 - 1, bz = (z1 + 1) * 4 - 1;
+  const y = ARCH.platform(a, ax, az, bx, bz, base * 4, Math.max(2, (o.platform || 0) * 4), { stepHalf: 4 });
+  const h = (o.wallH || 4) * 3, f = ARCH.colonnade(a, ax + 2, az + 2, bx - 2, bz - 2, y, h, Math.max(3, Math.min(9, Math.floor((bx - ax) / 9))), o.col || PAL.timber, 1);
+  ARCH.wallWithOpenings(a, ax + 2, az + 2, bx - 2, bz - 2, y, h, f.xs, { wallC: o.wall || PAL.plasterWarm, frameC: o.col || PAL.timber });
+  const top = ARCH.roofTang(a, ax + 2, az + 2, bx - 2, bz - 2, y + h, { kind: o.roof === 'hip' ? 'hip' : o.roof === 'xie' ? 'xie' : 'gable', main: PAL.roofGrey, overhang: 4, finialH: 0 });
+  ctx.counters.halls++; return top / 4;
 };
 
 // ================================================================ 围合构件：院落/建筑群共用外墙（facing 决定院门朝向）
@@ -1187,44 +1180,28 @@ proto.pagodaMiyan = function (ctx, cx, cz, base, opts) {
   return y + 1;
 };
 
-// ================================================================ 城门重楼（旧通用门楼，仅供普通郭城门/坊门；P0须用独立builder）
+// ================================================================ 城门重楼（4× 建筑层：石台 + 双层楼阁）
+// 本实现原在 g09_refine.js 以后置覆盖生效，现并为本文件标准实现。
 proto.gateTower = function (ctx, g) {
-  CHANGAN._noteGeneric(ctx, 'proto.gateTower');
-  const { store, fields, CFG } = ctx;
-  const b = g.towerBase; if (!b) return;
-  const gy = fields.groundH[CHANGAN.fieldIndex(g.x, g.z)] + CFG.Y.WALL_H + 1;
-
+  g = g || {};
+  const b = g.towerBase;
+  if (!b) return;
+  const { store, fields } = ctx;
+  const cfg = ctx.CFG || CHANGAN.CFG;
+  const gy = fields.groundH[CHANGAN.fieldIndex(g.x, g.z)] + cfg.Y.WALL_H + 1;
   const pad = 1;
   const x0 = b.x0 + pad, x1 = b.x1 - pad, z0 = b.z0 + pad, z1 = b.z1 - pad;
-
-  // 1. 平坐楼台板
-  store.fill(x0 - 1, gy, z0 - 1, x1 + 1, gy, z1 + 1, PAL.timber);
-
-  // 2. 第一层楼身
-  wallRing(ctx, x0, z0, x1, z1, gy + 1, 4, PAL.plaster, PAL.zhu, { windows: true, openDoor: false });
-  dougong(ctx, x0, z0, x1, z1, gy + 4);
-  proto.roof(ctx, 'hip', x0, z0, x1, z1, gy + 5, {
-    main: PAL.roofGrey, lip: PAL.roofLight, trim: g.level >= 5 ? PAL.glazeGreen : null, overhang: 2,
-  });
-
-  // 3. 第二层重楼
-  const ix0 = x0 + 2, ix1 = x1 - 2, iz0 = z0 + 1, iz1 = z1 - 1;
-  if (ix1 > ix0 && iz1 > iz0) {
-    wallRing(ctx, ix0, iz0, ix1, iz1, gy + 8, 3, PAL.plaster, PAL.zhu, { windows: true });
-    dougong(ctx, ix0, iz0, ix1, iz1, gy + 10);
-    proto.roof(ctx, g.level >= 4 ? 'hip' : 'xie', ix0, iz0, ix1, iz1, gy + 11, {
-      main: PAL.roofGrey, lip: PAL.roofLight, trim: g.level >= 5 ? PAL.glazeGreen : null, overhang: 1,
-    });
-  }
+  if (x1 <= x0 || z1 <= z0) return;
+  store.fill(x0 - 1, gy, z0 - 1, x1 + 1, gy, z1 + 1, PAL.stoneGrey);
+  const bays = Math.max(3, Math.min(5, Math.floor((x1 - x0) / 2)));
+  ARCH.pavilion(ctx.arch, x0, z0, x1, z1, gy, bays, 2);
   ctx.counters.towers++;
 };
 
 // 角楼
 proto.cornerTower = function (ctx, x, z, base) {
-  const { store } = ctx;
-  store.fill(x - 2, base + 1, z - 2, x + 2, base + 3, z + 2, PAL.rammedDark);
-  wallRing(ctx, x - 2, z - 2, x + 2, z + 2, base + 4, 3, PAL.plaster, PAL.zhu, { windows: true });
-  proto.roof(ctx, 'xie', x - 2, z - 2, x + 2, z + 2, base + 7, { overhang: 1 });
+  ctx.store.fill(x - 2, base + 1, z - 2, x + 2, base + 3, z + 2, PAL.rammedDark);
+  ARCH.pavilion(ctx.arch, x - 2, z - 2, x + 2, z + 2, base + 3, 3, 1);
   ctx.counters.towers++;
 };
 
@@ -1427,27 +1404,20 @@ proto.stoneLamp = function (ctx, x, z, base) {
   ctx.counters.lamps++;
 };
 
-// ================================================================ 市楼（市署：二层重楼 + 旗亭鼓钲）
-proto.marketTower = function (ctx, cx, cz, y0) {
-  const { store } = ctx;
-  // 基座
-  store.fill(cx - 4, y0, cz - 4, cx + 4, y0 + 1, cz + 4, PAL.stoneGrey);
-  // 一层：开放柱廊（5×5 → 7×7，让攒尖顶有足够跨度收分成尖）
-  wallRing(ctx, cx - 3, cz - 3, cx + 3, cz + 3, y0 + 2, 4, PAL.plaster, PAL.zhu, { windows: true });
-  proto.roof(ctx, 'jian', cx - 3, cz - 3, cx + 3, cz + 3, y0 + 6, { overhang: 1, finial: PAL.bronze });
-
-  // 二层：市楼议事亭（3×3 → 5×5）
-  wallRing(ctx, cx - 2, cz - 2, cx + 2, cz + 2, y0 + 8, 3, PAL.plaster, PAL.zhu, { windows: true });
-  proto.roof(ctx, 'jian', cx - 2, cz - 2, cx + 2, cz + 2, y0 + 11, { overhang: 1, finial: PAL.gold });
-
-  // 旗杆 + 市旗：旧写法是 14 格裸木柱 + 杆顶 2 格孤立方块，
-  // 视觉验收判"裸棕高柱呈未完工感、突兀扎眼，破坏市楼天际线"。
-  // 改为 7 格杆 + 横挑 + 2×3 旗面（旗面与杆 6 邻接，不浮空）。
-  const px = cx + 5, pz = cz + 5;
-  store.fill(px, y0 - 2, pz, px, y0 + 7, pz, PAL.timberDark);              // 杆（含埋入 2 格）
-  store.fill(px + 1, y0 + 6, pz, px + 2, y0 + 6, pz, PAL.timberDark);      // 横挑 2 格
-  store.fill(px + 1, y0 + 4, pz, px + 2, y0 + 5, pz, PAL.flagYellow);      // 旗面 2×2，自横挑垂下
-  store.set(px + 2, y0 + 4, pz, PAL.flagRed);                              // 旗角
+// ================================================================ 市楼（市署：4× 建筑层环形檐裙 + 中央楼身）
+// 本实现原在 g09_refine.js 以后置覆盖生效，现并为本文件标准实现。
+proto.marketTower = function (ctx, cx, cz, base) {
+  const a = ctx.arch, x = cx * 4, z = cz * 4, b = base * 4;
+  const y = ARCH.platform(a, x - 15, z - 15, x + 15, z + 15, b, 3, { stepHalf: 5 });
+  const f = ARCH.colonnade(a, x - 12, z - 12, x + 12, z + 12, y, 13, 3, PAL.zhu, 2);
+  ARCH.wallWithOpenings(a, x - 12, z - 12, x + 12, z + 12, y, 13, f.xs, { frameC: PAL.zhu, wallC: PAL.plasterWarm });
+  // 下檐为环形檐裙，中央楼身连续支承上层。
+  for (let xx = x - 16; xx <= x + 16; xx++) for (let zz = z - 16; zz <= z + 16; zz++) {
+    if (Math.abs(xx - x) > 9 || Math.abs(zz - z) > 9) a.set(xx, y + 13, zz, PAL.roofSlate);
+  }
+  const upper = ARCH.colonnade(a, x - 9, z - 9, x + 9, z + 9, y + 13, 12, 3, PAL.zhu, 1);
+  ARCH.wallWithOpenings(a, x - 9, z - 9, x + 9, z + 9, y + 13, 12, upper.xs, { frameC: PAL.timber, hasDoor: false });
+  ARCH.roofTang(a, x - 9, z - 9, x + 9, z + 9, y + 25, { kind: 'hip', main: PAL.roofSlate, overhang: 4, finialH: 0 });
   ctx.counters.towers++;
 };
 
@@ -1520,113 +1490,28 @@ proto.crate = function (ctx, x, z, base, rng) {
   if (rng() < 0.5) store.set(x + 1, base + 1, z, PAL.clothHu);
 };
 
-// ================================================================ 树木（槐/柳/松/竹/梧桐/榆/杏）
+// ================================================================ 树木（槐/柳/松/竹/杏，4× 建筑层细干 + 相连椭球冠）
+// 细尺度树干与相互连接的切面树冠，替代粗方柱、两片方板冠。
+// 本实现原在 g09_refine.js 以后置覆盖生效，现并为本文件标准实现。
 proto.tree = function (ctx, x, z, base, kind, rng) {
-  const { store, fields } = ctx;
   if (x == null || z == null) return;
-  const i = CHANGAN.fieldIndex(x, z);
-  if (fields.canopy[i]) return;
-  fields.canopy[i] = 1;
-  rng = rng || CHANGAN.rngOf(ctx.seed, 'tree');
-  const gy = base != null ? base : fields.groundH[i];
-
-  const T = {
-    huai:   { trunk: PAL.timberDark, leaf: [PAL.huaiGreen, PAL.huaiLight], h: 3, r: 1 },
-    willow: { trunk: PAL.timber, leaf: [PAL.willowGreen], h: 3, r: 1, droop: true },
-    pine:   { trunk: PAL.timberDark, leaf: [PAL.pineGreen], h: 4, r: 1 },
-    bamboo: { trunk: PAL.bambooGreen, leaf: [PAL.bambooGreen], h: 3, r: 0 },
-    wutong: { trunk: PAL.timber, leaf: [PAL.wutongGreen], h: 3, r: 1 },
-    elm:    { trunk: PAL.timber, leaf: [PAL.grass], h: 3, r: 1 },
-    apricot:{ trunk: PAL.timberDark, leaf: [PAL.apricotPink], h: 3, r: 1 },
-  }[kind] || { trunk: PAL.timber, leaf: [PAL.huaiGreen], h: 3, r: 1 };
-
-  const putIfFree = (px, py, pz, c) => { if (!store.get(px, py, pz)) store.set(px, py, pz, c); };
-  
-  // 盛唐有机树木生长器：按坐标微扰高度与冠幅，告别等距方块树
-  const varH = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
-  const trunkH = kind === 'pine' ? 4 : (kind === 'bamboo' ? 3 : (3 + (varH > 0.6 ? 1 : 0)));
-  const trunkC = (kind === 'bamboo') ? PAL.bambooGreen : (kind === 'willow' ? PAL.timber : PAL.timberDark);
-
-  // 主干挺拔向上
-  for (let y = 1; y <= trunkH; y++) putIfFree(x, gy + y, z, trunkC);
-
-  if (kind === 'bamboo') {
-    // 丛生修竹
-    for (let b = 0; b < 4; b++) {
-      const bx = x + ((b % 2) ? 1 : 0) * (b < 2 ? 1 : -1);
-      const bz = z + ((b > 1) ? 1 : 0);
-      const bh = 3 + (b % 2);
-      for (let y = 1; y <= bh; y++) putIfFree(bx, gy + y, bz, PAL.bambooGreen);
-      putIfFree(bx, gy + bh + 1, bz, PAL.huaiLight);
+  const i = CHANGAN.fieldIndex(x, z); if (i < 0 || ctx.fields.canopy[i]) return;
+  ctx.fields.canopy[i] = 1;
+  const a = ctx.arch, ax = x * 4 + 2, az = z * 4 + 2, y = (base ?? ctx.fields.groundH[i]) * 4 + 4;
+  const h = kind === 'pine' ? 19 : kind === 'bamboo' ? 12 : 13 + Math.abs((x * 17 + z * 11) % 4);
+  const leaf = kind === 'apricot' ? PAL.apricotPink : kind === 'pine' ? PAL.pineGreen : kind === 'willow' ? PAL.willowGreen : PAL.huaiGreen;
+  const put = (x, y, z, c) => { if (!a.get(x, y, z)) a.set(x, y, z, c); };
+  for (let yy = y; yy <= y + h; yy++) put(ax, yy, az, PAL.timber);
+  const crowns = kind === 'pine' ? [[0, h - 5, 0, 6, 2], [0, h, 0, 4, 3]] : [[0, h, 0, 5, 4], [-3, h - 2, 1, 4, 3], [3, h - 1, -1, 4, 3]];
+  for (const [dx, dy, dz, r, ry] of crowns) {
+    for (let xx = Math.min(0, dx); xx <= Math.max(0, dx); xx++) put(ax + xx, y + dy, az, PAL.timber);
+    for (let zz = Math.min(0, dz); zz <= Math.max(0, dz); zz++) put(ax + dx, y + dy, az + zz, PAL.timber);
+    for (let xx = -r; xx <= r; xx++) for (let zz = -r; zz <= r; zz++) for (let yy = -ry; yy <= ry; yy++) {
+      if (xx * xx / (r * r) + zz * zz / (r * r) + yy * yy / (ry * ry) > 1) continue;
+      put(ax + dx + xx, y + dy + yy, az + dz + zz, yy >= ry - 1 && kind !== 'pine' ? PAL.huaiLight : leaf);
     }
-    fields.topH[i] = Math.max(fields.topH[i], gy + 5);
-  } else if (kind === 'willow') {
-    // 隋堤垂柳：伞状主冠 + 四周柔和垂枝
-    const cy = gy + trunkH + 1;
-    // 枝干侧伸
-    putIfFree(x - 1, gy + trunkH, z, trunkC);
-    putIfFree(x + 1, gy + trunkH, z, trunkC);
-    // 主冠（切角多边形）
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角
-        putIfFree(x + dx, cy, z + dz, PAL.willowGreen);
-        putIfFree(x + dx, cy + 1, z + dz, (dx === 0 && dz === 0) ? PAL.huaiLight : PAL.willowGreen);
-        // 边缘下垂柳丝
-        if (Math.abs(dx) === 2 || Math.abs(dz) === 2) {
-          putIfFree(x + dx, cy - 1, z + dz, PAL.willowGreen);
-          if ((dx + dz) % 2 === 0) putIfFree(x + dx, cy - 2, z + dz, PAL.willowGreen);
-        }
-      }
-    }
-    fields.topH[i] = Math.max(fields.topH[i], cy + 2);
-  } else if (kind === 'pine') {
-    // 终南苍松：分层伞盖（下平上聚）
-    const cy1 = gy + trunkH - 1;
-    const cy2 = gy + trunkH + 1;
-    // 下层平展松云
-    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
-      if (Math.abs(dx) + Math.abs(dz) <= 3) putIfFree(x + dx, cy1, z + dz, PAL.pineGreen);
-    }
-    // 上层松顶
-    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
-      putIfFree(x + dx, cy2, z + dz, PAL.pineGreen);
-    }
-    putIfFree(x, cy2 + 1, z, PAL.huaiLight);
-    fields.topH[i] = Math.max(fields.topH[i], cy2 + 2);
-  } else {
-    // 盛唐国槐（huai / elm / wutong / apricot）
-    const cy = gy + trunkH;
-    // 枝丫分叉（向侧面延伸 1 格木色枝干）
-    putIfFree(x + 1, cy, z, trunkC);
-    putIfFree(x, cy, z - 1, trunkC);
-
-    const leafPalette = (kind === 'apricot')
-      ? [PAL.apricotPink, PAL.plasterWarm, PAL.apricotPink]
-      : [PAL.huaiGreen, PAL.huaiLight, PAL.moss];
-
-    // 饱满多边形双层树冠（削去八个死角，形成饱满卵形与自然凹凸）
-    // 下层（宽展 5x5 切角）
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // 切四角，形成圆润多边形
-        const lc = leafPalette[(dx * 3 + dz * 5 + 99) % leafPalette.length];
-        putIfFree(x + dx, cy + 1, z + dz, lc);
-      }
-    }
-    // 上层（聚拢 3x3）
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dz = -1; dz <= 1; dz++) {
-        const lc = (dx === 0 && dz === 0) ? PAL.huaiLight : leafPalette[(dx + dz + 10) % leafPalette.length];
-        putIfFree(x + dx, cy + 2, z + dz, lc);
-      }
-    }
-    // 树梢小冠
-    putIfFree(x, cy + 3, z, PAL.huaiLight);
-
-    fields.topH[i] = Math.max(fields.topH[i], cy + 3);
   }
-  ctx.counters.trees++;
+  ctx.fields.topH[i] = Math.max(ctx.fields.topH[i], Math.ceil((y + h + 4) / 4)); ctx.counters.trees++;
 };
 
 // ================================================================ 井亭 / 石桥 / 亭台

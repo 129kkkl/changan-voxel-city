@@ -55,13 +55,20 @@ export function initEngine(canvasHost) {
   Engine.materials.opaque = new THREE.MeshLambertMaterial({ vertexColors: true });
   Engine.materials.water = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.78, depthWrite: false });
   Engine.materials.glow = new THREE.MeshBasicMaterial({ vertexColors: true });
+  // P1 语义建筑：Standard + 顶点色，吃光照/阴影，比 Lambert 更有体积
+  Engine.materials.building = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.82,
+    metalness: 0.04,
+    flatShading: false,
+  });
 
   // 雾与背景（昼/夜由 DayNight 引擎驱动）
   scene.fog = new THREE.Fog(0xb7c4d0, 720, 2100);
   scene.background = new THREE.Color(0x8fb0c8);
 
-  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x8b7960, 0.65);
-  const sun = new THREE.DirectionalLight(0xfff1dc, 1.85);
+  const hemi = new THREE.HemisphereLight(0xdcecf8, 0x8b7960, 0.48);
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.05);
   sun.position.set(-260, 380, 160);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -72,7 +79,7 @@ export function initEngine(canvasHost) {
   sun.shadow.camera.far = 1400;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.04;
-  const amb = new THREE.AmbientLight(0x303e54, 0.25);
+  const amb = new THREE.AmbientLight(0x303e54, 0.18);
   scene.add(hemi, sun, amb);
   Engine.lights = { hemi, sun, amb };
 
@@ -123,12 +130,50 @@ function geometryFromArrays(m) {
   const n = m.pos.length / 3;
   g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
   const colors = new Uint8Array(n * 3);
-  colors.set(m.col);
+  colors.set(m.col.subarray ? m.col.subarray(0, n * 3) : m.col);
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
   const normals = new Float32Array(n * 3);
+  const idx = m.idx;
+  const pos = m.pos;
+  // 先写方向码法线；自定义码 >=6 的顶点用面法线累加
+  const custom = new Float32Array(n * 3);
+  const customCount = new Uint16Array(n);
   for (let i = 0; i < n; i++) {
-    const N = NORMALS[m.nor[i]];
-    normals[i * 3] = N[0]; normals[i * 3 + 1] = N[1]; normals[i * 3 + 2] = N[2];
+    const code = m.nor[i];
+    const N = NORMALS[code];
+    if (N) {
+      normals[i * 3] = N[0]; normals[i * 3 + 1] = N[1]; normals[i * 3 + 2] = N[2];
+    } else {
+      normals[i * 3 + 1] = 1;
+    }
+  }
+  if (idx && idx.length) {
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+      const need = (m.nor[a] > 5 || m.nor[b] > 5 || m.nor[c] > 5);
+      if (!need) continue;
+      const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+      const bx = pos[b * 3], by = pos[b * 3 + 1], bz = pos[b * 3 + 2];
+      const cx = pos[c * 3], cy = pos[c * 3 + 1], cz = pos[c * 3 + 2];
+      const ux = bx - ax, uy = by - ay, uz = bz - az;
+      const vx = cx - ax, vy = cy - ay, vz = cz - az;
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len; ny /= len; nz /= len;
+      for (const i of [a, b, c]) {
+        if (m.nor[i] > 5) {
+          custom[i * 3] += nx; custom[i * 3 + 1] += ny; custom[i * 3 + 2] += nz;
+          customCount[i]++;
+        }
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    if (customCount[i]) {
+      const nx = custom[i * 3], ny = custom[i * 3 + 1], nz = custom[i * 3 + 2];
+      const len = Math.hypot(nx, ny, nz) || 1;
+      normals[i * 3] = nx / len; normals[i * 3 + 1] = ny / len; normals[i * 3 + 2] = nz / len;
+    }
   }
   g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   g.setIndex(new THREE.BufferAttribute(m.idx, 1));
@@ -164,6 +209,32 @@ export function buildChunks(chunkData) {
     }
     Engine.chunks.push(entry);
   }
+}
+
+// ---------------------------------------------------------------- 语义建筑网格（P1 连续屋面）
+export function replaceMeshChunks(chunks) {
+  Engine.meshChunks = Engine.meshChunks || new Map();
+  for (const ch of chunks) {
+    const old = Engine.meshChunks.get(ch.id);
+    if (old) { Engine.chunkGroup.remove(old); old.geometry.dispose(); }
+    const mesh = new THREE.Mesh(geometryFromArrays(ch), Engine.materials.building);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.layer = 'building';
+    mesh.frustumCulled = true;
+    mesh.geometry.computeBoundingSphere();
+    Engine.chunkGroup.add(mesh);
+    Engine.meshChunks.set(ch.id, mesh);
+  }
+}
+
+export function clearMeshChunks() {
+  if (!Engine.meshChunks) return;
+  for (const m of Engine.meshChunks.values()) {
+    Engine.chunkGroup.remove(m);
+    m.geometry.dispose();
+  }
+  Engine.meshChunks.clear();
 }
 
 // ---------------------------------------------------------------- 建筑层网格（2× 分辨率，顶点已折算回城市单位）

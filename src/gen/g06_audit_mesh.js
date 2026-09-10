@@ -100,7 +100,11 @@ CHANGAN.runAudits = function (ctx) {
     ctx.denseGrid = grid; // 供网格化复用
   }
   // ⑤b 建筑层无浮空：城市层的泛洪看不到建筑层，必须单独查一遍
-  // （2026-09-08 用户实测发现"有的建筑断成两半、上面一半飘在空中"，正是这条漏检）
+  // P1 mesh 化前先清掉未支承的孤立 ArchStore 构件（残留，不应进入画面）
+  if (ctx.arch && ctx.arch.count && CHANGAN.purgeFloatingArch) {
+    const purged = CHANGAN.purgeFloatingArch(ctx, ctx.arch);
+    if (purged) audits.push({ name: '浮空清理', pass: true, detail: `删除 ${purged} 格孤立建筑体素` });
+  }
   if (ctx.arch && ctx.arch.count && CHANGAN.auditArchFloating) {
     const r = CHANGAN.auditArchFloating(ctx, ctx.arch);
     ok('建筑层无浮空', r.pass, r.detail);

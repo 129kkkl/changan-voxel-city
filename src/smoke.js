@@ -7,8 +7,15 @@ const vm = require('vm');
 
 const SRC = __dirname;
 const GEN_FILES = [
-  'gen/g01_core.js', 'gen/g02_skeleton.js', 'gen/g03_wards.js',
-  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g09_refine.js', 'gen/g07_pipeline.js',
+  'gen/g01_core.js',
+  'core/c01_units.js',
+  'arch/b11_atlas.js',
+  'arch/b10_mesh.js',
+  'arch/b03_roof.js',
+  'arch/b01_spec.js',
+  'arch/b04_house.js',
+  'gen/g02_skeleton.js', 'gen/g03_wards.js',
+  'gen/g04_proto.js', 'gen/g04_landmark.js', 'gen/g05_detail.js', 'gen/g06_audit_mesh.js', 'gen/g08_arch.js', 'gen/g07_pipeline.js',
 ];
 
 function makeHarness(seed) {
@@ -50,7 +57,7 @@ for (const seed of seeds) {
     }
     const s = result.stats;
     if (rep === 0) {
-      console.log(`[seed ${seed.toString(16)}] ${ms}ms 体素=${s.voxels} 坊=${s.wardCount} 市=${s.marketPlots} 门=${s.gateCount} 楼=${s.buildings} 树=${s.trees} checksum=${s.checksum}`);
+      console.log(`[seed ${seed.toString(16)}] ${ms}ms 体素=${s.voxels} 建筑层体素=${s.archVoxels} 建筑层四边形=${s.archQuads} 坊=${s.wardCount} 市=${s.marketPlots} 门=${s.gateCount} 楼=${s.buildings} 树=${s.trees} checksum=${s.checksum} archChecksum=${s.archChecksum}`);
       console.log('  审计: ' + s.audits.map(a => `${a.name}:${a.pass ? '过' : 'FATAL'}`).join(' '));
       if (s.stageMs) console.log('  分阶段: ' + Object.entries(s.stageMs).map(([k, v]) => k + '=' + v + 'ms').join(' '));
     }

@@ -208,102 +208,32 @@ CHANGAN.buildHanyuanComplex = function (ctx, cx, base) {
   return ty + 14;
 };
 
-// ================================================================ P0-4 大雁塔 buildDayanPagoda()
-// 七层方形楼阁式砖塔/首层高大/逐层收分/券门/檐层/平座/塔刹/厚重基；每层按高度/收分/券门/檐口/平座/墙厚独立计算（循环仅复用构造，非同盒堆叠）
-CHANGAN.buildDayanPagoda = function (ctx, cx, cz, base) {
-  CHANGAN.enterLandmark(ctx, 'dayan');
-  const { store } = ctx;
-  // 厚重塔基（三层须弥座+莲瓣压边，非单板）
-  store.fill(cx - 7, base + 1, cz - 7, cx + 7, base + 1, cz + 7, PAL.stoneGrey);
-  store.fill(cx - 6, base + 2, cz - 6, cx + 6, base + 2, cz + 6, PAL.stoneWhite);
-  store.fill(cx - 6, base + 3, cz - 6, cx + 6, base + 3, cz + 6, PAL.brickPave);
-  let y = base + 3;
-  const widths = [11, 10, 9, 8, 7, 6, 5]; // 逐层收分表（实测轮廓自然）
-  const heights = [6, 4, 4, 3, 3, 3, 3]; // 首层高大
-  for (let L = 0; L < 7; L++) {
-    const w = widths[L], h = heights[L], half = w >> 1;
-    // 塔身：每层墙厚/券门/佛龛独立
-    for (let x = cx - half; x <= cx + half; x++) for (let z = cz - half; z <= cz + half; z++) {
-      const edge = (x === cx - half || x === cx + half || z === cz - half || z === cz + half);
-      if (!edge) continue;
-      for (let yy = 1; yy <= h; yy++) {
-        let c = PAL.brickPave;
-        if (yy === h) c = PAL.stoneGrey; // 阑额
-        store.set(x, y + yy, z, c);
+// ================================================================ 大雁塔 / 小雁塔（4× 建筑层砖塔）
+// 大雁塔：七层楼阁式（逐层收分、四面券洞退入壁面）；小雁塔：十三层密檐式。
+// 本实现原在 g09_refine.js 以后置覆盖生效，现并为本文件标准实现。
+for (const [fn, name, floors] of [['buildDayanPagoda', 'dayan', 7], ['buildXiaoyanPagoda', 'xiaoyan', 13]]) {
+  CHANGAN[fn] = function (ctx, cx, cz, base) {
+    CHANGAN.enterLandmark(ctx, name);
+    const a = ctx.arch, x = cx * 4, z = cz * 4, b = (base + 1) * 4, big = floors === 7;
+    let y = ARCH.platform(a, x - (big ? 25 : 18), z - (big ? 25 : 18), x + (big ? 25 : 18), z + (big ? 25 : 18), b, 5, { stepHalf: 6 });
+    for (let level = 0; level < floors; level++) {
+      const r = big ? 22 - level * 2 : 15 - Math.floor(level * .7), h = big ? (level === 0 ? 20 : 13) : level === 0 ? 18 : 4;
+      a.shellBox(x - r, y, z - r, x + r, y + h - 1, z + r, PAL.rammedLight);
+      // 四面券洞：退入壁面，中央通道不做贯穿塔身的大洞。
+      if (big || level === 0) for (const side of [-1, 1]) for (let u = -2; u <= 2; u++) for (let dy = 2; dy < h - 2 - Math.abs(u); dy++) {
+        a.set(x + u, y + dy, z + side * r, PAL.timberDark); a.set(x + side * r, y + dy, z + u, PAL.timberDark);
       }
-      // 南向券门（首层高大券+上层小券交错，禁每层同门）
-      if (z === cz + half && Math.abs(x - cx) <= (L === 0 ? 1 : 0)) {
-        for (let yy = 1; yy <= h - 1; yy++) store.set(x, y + yy, z, PAL.doorDark);
-        store.set(x, y + h, z, PAL.stoneGrey);
-      }
-      // 东西小龛（偶层）
-      if (L % 2 === 1 && x === cx + half && z === cz) { store.set(x, y + 2, z, PAL.doorDark); }
+      y += h;
+      for (let step = 0; step < 2; step++) a.slab(x - r - 2 + step, y + step, z - r - 2 + step, x + r + 2 - step, z + r + 2 - step, PAL.roofSlate);
+      y += 2;
     }
-    // 檐层+平座（出檐2+栏干，與上层收分联动）
-    const e = 2;
-    for (let x = cx - half - e; x <= cx + half + e; x++) for (let z = cz - half - e; z <= cz + half + e; z++) {
-      const ring = (x === cx - half - e || x === cx + half + e || z === cz - half - e || z === cz + half + e);
-      store.set(x, y + h + 1, z, ring ? PAL.roofLight : PAL.roofGrey);
-    }
-    // 平座勾栏立于檐顶（与上层墙足同层，同坐檐面，无浮空）
-    for (let x = cx - half - e; x <= cx + half + e; x += 2) { store.set(x, y + h + 2, cz - half - e, PAL.stoneWhite); store.set(x, y + h + 2, cz + half + e, PAL.stoneWhite); }
-    // 层间紧密叠砌：檐即上层足，无空隙（防浮空）
-    y += h + 1;
-  }
-  // 塔刹（覆钵+相轮五重+宝珠，金铜）
-  store.set(cx, y + 1, cz, PAL.stoneGrey);
-  for (let i = 0; i < 5; i++) { store.fill(cx - 1, y + 2 + i, cz - 1, cx + 1, y + 2 + i, cz + 1, PAL.bronze); }
-  store.set(cx, y + 7, cz, PAL.gold);
-  store.set(cx, y + 8, cz, PAL.gold);
-  CHANGAN.logBuild(ctx, { kind: 'pagoda', name: 'dayan', x0: cx - 7, z0: cz - 7, x1: cx + 7, z1: cz + 7, h: y + 8 - base, roof: 'louge7', platform: 3, bays: '7F-taper', rank: 4, generic: false, symmetry: 'sym4', towerProfile: 'louge-taper11-5' });
-  regLOD(ctx, 'dayan', cx - 7, cz - 7, cx + 7, cz + 7, y + 8, base);
-  ctx.counters.towers++;
-  CHANGAN.exitLandmark(ctx);
-  return y + 8;
-};
-
-// ================================================================ P0-5 小雁塔 buildXiaoyanPagoda()
-// 密檐塔：连续收分/密檐节奏/比例/密度/曲线（与大雁不同语言：瘦高+密檐叠涩+无平座大出檐+秀直轮廓）
-CHANGAN.buildXiaoyanPagoda = function (ctx, cx, cz, base) {
-  CHANGAN.enterLandmark(ctx, 'xiaoyan');
-  const { store } = ctx;
-  // 方形石基（小而高，显瘦）
-  store.fill(cx - 4, base + 1, cz - 4, cx + 4, base + 1, cz + 4, PAL.stoneGrey);
-  store.fill(cx - 3, base + 2, cz - 3, cx + 3, base + 2, cz + 3, PAL.stoneWhite);
-  let y = base + 2;
-  // 首层（高5，壁画龛+南券门）
-  const h0 = 5, half0 = 3;
-  for (let x = cx - half0; x <= cx + half0; x++) for (let z = cz - half0; z <= cz + half0; z++) {
-    if (x !== cx - half0 && x !== cx + half0 && z !== cz - half0 && z !== cz + half0) continue;
-    for (let yy = 1; yy <= h0; yy++) store.set(x, y + yy, z, PAL.brickPave);
-  }
-  store.set(cx, y + 1, cz + half0, PAL.doorDark); store.set(cx, y + 2, cz + half0, PAL.doorDark); store.set(cx, y + 3, cz + half0, PAL.doorDark);
-  y += h0;
-  // 密檐：13层，每层高2（身1+檐1），逐层内收0.25格→用交替half实现连续收分曲线
-  for (let L = 0; L < 13; L++) {
-    const half = Math.max(1, 3 - Math.floor((L + 2) / 5));
-    // 塔身（薄壁1高）
-    for (let x = cx - half; x <= cx + half; x++) for (let z = cz - half; z <= cz + half; z++) {
-      if (x !== cx - half && x !== cx + half && z !== cz - half && z !== cz + half) continue;
-      store.set(x, y + 1, z, PAL.brickPave);
-    }
-    // 密檐（出挑1，叠涩两皮）
-    for (let x = cx - half - 1; x <= cx + half + 1; x++) for (let z = cz - half - 1; z <= cz + half + 1; z++) {
-      const ring = (x === cx - half - 1 || x === cx + half + 1 || z === cz - half - 1 || z === cz + half + 1);
-      store.set(x, y + 2, z, ring ? PAL.roofLight : PAL.roofGrey);
-    }
-    y += 2;
-  }
-  // 刹（小金顶，与大雁五重相轮不同：单覆钵+短刹杆）
-  store.set(cx, y + 1, cz, PAL.stoneGrey);
-  store.set(cx, y + 2, cz, PAL.bronze);
-  store.set(cx, y + 3, cz, PAL.gold);
-  CHANGAN.logBuild(ctx, { kind: 'pagoda', name: 'xiaoyan', x0: cx - 4, z0: cz - 4, x1: cx + 4, z1: cz + 4, h: y + 3 - base, roof: 'miyan13', platform: 2, bays: '13F-dense', rank: 4, generic: false, symmetry: 'sym4', towerProfile: 'miyan-dense13' });
-  regLOD(ctx, 'xiaoyan', cx - 4, cz - 4, cx + 4, cz + 4, y + 3, base);
-  ctx.counters.towers++;
-  CHANGAN.exitLandmark(ctx);
-  return y + 3;
-};
+    a.fill(x - 1, y, z - 1, x + 1, y + 3, z + 1, PAL.bronze); a.fill(x, y + 4, z, x, y + 8, z, PAL.bronze);
+    const top = (y + 9) / 4;
+    CHANGAN.logBuild(ctx, { kind: 'pagoda', name, x0: cx - 7, z0: cz - 7, x1: cx + 7, z1: cz + 7, h: top - base, roof: big ? 'louge7' : 'miyan13', rank: 4, generic: false, bays: big ? 'seven-storey' : 'thirteen-eaves', towerProfile: big ? 'tapered-brick7' : 'dense-eaves13' });
+    ctx.landmarkLODs = ctx.landmarkLODs || {}; ctx.landmarkLODs[name] = { x0: cx - 7, z0: cz - 7, x1: cx + 7, z1: cz + 7, hMax: top, base, cx, cz };
+    ctx.counters.towers++; CHANGAN.exitLandmark(ctx); return top;
+  };
+}
 
 // ================================================================ P1 花萼相辉楼 buildHuaeTower()（重楼腰檐平座柱列递进临池，禁两hall叠加）
 CHANGAN.buildHuaeTower = function (ctx, cx, cz, base) {
