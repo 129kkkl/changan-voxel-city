@@ -1,0 +1,10 @@
+[seed 5a17c4a9] 34003ms 体素=1899100 建筑层体素=5666310 建筑层四边形=980641 坊=104 市=4 门=12 楼=381 树=1014 checksum=12f1d019 archChecksum=9c857dcc
+  审计: 坊墙闭合:过 中轴对齐:过 108坊计数:过 临街开店:过 无浮空:过 建筑层无浮空:过 体素预算:过 地标去模板化:过 地标LOD:过 多样性:过 十坊抽检:过 地标唯一性:过
+  分阶段: terrain=2634ms walls=12ms streets=15ms wards=4357ms markets=342ms custom=543ms palaces=917ms water=10ms detail=130ms seal=37ms wardId=3ms audit=4904ms mesh=18272ms
+[seed d7a11c9] 33543ms 体素=1894475 建筑层体素=5619564 建筑层四边形=969886 坊=104 市=4 门=12 楼=374 树=1038 checksum=c6aa807c archChecksum=36d52017
+  审计: 坊墙闭合:过 中轴对齐:过 108坊计数:过 临街开店:过 无浮空:过 建筑层无浮空:过 体素预算:过 地标去模板化:过 地标LOD:过 多样性:过 十坊抽检:过 地标唯一性:过
+  分阶段: terrain=2605ms walls=10ms streets=15ms wards=4272ms markets=341ms custom=526ms palaces=900ms water=32ms detail=113ms seal=37ms wardId=3ms audit=4751ms mesh=18160ms
+[seed 9e3779b9] 33353ms 体素=1896794 建筑层体素=5561900 建筑层四边形=961912 坊=104 市=4 门=12 楼=369 树=1052 checksum=5e4179b5 archChecksum=82faa254
+  审计: 坊墙闭合:过 中轴对齐:过 108坊计数:过 临街开店:过 无浮空:过 建筑层无浮空:过 体素预算:过 地标去模板化:过 地标LOD:过 多样性:过 十坊抽检:过 地标唯一性:过
+  分阶段: terrain=2596ms walls=11ms streets=15ms wards=4195ms markets=350ms custom=633ms palaces=914ms water=10ms detail=114ms seal=41ms wardId=2ms audit=4732ms mesh=17985ms
+[smoke] 全部通过 ✓
